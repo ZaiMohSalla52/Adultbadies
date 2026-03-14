@@ -4,6 +4,8 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { REPORT_CATEGORIES, type ReportCategory } from '@/lib/safety/types';
 import type { DiscoveryCandidate } from '@/lib/discovery/types';
 
 type DiscoveryDeckProps = {
@@ -15,8 +17,15 @@ export const DiscoveryDeck = ({ initialCandidates }: DiscoveryDeckProps) => {
   const [isPending, startTransition] = useTransition();
   const [candidates, setCandidates] = useState(initialCandidates);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [reportCategory, setReportCategory] = useState<ReportCategory>('harassment');
+  const [reportDetails, setReportDetails] = useState('');
 
   const currentCandidate = useMemo(() => candidates[0] ?? null, [candidates]);
+
+  const removeCurrentCandidate = () => {
+    setCandidates((prev) => prev.slice(1));
+    setReportDetails('');
+  };
 
   const swipe = (direction: 'like' | 'dislike') => {
     if (!currentCandidate || isPending) return;
@@ -37,12 +46,64 @@ export const DiscoveryDeck = ({ initialCandidates }: DiscoveryDeckProps) => {
       }
 
       const payload = (await response.json()) as { matched?: boolean };
-      setCandidates((prev) => prev.filter((candidate) => candidate.userId !== target.userId));
+      removeCurrentCandidate();
 
       if (payload.matched) {
         setFeedback(`It's a match with ${target.displayName}!`);
       }
 
+      router.refresh();
+    });
+  };
+
+  const blockCurrentUser = () => {
+    if (!currentCandidate || isPending) return;
+
+    const target = currentCandidate;
+    setFeedback(null);
+
+    startTransition(async () => {
+      const response = await fetch('/api/safety/block', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blockedUserId: target.userId, reason: 'blocked_from_discovery' }),
+      });
+
+      if (!response.ok) {
+        setFeedback('Could not block this user. Please try again.');
+        return;
+      }
+
+      removeCurrentCandidate();
+      setFeedback(`${target.displayName} has been blocked.`);
+      router.refresh();
+    });
+  };
+
+  const reportCurrentUser = () => {
+    if (!currentCandidate || isPending) return;
+
+    const target = currentCandidate;
+    setFeedback(null);
+
+    startTransition(async () => {
+      const response = await fetch('/api/safety/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportedUserId: target.userId,
+          category: reportCategory,
+          details: reportDetails,
+        }),
+      });
+
+      if (!response.ok) {
+        setFeedback('Could not submit report. Please try again.');
+        return;
+      }
+
+      setFeedback('Thanks. Your report has been submitted.');
+      setReportDetails('');
       router.refresh();
     });
   };
@@ -60,7 +121,7 @@ export const DiscoveryDeck = ({ initialCandidates }: DiscoveryDeckProps) => {
 
   return (
     <div className="space-y-4">
-      <Card className="space-y-4 p-0 overflow-hidden">
+      <Card className="space-y-4 overflow-hidden p-0">
         <div className="aspect-[4/5] w-full bg-surface-2">
           {currentCandidate.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -88,6 +149,45 @@ export const DiscoveryDeck = ({ initialCandidates }: DiscoveryDeckProps) => {
           Like
         </Button>
       </div>
+
+      <Card className="space-y-3">
+        <p className="my-0 text-sm font-medium">Safety tools</p>
+        <div className="grid grid-cols-2 gap-3">
+          <Button type="button" variant="ghost" disabled={isPending} onClick={blockCurrentUser}>
+            Block user
+          </Button>
+          <Button type="button" variant="secondary" disabled={isPending} onClick={reportCurrentUser}>
+            Report user
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm text-muted" htmlFor="discovery-report-category">
+            Report category
+          </label>
+          <select
+            id="discovery-report-category"
+            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
+            value={reportCategory}
+            onChange={(event) => setReportCategory(event.target.value as ReportCategory)}
+            disabled={isPending}
+          >
+            {REPORT_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category.replace('_', ' ')}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <Textarea
+          value={reportDetails}
+          onChange={(event) => setReportDetails(event.target.value)}
+          maxLength={1000}
+          placeholder="Optional details"
+          disabled={isPending}
+        />
+      </Card>
 
       {feedback ? <p className="text-center text-sm text-brand">{feedback}</p> : null}
     </div>

@@ -1,6 +1,7 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { DiscoveryDeck } from '@/components/discovery/discovery-deck';
 import { Card } from '@/components/ui/card';
+import { getDiscoveryCandidates } from '@/lib/discovery/data';
 import { getOnboardingSnapshot } from '@/lib/onboarding/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 
@@ -17,13 +18,16 @@ export default async function DiscoveryPage() {
     redirect('/onboarding');
   }
 
+  const candidates = await getDiscoveryCandidates(auth.accessToken, auth.user.id);
+
   return (
-    <Card>
-      <h1 className="my-0 text-lg font-semibold">Discovery</h1>
-      <p className="text-sm text-muted">Discovery and swipe engine is enabled from Stage 4.</p>
-      <Link className="text-sm" href="/matches">
-        Go to matches inbox
-      </Link>
-    </Card>
+    <div className="flex flex-col gap-4">
+      <Card>
+        <h1 className="my-0 text-lg font-semibold">Discovery</h1>
+        <p className="text-sm text-muted">Find people nearby and swipe when you are interested.</p>
+      </Card>
+
+      <DiscoveryDeck initialCandidates={candidates} />
+    </div>
   );
 }
