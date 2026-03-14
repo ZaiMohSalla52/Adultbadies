@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { getOnboardingSnapshot } from '@/lib/onboarding/data';
@@ -16,5 +17,13 @@ export default async function DashboardPage() {
     redirect('/onboarding');
   }
 
-  return <Card>Dashboard ready. Onboarding is complete and discovery features can be enabled in Stage 4.</Card>;
+  return (
+    <Card className="space-y-2">
+      <h1 className="text-xl font-semibold">Welcome back</h1>
+      <p className="text-sm text-muted">Your profile is live. Start discovering nearby candidates now.</p>
+      <Link href="/discovery" className="text-sm font-medium text-brand underline">
+        Go to discovery
+      </Link>
+    </Card>
+  );
 }
