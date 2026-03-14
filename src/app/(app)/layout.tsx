@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { redirect } from 'next/navigation';
 import { SectionShell } from '@/components/layout/section-shell';
+import { Button } from '@/components/ui/button';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 
 export default async function AppLayout({ children }: PropsWithChildren) {
