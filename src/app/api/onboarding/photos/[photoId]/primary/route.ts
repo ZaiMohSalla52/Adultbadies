@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { supabaseRest } from '@/lib/supabase/rest';
 
-type Params = { params: { photoId: string } };
-
-export async function PATCH(_request: NextRequest, { params }: Params) {
+export async function PATCH(_request: NextRequest, { params }: { params: Promise<{ photoId: string }> }) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
 
-  const { photoId } = params;
+  const { photoId } = await params;
 
   await supabaseRest('profile_photos', auth.accessToken, {
     method: 'PATCH',
