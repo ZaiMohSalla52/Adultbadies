@@ -15,6 +15,14 @@ type Props = {
   initialSnapshot: OnboardingSnapshot;
 };
 
+const normalizeInterestedIn = (value: string | string[] | null | undefined) => {
+  if (Array.isArray(value)) {
+    return value[0] ?? '';
+  }
+
+  return value ?? '';
+};
+
 export const OnboardingFlow = ({ initialSnapshot }: Props) => {
   const router = useRouter();
   const [snapshot, setSnapshot] = useState(initialSnapshot);
@@ -50,7 +58,9 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
     () => ({
       min_age: snapshot.preferences?.min_age?.toString() ?? '25',
       max_age: snapshot.preferences?.max_age?.toString() ?? '45',
-      interested_in: snapshot.preferences?.interested_in ?? snapshot.profile?.interested_in ?? '',
+      interested_in:
+        normalizeInterestedIn(snapshot.preferences?.interested_in) ||
+        normalizeInterestedIn(snapshot.profile?.interested_in),
       max_distance_km: snapshot.preferences?.max_distance_km?.toString() ?? '',
     }),
     [snapshot.preferences, snapshot.profile?.interested_in],

@@ -4,7 +4,7 @@ export type ProfileRecord = {
   bio: string | null;
   birth_date: string | null;
   gender: string | null;
-  interested_in: string | null;
+  interested_in: string | string[] | null;
   location_text: string | null;
   onboarding_completed: boolean | null;
 };

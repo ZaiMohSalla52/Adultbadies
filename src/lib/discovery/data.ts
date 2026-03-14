@@ -20,7 +20,10 @@ const calculateAge = (birthDate: string | null) => {
   return age;
 };
 
-const normalizeToken = (value: string | null | undefined) => value?.trim().toLowerCase() ?? '';
+const normalizeToken = (value: string | string[] | null | undefined) => {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw?.trim().toLowerCase() ?? '';
+};
 
 const isMutualInterest = (
   currentProfile: DiscoveryProfileRecord | null,
@@ -122,7 +125,7 @@ export const getDiscoveryCandidates = async (token: string, userId: string): Pro
         bio: profile.bio?.trim() || 'No bio yet.',
         location: profile.location_text?.trim() || 'Unknown location',
         gender: profile.gender,
-        interestedIn: profile.interested_in,
+        interestedIn: normalizeToken(profile.interested_in) || null,
         photoUrl: photo ? toPhotoUrl(photo.storage_path) : null,
       } satisfies DiscoveryCandidate;
     });

@@ -4,7 +4,7 @@ export type DiscoveryProfileRecord = {
   bio: string | null;
   birth_date: string | null;
   gender: string | null;
-  interested_in: string | null;
+  interested_in: string | string[] | null;
   location_text: string | null;
   onboarding_completed: boolean | null;
 };
@@ -19,7 +19,7 @@ export type DiscoveryPreferenceRecord = {
   user_id: string;
   min_age: number | null;
   max_age: number | null;
-  interested_in: string | null;
+  interested_in: string | string[] | null;
 };
 
 export type SwipeRecord = {
