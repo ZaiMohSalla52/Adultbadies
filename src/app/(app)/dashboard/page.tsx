@@ -1,20 +1,5 @@
 import { redirect } from 'next/navigation';
-import { Card } from '@/components/ui/card';
-import { getOnboardingSnapshot } from '@/lib/onboarding/data';
-import { getAuthenticatedUser } from '@/lib/supabase/auth';
 
-export default async function DashboardPage() {
-  const auth = await getAuthenticatedUser();
-
-  if (!auth.user || !auth.accessToken) {
-    redirect('/sign-in');
-  }
-
-  const snapshot = await getOnboardingSnapshot(auth.accessToken, auth.user.id);
-
-  if (!snapshot.profile?.onboarding_completed) {
-    redirect('/onboarding');
-  }
-
-  return <Card>Dashboard ready. Onboarding is complete and discovery features can be enabled in Stage 4.</Card>;
+export default function DashboardPage() {
+  redirect('/discovery');
 }

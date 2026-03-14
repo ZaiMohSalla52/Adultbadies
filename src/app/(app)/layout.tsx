@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from 'react';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SectionShell } from '@/components/layout/section-shell';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,16 @@ export default async function AppLayout({ children }: PropsWithChildren) {
           </Button>
         </form>
       </div>
+
+      <nav className="mb-6 flex gap-4">
+        <Link className="text-sm" href="/discovery">
+          Discovery
+        </Link>
+        <Link className="text-sm" href="/matches">
+          Matches
+        </Link>
+      </nav>
+
       {children}
     </SectionShell>
   );
