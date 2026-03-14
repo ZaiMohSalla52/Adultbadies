@@ -20,6 +20,14 @@ export const isAgeValid = (birthDate?: string | null) => {
   return age >= 18;
 };
 
+const normalizeInterestedIn = (value: string | string[] | null | undefined) => {
+  if (Array.isArray(value)) {
+    return value[0]?.trim() ?? '';
+  }
+
+  return value?.trim() ?? '';
+};
+
 const hasRequiredProfileFields = (profile: ProfileRecord | null) => {
   if (!profile) return false;
 
@@ -27,7 +35,7 @@ const hasRequiredProfileFields = (profile: ProfileRecord | null) => {
     profile.display_name?.trim() &&
       profile.bio?.trim() &&
       profile.gender?.trim() &&
-      profile.interested_in?.trim() &&
+      normalizeInterestedIn(profile.interested_in) &&
       profile.location_text?.trim() &&
       isAgeValid(profile.birth_date),
   );
@@ -42,7 +50,7 @@ export const isOnboardingComplete = (snapshot: OnboardingSnapshot) => {
     snapshot.preferences.min_age >= 18 &&
     snapshot.preferences.max_age >= snapshot.preferences.min_age;
 
-  if (!hasPreferenceAges || !snapshot.preferences?.interested_in) return false;
+  if (!hasPreferenceAges || !normalizeInterestedIn(snapshot.preferences?.interested_in)) return false;
 
   return snapshot.photos.length > 0;
 };
