@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { GENDER_OPTIONS, INTEREST_OPTIONS, ONBOARDING_STEPS } from '@/lib/onboarding/constants';
-import { isOnboardingComplete } from '@/lib/onboarding/completeness';
+import { isAgeValid, isOnboardingComplete } from '@/lib/onboarding/completeness';
 import type { OnboardingSnapshot } from '@/lib/onboarding/types';
 
 type Props = {
@@ -22,6 +22,15 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [birthDay, setBirthDay] = useState(() => {
+    const day = snapshot.profile?.birth_date?.split('-')[2] ?? '';
+    return day ? String(Number(day)) : '';
+  });
+  const [birthMonth, setBirthMonth] = useState(() => {
+    const month = snapshot.profile?.birth_date?.split('-')[1] ?? '';
+    return month ? String(Number(month)) : '';
+  });
+  const [birthYear, setBirthYear] = useState(() => snapshot.profile?.birth_date?.split('-')[0] ?? '');
 
   const progress = Math.round(((stepIndex + 1) / ONBOARDING_STEPS.length) * 100);
 
@@ -53,15 +62,66 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
     setSnapshot(next);
   };
 
+  const resolveBirthDate = () => {
+    if (!birthDay || !birthMonth || !birthYear) {
+      return { error: 'Please select your full birth date (day, month, and year).' };
+    }
+
+    const day = Number(birthDay);
+    const month = Number(birthMonth);
+    const year = Number(birthYear);
+    const currentYear = new Date().getUTCFullYear();
+
+    if (
+      !Number.isInteger(day) ||
+      !Number.isInteger(month) ||
+      !Number.isInteger(year) ||
+      year < 1900 ||
+      year > currentYear
+    ) {
+      return { error: 'Please enter a valid birth date.' };
+    }
+
+    const date = new Date(Date.UTC(year, month - 1, day));
+    const isSameDate =
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day;
+
+    if (!isSameDate) {
+      return { error: 'Please enter a real calendar date.' };
+    }
+
+    const birthDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    if (!isAgeValid(birthDate)) {
+      return { error: 'You must be at least 18 years old.' };
+    }
+
+    return { value: birthDate };
+  };
+
   const saveProfile = async (formData: FormData) => {
     setError(null);
     setMessage(null);
+
+    const birthDate = resolveBirthDate();
+
+    if (!('value' in birthDate)) {
+      setError(birthDate.error);
+      return;
+    }
+
+    const payload = {
+      ...Object.fromEntries(formData),
+      birth_date: birthDate.value,
+    };
 
     startTransition(async () => {
       const response = await fetch('/api/onboarding/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.fromEntries(formData)),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -183,6 +243,24 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
     });
   };
 
+  const monthOptions = [
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+  ];
+  const days = Array.from({ length: 31 }, (_, index) => String(index + 1));
+  const currentYear = new Date().getUTCFullYear();
+  const years = Array.from({ length: currentYear - 1900 + 1 }, (_, index) => String(currentYear - index));
+
   return (
     <Card className="max-w-2xl">
       <h1 className="my-0 mb-2 text-3xl font-bold">Profile onboarding</h1>
@@ -198,7 +276,29 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
         <form action={saveProfile} className="onboarding-grid">
           <Input name="display_name" defaultValue={profileForm.display_name} placeholder="Display name" required />
           <Textarea name="bio" defaultValue={profileForm.bio} placeholder="Short bio" rows={4} required />
-          <Input name="birth_date" type="date" defaultValue={profileForm.birth_date} required />
+          <div className="onboarding-grid">
+            <p className="my-0 text-sm text-muted">Birth date</p>
+            <div className="onboarding-date-grid">
+              <Select name="birth_day" value={birthDay} onChange={(event) => setBirthDay(event.target.value)} required>
+                <option value="">Day</option>
+                {days.map((day) => (
+                  <option value={day} key={day}>{day}</option>
+                ))}
+              </Select>
+              <Select name="birth_month" value={birthMonth} onChange={(event) => setBirthMonth(event.target.value)} required>
+                <option value="">Month</option>
+                {monthOptions.map((option) => (
+                  <option value={option.value} key={option.value}>{option.label}</option>
+                ))}
+              </Select>
+              <Select name="birth_year" value={birthYear} onChange={(event) => setBirthYear(event.target.value)} required>
+                <option value="">Year</option>
+                {years.map((year) => (
+                  <option value={year} key={year}>{year}</option>
+                ))}
+              </Select>
+            </div>
+          </div>
           <Select name="gender" defaultValue={profileForm.gender} required>
             <option value="">Select your gender</option>
             {GENDER_OPTIONS.map((option) => (
