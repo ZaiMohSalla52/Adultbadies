@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { getBlockedUserIds } from '@/lib/safety/data';
 import { supabaseRest } from '@/lib/supabase/rest';
+import { getSwipeCountForToday, getUserEntitlements } from '@/lib/subscriptions/data';
 import type { SwipeRecord } from '@/lib/discovery/types';
 
 type SwipeDirection = 'like' | 'dislike';
@@ -27,6 +28,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid swipe direction.' }, { status: 400 });
   }
 
+
+  const entitlements = await getUserEntitlements(auth.accessToken, auth.user.id);
+
+  if (!entitlements.features.unlimitedSwipes) {
+    const swipeCountToday = await getSwipeCountForToday(auth.accessToken, auth.user.id);
+    const maxSwipes = entitlements.limits.swipesPerDay ?? 0;
+
+    if (swipeCountToday >= maxSwipes) {
+      return NextResponse.json(
+        {
+          error: 'Daily swipe limit reached for free plan.',
+          code: 'SWIPE_LIMIT_REACHED',
+          upgradePath: '/premium',
+        },
+        { status: 402 },
+      );
+    }
+  }
 
   const blockedIds = await getBlockedUserIds(auth.accessToken, auth.user.id);
   if (blockedIds.has(targetUserId)) {
