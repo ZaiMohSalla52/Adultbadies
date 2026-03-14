@@ -35,6 +35,16 @@ export default async function AppLayout({ children }: PropsWithChildren) {
           </form>
         </div>
       </div>
+
+      <nav className="mb-6 flex gap-4">
+        <Link className="text-sm" href="/discovery">
+          Discovery
+        </Link>
+        <Link className="text-sm" href="/matches">
+          Matches
+        </Link>
+      </nav>
+
       {children}
     </SectionShell>
   );
