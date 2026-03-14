@@ -1,8 +1,4 @@
-export type SupabaseRequestOptions = {
-  accessToken?: string;
-};
-
-export type SupabaseClient = {
-  restUrl: string;
-  authHeader: (token?: string) => HeadersInit;
+export type SupabaseUser = {
+  id: string;
+  email?: string;
 };
