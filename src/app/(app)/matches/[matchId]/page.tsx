@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { Card } from '@/components/ui/card';
 import { getConversation, sendConversationMessage } from '@/lib/matches/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
+import { ConversationSafetyActions } from '@/components/matches/conversation-safety-actions';
 import { MessageComposer } from './message-composer';
 
 const formatDateTime = (value: string) =>
@@ -88,6 +89,10 @@ export default async function MatchConversationPage({ params }: { params: Promis
 
       <Card>
         <MessageComposer sendMessageAction={sendMessageAction} />
+      </Card>
+
+      <Card>
+        <ConversationSafetyActions otherUserId={conversation.otherUser.id} matchId={conversation.match.id} />
       </Card>
     </div>
   );

@@ -1,3 +1,4 @@
+import { getBlockedUserIds } from '@/lib/safety/data';
 import { supabaseRest } from '@/lib/supabase/rest';
 import type { Conversation, MatchListItem, MatchRecord, MessageRecord, ProfilePreview } from '@/lib/matches/types';
 
@@ -33,13 +34,18 @@ export const getMatchList = async (token: string, userId: string): Promise<Match
     limit: '100',
   });
 
-  const matches = await supabaseRest<MatchRecord[]>('matches', token, { searchParams: matchesQuery });
+  const [matches, blockedIds] = await Promise.all([
+    supabaseRest<MatchRecord[]>('matches', token, { searchParams: matchesQuery }),
+    getBlockedUserIds(token, userId),
+  ]);
 
-  if (matches.length === 0) {
+  const visibleMatches = matches.filter((match) => !blockedIds.has(getOtherUserId(match, userId)));
+
+  if (visibleMatches.length === 0) {
     return [];
   }
 
-  const matchIds = matches.map((match) => match.id);
+  const matchIds = visibleMatches.map((match) => match.id);
   const matchMessagesQuery = new URLSearchParams({
     select: 'id,match_id,sender_id,body,created_at,deleted_at',
     match_id: `in.(${matchIds.join(',')})`,
@@ -57,10 +63,10 @@ export const getMatchList = async (token: string, userId: string): Promise<Match
     }
   });
 
-  const otherUserIds = matches.map((match) => getOtherUserId(match, userId));
+  const otherUserIds = visibleMatches.map((match) => getOtherUserId(match, userId));
   const profilesById = await getProfilesByIds(token, otherUserIds);
 
-  return matches
+  return visibleMatches
     .map((match) => {
       const otherUserId = getOtherUserId(match, userId);
       const profile = profilesById.get(otherUserId) ?? { ...EMPTY_OTHER_USER, id: otherUserId };
@@ -104,6 +110,11 @@ export const getConversation = async (
   }
 
   const otherUserId = getOtherUserId(match, userId);
+  const blockedIds = await getBlockedUserIds(token, userId);
+  if (blockedIds.has(otherUserId)) {
+    return null;
+  }
+
   const profilesById = await getProfilesByIds(token, [otherUserId]);
   const otherUser = profilesById.get(otherUserId) ?? { ...EMPTY_OTHER_USER, id: otherUserId };
 
@@ -143,7 +154,7 @@ export const sendConversationMessage = async (
   const conversation = await getConversation(token, userId, matchId);
 
   if (!conversation) {
-    throw new Error('Conversation not found.');
+    throw new Error('Conversation not found or no longer available.');
   }
 
   await supabaseRest<MessageRecord[]>('messages', token, {

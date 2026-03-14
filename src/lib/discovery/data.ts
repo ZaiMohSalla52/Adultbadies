@@ -1,13 +1,7 @@
 import { env } from '@/lib/env';
 import { supabaseRest } from '@/lib/supabase/rest';
-import type {
-  BlockRecord,
-  DiscoveryCandidate,
-  DiscoveryPhotoRecord,
-  DiscoveryPreferenceRecord,
-  DiscoveryProfileRecord,
-  SwipeRecord,
-} from '@/lib/discovery/types';
+import type { DiscoveryCandidate, DiscoveryPhotoRecord, DiscoveryPreferenceRecord, DiscoveryProfileRecord, SwipeRecord } from '@/lib/discovery/types';
+import { getBlockedUserIds } from '@/lib/safety/data';
 
 const calculateAge = (birthDate: string | null) => {
   if (!birthDate) return null;
@@ -66,7 +60,7 @@ const toPhotoUrl = (storagePath: string) =>
   `${env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/profile-photos/${storagePath}`;
 
 export const getDiscoveryCandidates = async (token: string, userId: string): Promise<DiscoveryCandidate[]> => {
-  const [profiles, currentProfileRows, currentPreferenceRows, preferenceRows, photoRows, swipeRows, blockRows] =
+  const [profiles, currentProfileRows, currentPreferenceRows, preferenceRows, photoRows, swipeRows, blockedIds] =
     await Promise.all([
       supabaseRest<DiscoveryProfileRecord[]>('profiles', token, {
         searchParams: new URLSearchParams({
@@ -101,9 +95,7 @@ export const getDiscoveryCandidates = async (token: string, userId: string): Pro
       supabaseRest<SwipeRecord[]>('swipes', token, {
         searchParams: new URLSearchParams({ select: 'swiper_id,target_user_id,direction' }),
       }),
-      supabaseRest<BlockRecord[]>('blocks', token, {
-        searchParams: new URLSearchParams({ select: 'blocker_id,blocked_user_id' }),
-      }),
+      getBlockedUserIds(token, userId),
     ]);
 
   const currentProfile = currentProfileRows[0] ?? null;
@@ -112,12 +104,6 @@ export const getDiscoveryCandidates = async (token: string, userId: string): Pro
   const alreadySwipedIds = new Set(
     swipeRows.filter((swipe) => swipe.swiper_id === userId).map((swipe) => swipe.target_user_id),
   );
-
-  const blockedIds = new Set<string>();
-  for (const block of blockRows) {
-    if (block.blocker_id === userId) blockedIds.add(block.blocked_user_id);
-    if (block.blocked_user_id === userId) blockedIds.add(block.blocker_id);
-  }
 
   const photoByUser = new Map(photoRows.map((photo) => [photo.user_id, photo]));
   const preferenceByUser = new Map(preferenceRows.map((preference) => [preference.user_id, preference]));

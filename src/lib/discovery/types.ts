@@ -28,10 +28,6 @@ export type SwipeRecord = {
   direction: 'like' | 'dislike' | 'super_like';
 };
 
-export type BlockRecord = {
-  blocker_id: string;
-  blocked_user_id: string;
-};
 
 export type DiscoveryCandidate = {
   userId: string;

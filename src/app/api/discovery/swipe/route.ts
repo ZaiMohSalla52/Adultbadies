@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
+import { getBlockedUserIds } from '@/lib/safety/data';
 import { supabaseRest } from '@/lib/supabase/rest';
 import type { SwipeRecord } from '@/lib/discovery/types';
 
@@ -26,6 +27,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid swipe direction.' }, { status: 400 });
   }
 
+
+  const blockedIds = await getBlockedUserIds(auth.accessToken, auth.user.id);
+  if (blockedIds.has(targetUserId)) {
+    return NextResponse.json({ error: 'You cannot interact with this user.' }, { status: 403 });
+  }
   await supabaseRest('swipes', auth.accessToken, {
     method: 'POST',
     body: {
