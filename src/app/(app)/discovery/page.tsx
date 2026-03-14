@@ -26,12 +26,11 @@ export default async function DiscoveryPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <h1 className="my-0 text-lg font-semibold">Discovery</h1>
-        <p className="text-sm text-muted">Find people nearby and swipe when you are interested.</p>
+    <div style={{ display: 'grid', gap: '1rem' }}>
+      <Card style={{ padding: '1rem 1.1rem' }}>
+        <h1 style={{ margin: 0, fontSize: '1.35rem' }}>Discovery</h1>
+        <p style={{ marginBottom: 0, color: 'var(--text-muted)' }}>Swipe smoothly. Match quickly. Meet people nearby.</p>
       </Card>
-
       <DiscoveryDeck initialCandidates={candidates} entitlements={entitlements} swipesToday={swipesToday} />
     </div>
   );

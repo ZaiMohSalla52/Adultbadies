@@ -20,11 +20,11 @@ export const MessageComposer = ({
   const [state, formAction, pending] = useActionState(sendMessageAction, initialState);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <Textarea name="body" placeholder="Write a message" required rows={3} maxLength={2000} />
-      {state.error ? <p className="onboarding-error my-0">{state.error}</p> : null}
+    <form action={formAction} style={{ display: 'grid', gap: '0.7rem' }}>
+      <Textarea name="body" placeholder="Type your message..." required rows={3} maxLength={2000} />
+      {state.error ? <p className="onboarding-error" style={{ margin: 0 }}>{state.error}</p> : null}
       <Button disabled={pending} type="submit">
-        {pending ? 'Sending…' : 'Send message'}
+        {pending ? 'Sending…' : 'Send'}
       </Button>
     </form>
   );
