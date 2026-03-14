@@ -6,13 +6,11 @@ import type { ProfilePhotoRecord } from '@/lib/onboarding/types';
 
 const PHOTO_BUCKET = 'profile-photos';
 
-type Params = { params: { photoId: string } };
-
-export async function DELETE(_request: NextRequest, { params }: Params) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ photoId: string }> }) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
 
-  const { photoId } = params;
+  const { photoId } = await params;
 
   const rows = await supabaseRest<ProfilePhotoRecord[]>('profile_photos', auth.accessToken, {
     searchParams: new URLSearchParams({ select: '*', id: `eq.${photoId}`, user_id: `eq.${auth.user.id}` }),
