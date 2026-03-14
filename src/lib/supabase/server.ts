@@ -46,15 +46,16 @@ const clearSession = async () => {
   cookieStore.delete(REFRESH_COOKIE);
 };
 
-const refreshAccessToken = async (refreshToken: string) => {
-  const session = await callSupabaseAuth<SupabaseAuthSession>('/auth/v1/token?grant_type=refresh_token', {
-    method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
-
-  await persistSession(session);
-
-  return session;
+const fetchUserFromAccessToken = async (accessToken: string): Promise<SupabaseUser | null> => {
+  try {
+    return await callSupabaseAuth<SupabaseUser>('/auth/v1/user', {
+      method: 'GET',
+      accessToken,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch {
+    return null;
+  }
 };
 
 export const createSupabaseServerClient = async () => {
@@ -102,34 +103,14 @@ export const createSupabaseServerClient = async () => {
         return { error: null };
       },
       getUser: async (): Promise<{ data: { user: SupabaseUser | null } }> => {
-        const { accessToken, refreshToken } = await getStoredTokens();
+        const { accessToken } = await getStoredTokens();
 
         if (!accessToken) {
           return { data: { user: null } };
         }
 
-        try {
-          const user = await callSupabaseAuth<SupabaseUser>('/auth/v1/user', {
-            method: 'GET',
-            accessToken,
-            headers: { 'Content-Type': 'application/json' },
-          });
-
-          return { data: { user } };
-        } catch {
-          if (!refreshToken) {
-            await clearSession();
-            return { data: { user: null } };
-          }
-
-          try {
-            const refreshed = await refreshAccessToken(refreshToken);
-            return { data: { user: refreshed.user } };
-          } catch {
-            await clearSession();
-            return { data: { user: null } };
-          }
-        }
+        const user = await fetchUserFromAccessToken(accessToken);
+        return { data: { user } };
       },
     },
     from: (table: string) => ({
