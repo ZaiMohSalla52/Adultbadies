@@ -1,18 +1,22 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { REPORT_CATEGORIES, type ReportCategory } from '@/lib/safety/types';
+import type { Entitlements } from '@/lib/subscriptions/types';
 import type { DiscoveryCandidate } from '@/lib/discovery/types';
 
 type DiscoveryDeckProps = {
   initialCandidates: DiscoveryCandidate[];
+  entitlements: Entitlements;
+  swipesToday: number;
 };
 
-export const DiscoveryDeck = ({ initialCandidates }: DiscoveryDeckProps) => {
+export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: DiscoveryDeckProps) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [candidates, setCandidates] = useState(initialCandidates);
@@ -41,6 +45,11 @@ export const DiscoveryDeck = ({ initialCandidates }: DiscoveryDeckProps) => {
       });
 
       if (!response.ok) {
+        if (response.status === 402) {
+          setFeedback('You reached your free daily swipe limit. Upgrade to Premium for unlimited swipes.');
+          return;
+        }
+
         setFeedback('Could not save swipe. Please try again.');
         return;
       }
@@ -121,6 +130,22 @@ export const DiscoveryDeck = ({ initialCandidates }: DiscoveryDeckProps) => {
 
   return (
     <div className="space-y-4">
+      <Card className="space-y-2">
+        <p className="my-0 text-sm font-medium">Plan</p>
+        <p className="my-0 text-sm text-muted">
+          {entitlements.isPremium ? 'Premium: unlimited swipes enabled.' : 'Free: daily swipe limit applies.'}
+        </p>
+        <p className="my-0 text-sm text-muted">
+          Swipes today: {swipesToday}
+          {entitlements.limits.swipesPerDay !== null ? ` / ${entitlements.limits.swipesPerDay}` : ''}
+        </p>
+        {!entitlements.isPremium ? (
+          <Link href="/premium" className="text-sm">
+            Upgrade to Premium
+          </Link>
+        ) : null}
+      </Card>
+
       <Card className="space-y-4 overflow-hidden p-0">
         <div className="aspect-[4/5] w-full bg-surface-2">
           {currentCandidate.photoUrl ? (
@@ -149,6 +174,23 @@ export const DiscoveryDeck = ({ initialCandidates }: DiscoveryDeckProps) => {
           Like
         </Button>
       </div>
+
+      <Card className="space-y-3">
+        <p className="my-0 text-sm font-medium">Premium features</p>
+        <div className="grid gap-2 text-sm text-muted">
+          <p>
+            Rewind: {entitlements.features.rewind ? 'Available' : 'Locked on Free plan'}
+          </p>
+          <p>
+            See who liked you: {entitlements.features.seeWhoLikedYou ? 'Available' : 'Locked on Free plan'}
+          </p>
+        </div>
+        {!entitlements.isPremium ? (
+          <Link href="/premium" className="text-sm">
+            Unlock Premium features
+          </Link>
+        ) : null}
+      </Card>
 
       <Card className="space-y-3">
         <p className="my-0 text-sm font-medium">Safety tools</p>

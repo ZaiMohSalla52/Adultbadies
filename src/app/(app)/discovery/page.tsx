@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { getDiscoveryCandidates } from '@/lib/discovery/data';
 import { getOnboardingSnapshot } from '@/lib/onboarding/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
+import { getSwipeCountForToday, getUserEntitlements } from '@/lib/subscriptions/data';
 
 export default async function DiscoveryPage() {
   const auth = await getAuthenticatedUser();
@@ -18,7 +19,11 @@ export default async function DiscoveryPage() {
     redirect('/onboarding');
   }
 
-  const candidates = await getDiscoveryCandidates(auth.accessToken, auth.user.id);
+  const [candidates, entitlements, swipesToday] = await Promise.all([
+    getDiscoveryCandidates(auth.accessToken, auth.user.id),
+    getUserEntitlements(auth.accessToken, auth.user.id),
+    getSwipeCountForToday(auth.accessToken, auth.user.id),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -27,7 +32,7 @@ export default async function DiscoveryPage() {
         <p className="text-sm text-muted">Find people nearby and swipe when you are interested.</p>
       </Card>
 
-      <DiscoveryDeck initialCandidates={candidates} />
+      <DiscoveryDeck initialCandidates={candidates} entitlements={entitlements} swipesToday={swipesToday} />
     </div>
   );
 }
