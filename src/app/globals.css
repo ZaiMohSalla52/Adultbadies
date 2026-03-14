@@ -110,6 +110,12 @@ a {
   gap: 0.75rem;
 }
 
+.onboarding-date-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
 .onboarding-error,
 .onboarding-success {
   border: 1px solid var(--border);
@@ -147,5 +153,9 @@ a {
 @media (min-width: 640px) {
   .onboarding-inline-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .onboarding-date-grid {
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
