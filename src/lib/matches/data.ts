@@ -4,7 +4,7 @@ import type { Conversation, MatchListItem, MatchRecord, MessageRecord, ProfilePr
 
 const EMPTY_OTHER_USER: ProfilePreview = {
   id: '',
-  full_name: null,
+  display_name: null,
 };
 
 const getOtherUserId = (match: MatchRecord, userId: string) =>
@@ -17,7 +17,7 @@ const getProfilesByIds = async (token: string, userIds: string[]): Promise<Map<s
 
   const uniqueUserIds = Array.from(new Set(userIds));
   const query = new URLSearchParams({
-    select: 'id,full_name',
+    select: 'id,display_name',
     id: `in.(${uniqueUserIds.join(',')})`,
   });
 
@@ -76,7 +76,7 @@ export const getMatchList = async (token: string, userId: string): Promise<Match
       return {
         matchId: match.id,
         otherUserId,
-        otherUserName: profile.full_name ?? 'Unnamed user',
+        otherUserName: profile.display_name ?? 'Unnamed user',
         matchCreatedAt: match.created_at,
         lastMessageBody: latestMessage?.body ?? null,
         lastMessageAt,

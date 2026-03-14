@@ -55,7 +55,7 @@ export default async function MatchConversationPage({ params }: { params: Promis
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center' }}>
           <div>
-            <h1 style={{ margin: 0 }}>Chat with {conversation.otherUser.full_name ?? 'Unnamed user'}</h1>
+            <h1 style={{ margin: 0 }}>Chat with {conversation.otherUser.display_name ?? 'Unnamed user'}</h1>
             <p style={{ marginBottom: 0, color: 'var(--text-muted)' }}>Private and encrypted conversation thread.</p>
           </div>
           <Link className="ui-button ui-button-ghost" href="/matches">Back</Link>
@@ -82,7 +82,7 @@ export default async function MatchConversationPage({ params }: { params: Promis
               >
                 <p style={{ margin: 0 }}>{message.body}</p>
                 <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', opacity: 0.84 }}>
-                  {isOwn ? 'You' : conversation.otherUser.full_name ?? 'Match'} · {formatDateTime(message.created_at)}
+                  {isOwn ? 'You' : conversation.otherUser.display_name ?? 'Match'} · {formatDateTime(message.created_at)}
                 </p>
               </div>
             );

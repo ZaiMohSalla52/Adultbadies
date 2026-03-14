@@ -18,7 +18,7 @@ export type MessageRecord = {
 
 export type ProfilePreview = {
   id: string;
-  full_name: string | null;
+  display_name: string | null;
 };
 
 export type MatchListItem = {
