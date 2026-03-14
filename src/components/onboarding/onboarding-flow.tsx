@@ -16,10 +16,7 @@ type Props = {
 };
 
 const normalizeInterestedIn = (value: string | string[] | null | undefined) => {
-  if (Array.isArray(value)) {
-    return value[0] ?? '';
-  }
-
+  if (Array.isArray(value)) return value[0] ?? '';
   return value ?? '';
 };
 
@@ -82,31 +79,17 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
     const year = Number(birthYear);
     const currentYear = new Date().getUTCFullYear();
 
-    if (
-      !Number.isInteger(day) ||
-      !Number.isInteger(month) ||
-      !Number.isInteger(year) ||
-      year < 1900 ||
-      year > currentYear
-    ) {
+    if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year) || year < 1900 || year > currentYear) {
       return { error: 'Please enter a valid birth date.' };
     }
 
     const date = new Date(Date.UTC(year, month - 1, day));
-    const isSameDate =
-      date.getUTCFullYear() === year &&
-      date.getUTCMonth() === month - 1 &&
-      date.getUTCDate() === day;
+    const isSameDate = date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 
-    if (!isSameDate) {
-      return { error: 'Please enter a real calendar date.' };
-    }
+    if (!isSameDate) return { error: 'Please enter a real calendar date.' };
 
     const birthDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-    if (!isAgeValid(birthDate)) {
-      return { error: 'You must be at least 18 years old.' };
-    }
+    if (!isAgeValid(birthDate)) return { error: 'You must be at least 18 years old.' };
 
     return { value: birthDate };
   };
@@ -114,7 +97,6 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
   const saveProfile = async (formData: FormData) => {
     setError(null);
     setMessage(null);
-
     const birthDate = resolveBirthDate();
 
     if (!('value' in birthDate)) {
@@ -122,10 +104,7 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
       return;
     }
 
-    const payload = {
-      ...Object.fromEntries(formData),
-      birth_date: birthDate.value,
-    };
+    const payload = { ...Object.fromEntries(formData), birth_date: birthDate.value };
 
     startTransition(async () => {
       const response = await fetch('/api/onboarding/profile', {
@@ -158,9 +137,7 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
           min_age: Number(formData.get('min_age')),
           max_age: Number(formData.get('max_age')),
           interested_in: formData.get('interested_in'),
-          max_distance_km: formData.get('max_distance_km')
-            ? Number(formData.get('max_distance_km'))
-            : null,
+          max_distance_km: formData.get('max_distance_km') ? Number(formData.get('max_distance_km')) : null,
         }),
       });
 
@@ -200,7 +177,6 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
 
     startTransition(async () => {
       const response = await fetch(path, { method });
-
       if (!response.ok) {
         const body = (await response.json()) as { error?: string };
         setError(body.error ?? 'Photo update failed.');
@@ -216,7 +192,6 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
     const current = [...snapshot.photos];
     const index = current.findIndex((photo) => photo.id === photoId);
     const target = direction === 'up' ? index - 1 : index + 1;
-
     if (index < 0 || target < 0 || target >= current.length) return;
 
     const swapped = [...current];
@@ -241,7 +216,6 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
 
     startTransition(async () => {
       const response = await fetch('/api/onboarding/complete', { method: 'POST' });
-
       if (!response.ok) {
         const body = (await response.json()) as { error?: string };
         setError(body.error ?? 'Unable to complete onboarding.');
@@ -267,16 +241,37 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
     { value: '11', label: 'November' },
     { value: '12', label: 'December' },
   ];
+
   const days = Array.from({ length: 31 }, (_, index) => String(index + 1));
   const currentYear = new Date().getUTCFullYear();
   const years = Array.from({ length: currentYear - 1900 + 1 }, (_, index) => String(currentYear - index));
 
   return (
-    <Card className="max-w-2xl">
-      <h1 className="my-0 mb-2 text-3xl font-bold">Profile onboarding</h1>
-      <p className="text-sm text-muted">Step {stepIndex + 1} of {ONBOARDING_STEPS.length}: {ONBOARDING_STEPS[stepIndex]}</p>
-      <div className="onboarding-progress">
-        <div className="onboarding-progress-bar" style={{ width: `${progress}%` }} />
+    <Card style={{ maxWidth: '46rem', margin: '0 auto', display: 'grid', gap: '0.9rem' }}>
+      <h1 className="hero-gradient-text" style={{ margin: 0, fontSize: '2rem' }}>Profile onboarding</h1>
+      <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+        Step {stepIndex + 1} of {ONBOARDING_STEPS.length}: {ONBOARDING_STEPS[stepIndex]}
+      </p>
+      <div className="onboarding-progress"><div className="onboarding-progress-bar" style={{ width: `${progress}%` }} /></div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ONBOARDING_STEPS.length},minmax(0,1fr))`, gap: '0.45rem' }}>
+        {ONBOARDING_STEPS.map((step, index) => (
+          <button
+            key={step}
+            type="button"
+            onClick={() => setStepIndex(index)}
+            className="ui-button"
+            style={{
+              height: '2.3rem',
+              background: index <= stepIndex ? 'rgba(236,72,153,0.2)' : 'rgba(148,163,194,0.09)',
+              borderColor: index <= stepIndex ? 'rgba(236,72,153,0.48)' : 'rgba(148,163,194,0.24)',
+              color: 'var(--text)',
+              fontSize: '0.72rem',
+            }}
+          >
+            {step}
+          </button>
+        ))}
       </div>
 
       {error ? <p className="onboarding-error">{error}</p> : null}
@@ -287,44 +282,32 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
           <Input name="display_name" defaultValue={profileForm.display_name} placeholder="Display name" required />
           <Textarea name="bio" defaultValue={profileForm.bio} placeholder="Short bio" rows={4} required />
           <div className="onboarding-grid">
-            <p className="my-0 text-sm text-muted">Birth date</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>Birth date</p>
             <div className="onboarding-date-grid">
               <Select name="birth_day" value={birthDay} onChange={(event) => setBirthDay(event.target.value)} required>
                 <option value="">Day</option>
-                {days.map((day) => (
-                  <option value={day} key={day}>{day}</option>
-                ))}
+                {days.map((day) => <option value={day} key={day}>{day}</option>)}
               </Select>
               <Select name="birth_month" value={birthMonth} onChange={(event) => setBirthMonth(event.target.value)} required>
                 <option value="">Month</option>
-                {monthOptions.map((option) => (
-                  <option value={option.value} key={option.value}>{option.label}</option>
-                ))}
+                {monthOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
               </Select>
               <Select name="birth_year" value={birthYear} onChange={(event) => setBirthYear(event.target.value)} required>
                 <option value="">Year</option>
-                {years.map((year) => (
-                  <option value={year} key={year}>{year}</option>
-                ))}
+                {years.map((year) => <option value={year} key={year}>{year}</option>)}
               </Select>
             </div>
           </div>
           <Select name="gender" defaultValue={profileForm.gender} required>
             <option value="">Select your gender</option>
-            {GENDER_OPTIONS.map((option) => (
-              <option value={option.value} key={option.value}>{option.label}</option>
-            ))}
+            {GENDER_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
           </Select>
           <Select name="interested_in" defaultValue={profileForm.interested_in} required>
             <option value="">Interested in</option>
-            {INTEREST_OPTIONS.map((option) => (
-              <option value={option.value} key={option.value}>{option.label}</option>
-            ))}
+            {INTEREST_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
           </Select>
           <Input name="location_text" defaultValue={profileForm.location_text} placeholder="City, region" required />
-          <div className="flex gap-3">
-            <Button type="submit" disabled={pending}>Save & continue</Button>
-          </div>
+          <Button type="submit" disabled={pending}>Save & continue</Button>
         </form>
       ) : null}
 
@@ -336,18 +319,10 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
           </div>
           <Select name="interested_in" defaultValue={preferenceForm.interested_in} required>
             <option value="">Interested in</option>
-            {INTEREST_OPTIONS.map((option) => (
-              <option value={option.value} key={option.value}>{option.label}</option>
-            ))}
+            {INTEREST_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
           </Select>
-          <Input
-            name="max_distance_km"
-            type="number"
-            min={1}
-            placeholder="Max distance (km, optional)"
-            defaultValue={preferenceForm.max_distance_km}
-          />
-          <div className="flex gap-3">
+          <Input name="max_distance_km" type="number" min={1} placeholder="Max distance (km, optional)" defaultValue={preferenceForm.max_distance_km} />
+          <div className="onboarding-inline-grid">
             <Button type="button" variant="secondary" onClick={() => setStepIndex(0)}>Back</Button>
             <Button type="submit" disabled={pending}>Save & continue</Button>
           </div>
@@ -361,26 +336,20 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
             <Button type="submit" disabled={pending}>Upload</Button>
           </form>
           <div className="onboarding-photo-list">
-            {snapshot.photos.length === 0 ? <p className="text-sm text-muted">At least one photo is required.</p> : null}
+            {snapshot.photos.length === 0 ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>At least one photo is required.</p> : null}
             {snapshot.photos.map((photo, index) => (
               <div key={photo.id} className="onboarding-photo-row">
-                <span className="text-sm">Photo {index + 1} {photo.is_primary ? '(Primary)' : ''}</span>
-                <div className="flex gap-2">
-                  {!photo.is_primary ? (
-                    <Button type="button" variant="ghost" onClick={() => updatePhoto(`/api/onboarding/photos/${photo.id}/primary`, 'PATCH')}>
-                      Set primary
-                    </Button>
-                  ) : null}
+                <span>Photo {index + 1} {photo.is_primary ? '(Primary)' : ''}</span>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {!photo.is_primary ? <Button type="button" variant="ghost" onClick={() => updatePhoto(`/api/onboarding/photos/${photo.id}/primary`, 'PATCH')}>Set primary</Button> : null}
                   <Button type="button" variant="ghost" onClick={() => reorder(photo.id, 'up')}>↑</Button>
                   <Button type="button" variant="ghost" onClick={() => reorder(photo.id, 'down')}>↓</Button>
-                  <Button type="button" variant="secondary" onClick={() => updatePhoto(`/api/onboarding/photos/${photo.id}`, 'DELETE')}>
-                    Remove
-                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => updatePhoto(`/api/onboarding/photos/${photo.id}`, 'DELETE')}>Remove</Button>
                 </div>
               </div>
             ))}
           </div>
-          <div className="flex gap-3">
+          <div className="onboarding-inline-grid">
             <Button type="button" variant="secondary" onClick={() => setStepIndex(1)}>Back</Button>
             <Button type="button" onClick={() => setStepIndex(3)} disabled={snapshot.photos.length === 0}>Continue</Button>
           </div>
@@ -389,14 +358,12 @@ export const OnboardingFlow = ({ initialSnapshot }: Props) => {
 
       {stepIndex === 3 ? (
         <div className="onboarding-grid">
-          <p className="text-sm text-muted">
+          <p style={{ margin: 0, color: 'var(--text-muted)' }}>
             Review complete. You can finish onboarding when all required fields are set and at least one photo is uploaded.
           </p>
-          <div className="flex gap-3">
+          <div className="onboarding-inline-grid">
             <Button type="button" variant="secondary" onClick={() => setStepIndex(2)}>Back</Button>
-            <Button type="button" onClick={finishOnboarding} disabled={pending || !isOnboardingComplete(snapshot)}>
-              Complete onboarding
-            </Button>
+            <Button type="button" onClick={finishOnboarding} disabled={pending || !isOnboardingComplete(snapshot)}>Complete onboarding</Button>
           </div>
         </div>
       ) : null}

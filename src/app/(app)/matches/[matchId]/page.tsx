@@ -51,39 +51,42 @@ export default async function MatchConversationPage({ params }: { params: Promis
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div style={{ display: 'grid', gap: '0.9rem' }}>
       <Card>
-        <div className="flex items-center justify-between gap-3">
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center' }}>
           <div>
-            <h1 className="my-0 text-lg font-semibold">Chat with {conversation.otherUser.full_name ?? 'Unnamed user'}</h1>
-            <p className="my-0 text-sm text-muted">Messages are visible only to conversation participants.</p>
+            <h1 style={{ margin: 0 }}>Chat with {conversation.otherUser.full_name ?? 'Unnamed user'}</h1>
+            <p style={{ marginBottom: 0, color: 'var(--text-muted)' }}>Private and encrypted conversation thread.</p>
           </div>
-          <Link className="text-sm" href="/matches">
-            Back to matches
-          </Link>
+          <Link className="ui-button ui-button-ghost" href="/matches">Back</Link>
         </div>
       </Card>
 
-      <Card>
+      <Card style={{ display: 'grid', gap: '0.6rem' }}>
         {conversation.messages.length === 0 ? (
-          <p className="my-0 text-sm text-muted">No messages yet. Say hello to start the conversation.</p>
+          <p style={{ margin: 0, color: 'var(--text-muted)' }}>No messages yet. Say hello to start the conversation.</p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {conversation.messages.map((message) => {
-              const isOwn = message.sender_id === auth.user.id;
+          conversation.messages.map((message) => {
+            const isOwn = message.sender_id === auth.user.id;
 
-              return (
-                <div
-                  key={message.id}
-                  className="rounded-md border border-border px-3 py-3"
-                  style={{ background: isOwn ? 'var(--surface-3)' : 'var(--surface-2)' }}
-                >
-                  <p className="my-0 text-sm">{message.body}</p>
-                  <p className="my-0 text-sm text-muted">{isOwn ? 'You' : conversation.otherUser.full_name ?? 'Match'} · {formatDateTime(message.created_at)}</p>
-                </div>
-              );
-            })}
-          </div>
+            return (
+              <div
+                key={message.id}
+                style={{
+                  borderRadius: '16px',
+                  padding: '0.7rem 0.85rem',
+                  marginLeft: isOwn ? '1.2rem' : 0,
+                  marginRight: isOwn ? 0 : '1.2rem',
+                  background: isOwn ? 'linear-gradient(130deg, #8b5cf6, #ec4899)' : 'rgba(19,31,58,0.8)',
+                }}
+              >
+                <p style={{ margin: 0 }}>{message.body}</p>
+                <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', opacity: 0.84 }}>
+                  {isOwn ? 'You' : conversation.otherUser.full_name ?? 'Match'} · {formatDateTime(message.created_at)}
+                </p>
+              </div>
+            );
+          })
         )}
       </Card>
 

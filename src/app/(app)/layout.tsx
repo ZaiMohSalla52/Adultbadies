@@ -7,6 +7,12 @@ import { Button } from '@/components/ui/button';
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 
+const navItems = [
+  { href: '/discovery', label: 'Discover' },
+  { href: '/matches', label: 'Matches' },
+  { href: '/premium', label: 'Premium' },
+];
+
 export default async function AppLayout({ children }: PropsWithChildren) {
   const { user, accessToken } = await getAuthenticatedUser();
 
@@ -18,44 +24,32 @@ export default async function AppLayout({ children }: PropsWithChildren) {
 
   return (
     <SectionShell>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <strong>Application</strong>
-          <p className="my-0 text-sm text-muted">Signed in as {user.email}</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard" className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors hover:bg-surface-2">
-            Dashboard
-          </Link>
-          <Link href="/discovery" className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors hover:bg-surface-2">
-            Discover
-          </Link>
-          <Link href="/premium" className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors hover:bg-surface-2">
-            Premium
-          </Link>
+      <div className="ui-glass" style={{ borderRadius: '20px', padding: '0.9rem 1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <strong className="hero-gradient-text" style={{ fontSize: '1.1rem' }}>Adult Badies</strong>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.email}</p>
+          </div>
           <form action={signOutAction}>
-            <Button type="submit" variant="secondary">
-              Sign out
-            </Button>
+            <Button type="submit" variant="ghost">Sign out</Button>
           </form>
         </div>
       </div>
 
-      <nav className="mb-6 flex gap-4">
-        <Link className="text-sm" href="/discovery">
-          Discovery
-        </Link>
-        <Link className="text-sm" href="/matches">
-          Matches
-        </Link>
-        <Link className="text-sm" href="/premium">
-          Premium
-        </Link>
-        <span className="text-sm text-muted">Plan: {entitlements.isPremium ? 'Premium' : 'Free'}</span>
-      </nav>
-
       {children}
+
+      <div className="mobile-bottom-nav">
+        <div className="ui-glass" style={{ borderRadius: '999px', padding: '0.45rem', display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '0.4rem' }}>
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className="ui-button ui-button-ghost" style={{ height: '2.35rem' }}>
+              {item.label}
+            </Link>
+          ))}
+          <span className="ui-button ui-button-secondary" style={{ height: '2.35rem', fontSize: '0.75rem' }}>
+            {entitlements.isPremium ? 'Premium' : 'Free'}
+          </span>
+        </div>
+      </div>
     </SectionShell>
   );
 }

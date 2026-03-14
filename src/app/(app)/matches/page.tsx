@@ -22,34 +22,28 @@ export default async function MatchesPage() {
   const matches = await getMatchList(auth.accessToken, auth.user.id);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div style={{ display: 'grid', gap: '1rem' }}>
       <Card>
-        <h1 className="my-0 text-lg font-semibold">Matches</h1>
-        <p className="text-sm text-muted">Your active matches and latest message activity.</p>
+        <h1 style={{ margin: 0 }}>Messages</h1>
+        <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>Your active matches and recent conversations.</p>
       </Card>
 
       {matches.length === 0 ? (
         <Card>
-          <p className="my-0">No matches yet.</p>
-          <p className="text-sm text-muted">Keep swiping in discovery to start conversations.</p>
-          <Link className="text-sm" href="/discovery">
-            Go to discovery
-          </Link>
+          <p style={{ marginTop: 0 }}>No matches yet.</p>
+          <p style={{ color: 'var(--text-muted)' }}>Keep swiping in discovery to start conversations.</p>
+          <Link className="text-brand" href="/discovery">Go to discovery</Link>
         </Card>
       ) : (
         matches.map((match) => (
           <Card key={match.matchId}>
-            <div className="flex items-center justify-between gap-3">
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center' }}>
               <div>
-                <p className="my-0 font-semibold">{match.otherUserName}</p>
-                <p className="my-0 text-sm text-muted">
-                  {match.lastMessageBody ? match.lastMessageBody : 'No messages yet'}
-                </p>
-                <p className="my-0 text-sm text-muted">{formatDate(match.lastMessageAt)}</p>
+                <p style={{ margin: 0, fontWeight: 700 }}>{match.otherUserName}</p>
+                <p style={{ margin: '0.3rem 0', color: 'var(--text-muted)' }}>{match.lastMessageBody || 'No messages yet'}</p>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }}>{formatDate(match.lastMessageAt)}</p>
               </div>
-              <Link className="text-sm" href={`/matches/${match.matchId}`}>
-                Open chat
-              </Link>
+              <Link className="ui-button ui-button-secondary" href={`/matches/${match.matchId}`}>Open</Link>
             </div>
           </Card>
         ))

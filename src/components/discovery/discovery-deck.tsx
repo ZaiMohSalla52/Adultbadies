@@ -58,7 +58,7 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
       removeCurrentCandidate();
 
       if (payload.matched) {
-        setFeedback(`It's a match with ${target.displayName}!`);
+        setFeedback(`It\'s a match with ${target.displayName}!`);
       }
 
       router.refresh();
@@ -119,109 +119,74 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
 
   if (!currentCandidate) {
     return (
-      <Card className="space-y-3 p-6 text-center">
-        <h2 className="text-xl font-semibold">No more candidates right now</h2>
-        <p className="text-sm text-muted">
-          You are caught up for now. Check back later as more members complete onboarding.
-        </p>
+      <Card style={{ textAlign: 'center', padding: '1.5rem' }}>
+        <h2 style={{ marginTop: 0 }}>No more candidates right now</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>You are caught up for now. Check back later.</p>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="space-y-2">
-        <p className="my-0 text-sm font-medium">Plan</p>
-        <p className="my-0 text-sm text-muted">
-          {entitlements.isPremium ? 'Premium: unlimited swipes enabled.' : 'Free: daily swipe limit applies.'}
+    <div style={{ display: 'grid', gap: '0.9rem' }}>
+      <Card style={{ padding: '0.9rem 1rem' }}>
+        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+          {entitlements.isPremium ? 'Premium mode · unlimited swipes' : 'Free mode · daily limit active'}
         </p>
-        <p className="my-0 text-sm text-muted">
+        <p style={{ margin: '0.35rem 0 0', fontWeight: 600 }}>
           Swipes today: {swipesToday}
           {entitlements.limits.swipesPerDay !== null ? ` / ${entitlements.limits.swipesPerDay}` : ''}
         </p>
         {!entitlements.isPremium ? (
-          <Link href="/premium" className="text-sm">
+          <Link href="/premium" className="text-brand" style={{ fontSize: '0.84rem' }}>
             Upgrade to Premium
           </Link>
         ) : null}
       </Card>
 
-      <Card className="space-y-4 overflow-hidden p-0">
-        <div className="aspect-[4/5] w-full bg-surface-2">
+      <Card className="discovery-card-enter" style={{ overflow: 'hidden', padding: 0 }}>
+        <div style={{ aspectRatio: '4 / 5', width: '100%', position: 'relative' }}>
           {currentCandidate.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={currentCandidate.photoUrl} alt={currentCandidate.displayName} className="h-full w-full object-cover" />
+            <img src={currentCandidate.photoUrl} alt={currentCandidate.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted">No photo uploaded</div>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>
+              No photo uploaded
+            </div>
           )}
-        </div>
-
-        <div className="space-y-2 px-4 pb-4">
-          <h2 className="text-xl font-semibold">
-            {currentCandidate.displayName}
-            {currentCandidate.age ? `, ${currentCandidate.age}` : ''}
-          </h2>
-          <p className="text-sm text-muted">{currentCandidate.location}</p>
-          <p className="text-sm leading-relaxed">{currentCandidate.bio}</p>
+          <div style={{ position: 'absolute', inset: 'auto 0 0', padding: '1rem', background: 'linear-gradient(180deg,transparent, rgba(5,11,24,0.92))' }}>
+            <h2 style={{ margin: 0, fontSize: '1.45rem' }}>
+              {currentCandidate.displayName}
+              {currentCandidate.age ? `, ${currentCandidate.age}` : ''}
+            </h2>
+            <p style={{ margin: '0.2rem 0', color: 'var(--text-muted)' }}>{currentCandidate.location}</p>
+            <p style={{ marginBottom: 0 }}>{currentCandidate.bio}</p>
+          </div>
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Button type="button" variant="secondary" disabled={isPending} onClick={() => swipe('dislike')}>
-          Pass
-        </Button>
-        <Button type="button" disabled={isPending} onClick={() => swipe('like')}>
-          Like
-        </Button>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <Button type="button" variant="secondary" disabled={isPending} onClick={() => swipe('dislike')}>Pass</Button>
+        <Button type="button" disabled={isPending} onClick={() => swipe('like')}>Like</Button>
       </div>
 
-      <Card className="space-y-3">
-        <p className="my-0 text-sm font-medium">Premium features</p>
-        <div className="grid gap-2 text-sm text-muted">
-          <p>
-            Rewind: {entitlements.features.rewind ? 'Available' : 'Locked on Free plan'}
-          </p>
-          <p>
-            See who liked you: {entitlements.features.seeWhoLikedYou ? 'Available' : 'Locked on Free plan'}
-          </p>
+      <Card style={{ display: 'grid', gap: '0.65rem' }}>
+        <p style={{ margin: 0, fontWeight: 600 }}>Safety tools</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+          <Button type="button" variant="ghost" disabled={isPending} onClick={blockCurrentUser}>Block</Button>
+          <Button type="button" variant="secondary" disabled={isPending} onClick={reportCurrentUser}>Report</Button>
         </div>
-        {!entitlements.isPremium ? (
-          <Link href="/premium" className="text-sm">
-            Unlock Premium features
-          </Link>
-        ) : null}
-      </Card>
-
-      <Card className="space-y-3">
-        <p className="my-0 text-sm font-medium">Safety tools</p>
-        <div className="grid grid-cols-2 gap-3">
-          <Button type="button" variant="ghost" disabled={isPending} onClick={blockCurrentUser}>
-            Block user
-          </Button>
-          <Button type="button" variant="secondary" disabled={isPending} onClick={reportCurrentUser}>
-            Report user
-          </Button>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm text-muted" htmlFor="discovery-report-category">
-            Report category
-          </label>
-          <select
-            id="discovery-report-category"
-            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
-            value={reportCategory}
-            onChange={(event) => setReportCategory(event.target.value as ReportCategory)}
-            disabled={isPending}
-          >
-            {REPORT_CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {category.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
-        </div>
-
+        <select
+          className="ui-select"
+          value={reportCategory}
+          onChange={(event) => setReportCategory(event.target.value as ReportCategory)}
+          disabled={isPending}
+        >
+          {REPORT_CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {category.replace('_', ' ')}
+            </option>
+          ))}
+        </select>
         <Textarea
           value={reportDetails}
           onChange={(event) => setReportDetails(event.target.value)}
@@ -231,7 +196,7 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
         />
       </Card>
 
-      {feedback ? <p className="text-center text-sm text-brand">{feedback}</p> : null}
+      {feedback ? <p style={{ margin: 0, textAlign: 'center', color: 'var(--accent-4)' }}>{feedback}</p> : null}
     </div>
   );
 };
