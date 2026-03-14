@@ -1,10 +1,13 @@
 import type { PropsWithChildren } from 'react';
 import { SectionShell } from '@/components/layout/section-shell';
+import { requireAuthenticatedUser } from '@/lib/auth/server';
 
-export default function AdminLayout({ children }: PropsWithChildren) {
+export default async function AdminLayout({ children }: PropsWithChildren) {
+  await requireAuthenticatedUser();
+
   return (
     <SectionShell>
-      <div className="flex justify-between mb-6">
+      <div className="mb-6 flex justify-between">
         <strong>Admin</strong>
         <span className="text-sm text-muted">Restricted control surface</span>
       </div>
