@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { Card } from '@/components/ui/card';
-import { getConversation, sendConversationMessage } from '@/lib/matches/data';
+import { getConversation, getMatchList, sendConversationMessage } from '@/lib/matches/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import { ConversationSafetyActions } from '@/components/matches/conversation-safety-actions';
+import { MatchesListPanel } from '@/components/matches/matches-list-panel';
 import { MessageComposer } from './message-composer';
 
 const formatDateTime = (value: string) =>
@@ -23,7 +24,10 @@ export default async function MatchConversationPage({ params }: { params: Promis
   }
 
   const { matchId } = await params;
-  const conversation = await getConversation(auth.accessToken, auth.user.id, matchId);
+  const [conversation, matches] = await Promise.all([
+    getConversation(auth.accessToken, auth.user.id, matchId),
+    getMatchList(auth.accessToken, auth.user.id),
+  ]);
 
   if (!conversation) {
     notFound();
@@ -51,52 +55,55 @@ export default async function MatchConversationPage({ params }: { params: Promis
   };
 
   return (
-    <div style={{ display: 'grid', gap: '0.9rem' }}>
-      <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', alignItems: 'center' }}>
+    <div className="app-page-stack chat-layout-shell">
+      <MatchesListPanel matches={matches} activeMatchId={matchId} />
+
+      <section className="chat-conversation-panel">
+        <Card className="chat-conversation-header">
           <div>
-            <h1 style={{ margin: 0 }}>Chat with {conversation.otherUser.display_name ?? 'Unnamed user'}</h1>
-            <p style={{ marginBottom: 0, color: 'var(--text-muted)' }}>Private and encrypted conversation thread.</p>
+            <p className="chat-label">Conversation</p>
+            <h1 className="my-0">{conversation.otherUser.display_name ?? 'Unnamed user'}</h1>
+            <p className="my-0 text-sm text-muted">Private and encrypted conversation thread.</p>
           </div>
-          <Link className="ui-button ui-button-ghost" href="/matches">Back</Link>
-        </div>
-      </Card>
+          <Link className="ui-button ui-button-ghost chat-mobile-back" href="/matches">
+            Back
+          </Link>
+        </Card>
 
-      <Card style={{ display: 'grid', gap: '0.6rem' }}>
-        {conversation.messages.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--text-muted)' }}>No messages yet. Say hello to start the conversation.</p>
-        ) : (
-          conversation.messages.map((message) => {
-            const isOwn = message.sender_id === auth.user.id;
+        <Card className="chat-messages-panel">
+          {conversation.messages.length === 0 ? (
+            <div className="chat-thread-empty">
+              <p className="my-0">No messages yet.</p>
+              <p className="my-0 text-sm text-muted">Say hello and kick off the conversation.</p>
+            </div>
+          ) : (
+            <div className="chat-thread">
+              {conversation.messages.map((message) => {
+                const isOwn = message.sender_id === auth.user.id;
 
-            return (
-              <div
-                key={message.id}
-                style={{
-                  borderRadius: '16px',
-                  padding: '0.7rem 0.85rem',
-                  marginLeft: isOwn ? '1.2rem' : 0,
-                  marginRight: isOwn ? 0 : '1.2rem',
-                  background: isOwn ? 'linear-gradient(130deg, #8b5cf6, #ec4899)' : 'rgba(19,31,58,0.8)',
-                }}
-              >
-                <p style={{ margin: 0 }}>{message.body}</p>
-                <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', opacity: 0.84 }}>
-                  {isOwn ? 'You' : conversation.otherUser.display_name ?? 'Match'} · {formatDateTime(message.created_at)}
-                </p>
-              </div>
-            );
-          })
-        )}
-      </Card>
+                return (
+                  <div key={message.id} className={`chat-bubble-row ${isOwn ? 'chat-bubble-row-own' : ''}`}>
+                    <div className={`chat-bubble ${isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}>
+                      <p className="my-0">{message.body}</p>
+                      <p className="my-0 chat-bubble-meta">
+                        {isOwn ? 'You' : conversation.otherUser.display_name ?? 'Match'} · {formatDateTime(message.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
 
-      <Card>
-        <MessageComposer sendMessageAction={sendMessageAction} />
-      </Card>
+        <Card>
+          <MessageComposer sendMessageAction={sendMessageAction} />
+        </Card>
 
-      <Card>
-        <ConversationSafetyActions otherUserId={conversation.otherUser.id} matchId={conversation.match.id} />
-      </Card>
+        <Card>
+          <ConversationSafetyActions otherUserId={conversation.otherUser.id} matchId={conversation.match.id} />
+        </Card>
+      </section>
     </div>
   );
 }
