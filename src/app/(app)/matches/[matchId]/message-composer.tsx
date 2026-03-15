@@ -20,12 +20,14 @@ export const MessageComposer = ({
   const [state, formAction, pending] = useActionState(sendMessageAction, initialState);
 
   return (
-    <form action={formAction} style={{ display: 'grid', gap: '0.7rem' }}>
+    <form action={formAction} className="chat-composer-form">
       <Textarea name="body" placeholder="Type your message..." required rows={3} maxLength={2000} />
-      {state.error ? <p className="onboarding-error" style={{ margin: 0 }}>{state.error}</p> : null}
-      <Button disabled={pending} type="submit">
-        {pending ? 'Sending…' : 'Send'}
-      </Button>
+      <div className="chat-composer-footer">
+        {state.error ? <p className="onboarding-error my-0">{state.error}</p> : <span />}
+        <Button disabled={pending} type="submit">
+          {pending ? 'Sending…' : 'Send'}
+        </Button>
+      </div>
     </form>
   );
 };

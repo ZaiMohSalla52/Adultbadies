@@ -33,18 +33,36 @@ export default async function PremiumPage() {
   const swipesToday = await getSwipeCountForToday(auth.accessToken, auth.user.id);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <h1 className="my-0 text-lg font-semibold">Premium plans</h1>
-        <p className="text-sm text-muted">
-          Current plan: <strong>{entitlements.isPremium ? 'Premium' : 'Free'}</strong>
-        </p>
-        <p className="text-sm text-muted">
-          Subscription state: <strong>{entitlements.membershipState.replace('_', ' ')}</strong>
-        </p>
+    <div className="app-page-stack">
+      <Card className="app-page-header premium-header-card">
+        <p className="chat-label">Premium</p>
+        <h1 className="my-0">Premium plans</h1>
+        <p className="my-0 text-muted">Unlock advanced discovery and keep more momentum in every conversation.</p>
       </Card>
 
-      <Card className="space-y-3">
+      <div className="app-grid-2">
+        <Card className="app-surface-card space-y-2">
+          <h2 className="my-0 text-base font-semibold">Plan status</h2>
+          <p className="text-sm text-muted">
+            Current plan: <strong>{entitlements.isPremium ? 'Premium' : 'Free'}</strong>
+          </p>
+          <p className="text-sm text-muted">
+            Subscription state: <strong>{entitlements.membershipState.replace('_', ' ')}</strong>
+          </p>
+        </Card>
+
+        <Card className="app-surface-card space-y-2">
+          <h2 className="my-0 text-base font-semibold">Usage</h2>
+          <p className="text-sm text-muted">Swipes used today: {swipesToday}</p>
+          <p className="text-sm text-muted">
+            {entitlements.limits.swipesPerDay === null
+              ? 'Unlimited swipes are active on your plan.'
+              : `Free plan daily limit: ${entitlements.limits.swipesPerDay} swipes.`}
+          </p>
+        </Card>
+      </div>
+
+      <Card className="app-surface-card space-y-3">
         <h2 className="my-0 text-base font-semibold">Free vs Premium</h2>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[460px] text-sm">
@@ -68,24 +86,19 @@ export default async function PremiumPage() {
         </div>
       </Card>
 
-      <Card className="space-y-2">
-        <h2 className="my-0 text-base font-semibold">Usage</h2>
-        <p className="text-sm text-muted">Swipes used today: {swipesToday}</p>
-        <p className="text-sm text-muted">
-          {entitlements.limits.swipesPerDay === null
-            ? 'Unlimited swipes are active on your plan.'
-            : `Free plan daily limit: ${entitlements.limits.swipesPerDay} swipes.`}
-        </p>
-      </Card>
-
-      <Card className="space-y-2">
+      <Card className="app-surface-card premium-cta-card">
         <h2 className="my-0 text-base font-semibold">Billing provider (MVP scaffold)</h2>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted my-0">
           Checkout provider integration is scaffolded for a future stage. Plan upgrades are currently UI- and entitlement-ready.
         </p>
-        <Link href="/discovery" className="text-sm">
-          Return to discovery
-        </Link>
+        <div className="premium-cta-actions">
+          <Link href="/discovery" className="ui-button ui-button-secondary">
+            Return to discovery
+          </Link>
+          <Link href="/account" className="ui-button ui-button-ghost">
+            Open account settings
+          </Link>
+        </div>
       </Card>
     </div>
   );

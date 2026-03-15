@@ -1,9 +1,17 @@
 import type { PropsWithChildren } from 'react';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/(auth)/actions';
-import { SectionShell } from '@/components/layout/section-shell';
 import { Button } from '@/components/ui/button';
+import { AppShellNav } from '@/components/layout/app-shell-nav';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
+
+const appNavItems = [
+  { label: 'Discovery', href: '/discovery' },
+  { label: 'Matches', href: '/matches' },
+  { label: 'Premium', href: '/premium' },
+  { label: 'Account', href: '/account' },
+] as const;
 
 export default async function AppLayout({ children }: PropsWithChildren) {
   const { user, accessToken } = await getAuthenticatedUser();
@@ -13,13 +21,36 @@ export default async function AppLayout({ children }: PropsWithChildren) {
   }
 
   return (
-    <SectionShell>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.6rem' }}>
+    <div className="app-shell">
+      <header className="app-shell-header ui-glass">
+        <Link href="/discovery" className="marketing-brand" aria-label="Adult Badies discovery">
+          <span className="marketing-brand-mark" aria-hidden>
+            AB
+          </span>
+          <span>Adult Badies</span>
+        </Link>
+
+        <nav className="app-shell-nav" aria-label="Authenticated navigation">
+          <AppShellNav items={appNavItems} />
+        </nav>
+
         <form action={signOutAction}>
-          <Button type="submit" variant="ghost">Sign out</Button>
+          <Button type="submit" variant="ghost">
+            Sign out
+          </Button>
         </form>
-      </div>
-      {children}
-    </SectionShell>
+      </header>
+
+      <main className="app-shell-main">{children}</main>
+
+      <nav className="app-shell-mobile-nav ui-glass" aria-label="Authenticated navigation mobile">
+        <AppShellNav items={appNavItems} mobile />
+        <form action={signOutAction}>
+          <button type="submit" className="app-shell-mobile-link app-shell-mobile-signout">
+            Sign out
+          </button>
+        </form>
+      </nav>
+    </div>
   );
 }

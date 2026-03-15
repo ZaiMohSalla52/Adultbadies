@@ -13,19 +13,15 @@ const footerGroups = [
     title: 'Trust',
     links: [
       { label: 'Safety Center', href: '#safety' },
-      { label: 'Community Guidelines', href: '#' },
-      { label: 'Privacy', href: '#' },
+      { label: 'Community Guidelines' },
+      { label: 'Privacy' },
     ],
   },
   {
     title: 'Support',
-    links: [
-      { label: 'Help', href: '#' },
-      { label: 'Contact', href: '#' },
-      { label: 'Accessibility', href: '#' },
-    ],
+    links: [{ label: 'Help' }, { label: 'Contact' }, { label: 'Accessibility' }],
   },
-];
+] as const;
 
 export function PublicFooter() {
   return (
@@ -42,9 +38,15 @@ export function PublicFooter() {
             <ul className="marketing-footer-list">
               {group.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="marketing-footer-link">
-                    {link.label}
-                  </Link>
+                  {'href' in link ? (
+                    <Link href={link.href} className="marketing-footer-link">
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <span className="marketing-footer-link marketing-footer-link-disabled" aria-disabled>
+                      {link.label} (coming soon)
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
