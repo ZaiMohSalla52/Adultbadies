@@ -141,9 +141,9 @@ a {
 .app-shell {
   width: min(1240px, 100%);
   margin: 0 auto;
-  padding: 1rem 1rem 6rem;
+  padding: 0.8rem 0.9rem calc(5.8rem + env(safe-area-inset-bottom, 0px));
   display: grid;
-  gap: 1rem;
+  gap: 0.8rem;
 }
 
 .app-shell-header {
@@ -156,6 +156,10 @@ a {
   position: sticky;
   top: 0.65rem;
   z-index: 25;
+}
+
+.app-shell-signout-form {
+  display: none;
 }
 
 .app-shell-nav {
@@ -191,23 +195,29 @@ a {
 }
 
 .app-shell-mobile-nav {
-  position: sticky;
-  bottom: 0.6rem;
-  border-radius: 999px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  border-radius: 1.1rem 1.1rem 0 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.28rem;
-  padding: 0.35rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(11, 18, 38, 0.9), rgba(7, 11, 20, 0.98));
+  backdrop-filter: blur(16px);
+  box-shadow: 0 -14px 34px rgba(2, 6, 23, 0.52);
 }
 
 .app-shell-mobile-link {
-  min-height: 2.45rem;
+  min-height: 2.65rem;
   font-size: 0.72rem;
-  padding: 0;
-}
-
-.app-shell-mobile-signout {
-  width: 100%;
+  font-weight: 600;
+  padding: 0 0.35rem;
 }
 
 
@@ -1090,9 +1100,27 @@ a {
 }
 
 .encounters-screen {
-  min-height: calc(100vh - 8rem);
+  min-height: calc(100vh - 9rem);
   display: grid;
-  gap: 0.9rem;
+  gap: 0.75rem;
+}
+
+.encounters-mobile-top {
+  position: sticky;
+  top: 4.7rem;
+  z-index: 18;
+}
+
+.encounters-header-card {
+  gap: 0.45rem;
+  padding: 0.7rem 0.82rem;
+}
+
+.encounters-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.7rem;
 }
 
 .encounters-desktop-layout {
@@ -1111,26 +1139,41 @@ a {
   align-content: start;
 }
 
-.encounters-status-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.6rem;
-}
-
 .encounters-status-pill {
   margin: 0;
-  font-size: 0.8rem;
+  width: fit-content;
+  font-size: 0.75rem;
   color: var(--text-muted);
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 194, 0.22);
   background: rgba(11, 18, 38, 0.58);
-  padding: 0.3rem 0.6rem;
+  padding: 0.24rem 0.56rem;
+}
+
+.encounters-status-pill-count {
+  color: #fff;
+  border-color: rgba(236, 72, 153, 0.45);
+  background: linear-gradient(135deg, rgba(255, 46, 99, 0.3), rgba(139, 92, 246, 0.3));
 }
 
 .encounters-safety-card {
   display: grid;
   gap: 0.65rem;
+  padding: 0.8rem;
+}
+
+.encounters-safety-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.encounters-safety-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
 }
 
 .encounters-feedback {
@@ -1143,12 +1186,13 @@ a {
   padding: 0;
   overflow: hidden;
   min-height: 0;
+  border-radius: 1.4rem;
 }
 
 .encounters-image-wrap {
   width: 100%;
   aspect-ratio: 4 / 5;
-  max-height: min(66vh, 680px);
+  max-height: min(60vh, 680px);
   position: relative;
 }
 
@@ -1173,21 +1217,30 @@ a {
 .encounters-action-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .encounters-action-button {
-  height: 3.5rem;
-  font-size: 1.45rem;
+  height: 3.25rem;
+  font-size: 1.35rem;
 }
 
 .encounters-action-super {
   background: linear-gradient(135deg, #ff2e63, #8b5cf6);
 }
 
+.encounters-empty-state {
+  text-align: center;
+  padding: 1.1rem;
+}
+
 @media (min-width: 900px) {
   .app-shell {
     padding: 1.2rem 1.5rem 2rem;
+  }
+
+  .app-shell-signout-form {
+    display: block;
   }
 
   .app-shell-nav {
@@ -1202,6 +1255,18 @@ a {
   .encounters-desktop-layout {
     grid-template-columns: minmax(0, 1fr) 320px;
     align-items: start;
+  }
+
+  .encounters-mobile-top {
+    position: static;
+  }
+
+  .encounters-header-card {
+    padding: 0.95rem 1rem;
+  }
+
+  .encounters-header-row {
+    align-items: flex-start;
   }
 
   .encounters-safety-card {

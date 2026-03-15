@@ -123,26 +123,27 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
 
   return (
     <div className="app-page-stack encounters-screen">
-      <Card className="app-page-header">
-        <p className="chat-label">Discovery</p>
-        <h1 className="my-0">Encounters</h1>
-        <p className="my-0 text-muted">Swipe intentionally, connect faster, and use safety tools whenever needed.</p>
-      </Card>
-
-      <div className="encounters-status-row">
-        <p className="encounters-status-pill">
-          {entitlements.isPremium ? 'Premium mode · unlimited swipes' : 'Free mode · daily limit active'}
-        </p>
-        <p className="encounters-status-pill">
-          {swipesToday}
-          {entitlements.limits.swipesPerDay !== null ? `/${entitlements.limits.swipesPerDay}` : ''}
-        </p>
+      <div className="encounters-mobile-top">
+        <Card className="app-page-header encounters-header-card">
+          <div className="encounters-header-row">
+            <div>
+              <p className="chat-label">Discovery</p>
+              <h1 className="my-0">Encounters</h1>
+            </div>
+            <p className="encounters-status-pill encounters-status-pill-count">
+              {swipesToday}
+              {entitlements.limits.swipesPerDay !== null ? `/${entitlements.limits.swipesPerDay}` : ''}
+            </p>
+          </div>
+          <p className="my-0 text-muted">Discover people nearby and decide in seconds.</p>
+          <p className="encounters-status-pill">{entitlements.isPremium ? 'Premium mode · unlimited swipes' : 'Free mode · daily limit active'}</p>
+        </Card>
       </div>
 
       <div className="encounters-desktop-layout">
         <div className="encounters-main">
           {!currentCandidate ? (
-            <Card style={{ textAlign: 'center', padding: '1.5rem' }}>
+            <Card className="encounters-empty-state">
               <h2 style={{ marginTop: 0 }}>No more candidates right now</h2>
               <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>You are caught up for now. Check back later.</p>
             </Card>
@@ -187,7 +188,7 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
 
         <aside className="encounters-safety-panel">
           <Card className="app-surface-card encounters-safety-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div className="encounters-safety-header">
               <p style={{ margin: 0, fontWeight: 600 }}>Safety tools</p>
               {!entitlements.isPremium ? (
                 <Link href="/premium" className="text-brand" style={{ fontSize: '0.84rem' }}>
@@ -195,7 +196,7 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
                 </Link>
               ) : null}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+            <div className="encounters-safety-actions">
               <Button type="button" variant="ghost" disabled={isPending || !currentCandidate} onClick={blockCurrentUser}>Block</Button>
               <Button type="button" variant="secondary" disabled={isPending || !currentCandidate} onClick={reportCurrentUser}>Report</Button>
             </div>
