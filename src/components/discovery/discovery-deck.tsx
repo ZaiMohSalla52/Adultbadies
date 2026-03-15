@@ -31,7 +31,7 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
     setReportDetails('');
   };
 
-  const swipe = (direction: 'like' | 'dislike') => {
+  const swipe = (direction: 'like' | 'dislike', source: 'like' | 'pass' | 'super' = 'like') => {
     if (!currentCandidate || isPending) return;
 
     const target = currentCandidate;
@@ -59,6 +59,10 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
 
       if (payload.matched) {
         setFeedback(`It\'s a match with ${target.displayName}!`);
+      } else if (source === 'super') {
+        setFeedback(`Super Like sent to ${target.displayName}.`);
+      } else if (source === 'pass') {
+        setFeedback(`Passed on ${target.displayName}.`);
       }
 
       router.refresh();
@@ -117,86 +121,116 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
     });
   };
 
-  if (!currentCandidate) {
-    return (
-      <Card style={{ textAlign: 'center', padding: '1.5rem' }}>
-        <h2 style={{ marginTop: 0 }}>No more candidates right now</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>You are caught up for now. Check back later.</p>
-      </Card>
-    );
-  }
-
   return (
-    <div style={{ display: 'grid', gap: '0.9rem' }}>
-      <Card style={{ padding: '0.9rem 1rem' }}>
-        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-          {entitlements.isPremium ? 'Premium mode · unlimited swipes' : 'Free mode · daily limit active'}
-        </p>
-        <p style={{ margin: '0.35rem 0 0', fontWeight: 600 }}>
-          Swipes today: {swipesToday}
-          {entitlements.limits.swipesPerDay !== null ? ` / ${entitlements.limits.swipesPerDay}` : ''}
-        </p>
-        {!entitlements.isPremium ? (
-          <Link href="/premium" className="text-brand" style={{ fontSize: '0.84rem' }}>
-            Upgrade to Premium
-          </Link>
-        ) : null}
-      </Card>
-
-      <Card className="discovery-card-enter" style={{ overflow: 'hidden', padding: 0 }}>
-        <div style={{ aspectRatio: '4 / 5', width: '100%', position: 'relative' }}>
-          {currentCandidate.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={currentCandidate.photoUrl} alt={currentCandidate.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>
-              No photo uploaded
-            </div>
-          )}
-          <div style={{ position: 'absolute', inset: 'auto 0 0', padding: '1rem', background: 'linear-gradient(180deg,transparent, rgba(5,11,24,0.92))' }}>
-            <h2 style={{ margin: 0, fontSize: '1.45rem' }}>
-              {currentCandidate.displayName}
-              {currentCandidate.age ? `, ${currentCandidate.age}` : ''}
-            </h2>
-            <p style={{ margin: '0.2rem 0', color: 'var(--text-muted)' }}>{currentCandidate.location}</p>
-            <p style={{ marginBottom: 0 }}>{currentCandidate.bio}</p>
-          </div>
+    <div className="encounters-screen">
+      <div className="encounters-topbar ui-glass">
+        <p className="encounters-page-label">Encounters</p>
+        <div style={{ display: 'flex', gap: '0.55rem' }}>
+          <button type="button" className="encounters-icon-button" aria-label="Boost">
+            ⚡
+          </button>
+          <button type="button" className="encounters-icon-button" aria-label="Filters">
+            ☰
+          </button>
         </div>
-      </Card>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-        <Button type="button" variant="secondary" disabled={isPending} onClick={() => swipe('dislike')}>Pass</Button>
-        <Button type="button" disabled={isPending} onClick={() => swipe('like')}>Like</Button>
       </div>
 
-      <Card style={{ display: 'grid', gap: '0.65rem' }}>
-        <p style={{ margin: 0, fontWeight: 600 }}>Safety tools</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-          <Button type="button" variant="ghost" disabled={isPending} onClick={blockCurrentUser}>Block</Button>
-          <Button type="button" variant="secondary" disabled={isPending} onClick={reportCurrentUser}>Report</Button>
+      <div className="encounters-main">
+        <div className="encounters-status-row">
+          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            {entitlements.isPremium ? 'Premium mode · unlimited swipes' : 'Free mode · daily limit active'}
+          </p>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            {swipesToday}
+            {entitlements.limits.swipesPerDay !== null ? `/${entitlements.limits.swipesPerDay}` : ''}
+          </p>
         </div>
-        <select
-          className="ui-select"
-          value={reportCategory}
-          onChange={(event) => setReportCategory(event.target.value as ReportCategory)}
-          disabled={isPending}
-        >
-          {REPORT_CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category.replace('_', ' ')}
-            </option>
-          ))}
-        </select>
-        <Textarea
-          value={reportDetails}
-          onChange={(event) => setReportDetails(event.target.value)}
-          maxLength={1000}
-          placeholder="Optional details"
-          disabled={isPending}
-        />
-      </Card>
 
-      {feedback ? <p style={{ margin: 0, textAlign: 'center', color: 'var(--accent-4)' }}>{feedback}</p> : null}
+        {!currentCandidate ? (
+          <Card style={{ textAlign: 'center', padding: '1.5rem' }}>
+            <h2 style={{ marginTop: 0 }}>No more candidates right now</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>You are caught up for now. Check back later.</p>
+          </Card>
+        ) : (
+          <Card className="discovery-card-enter encounters-card">
+            <div className="encounters-image-wrap">
+              {currentCandidate.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={currentCandidate.photoUrl} alt={currentCandidate.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>
+                  No photo uploaded
+                </div>
+              )}
+              <div className="encounters-overlay">
+                <h2 style={{ margin: 0, fontSize: '1.75rem' }}>
+                  {currentCandidate.displayName}
+                  {currentCandidate.age ? `, ${currentCandidate.age}` : ''}
+                </h2>
+                <span className="encounters-intent-tag">Here to date</span>
+                <p style={{ margin: '0.15rem 0', color: 'var(--text-muted)' }}>{currentCandidate.location}</p>
+                {currentCandidate.bio ? <p style={{ margin: 0, fontSize: '0.92rem' }}>{currentCandidate.bio}</p> : null}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        <div className="encounters-action-row">
+          <Button type="button" variant="secondary" className="encounters-action-button" disabled={isPending || !currentCandidate} onClick={() => swipe('dislike', 'pass')}>
+            ✕
+          </Button>
+          <Button type="button" className="encounters-action-button encounters-action-super" disabled={isPending || !currentCandidate} onClick={() => swipe('like', 'super')}>
+            🔥
+          </Button>
+          <Button type="button" className="encounters-action-button" disabled={isPending || !currentCandidate} onClick={() => swipe('like', 'like')}>
+            ❤
+          </Button>
+        </div>
+
+        {feedback ? <p style={{ margin: 0, textAlign: 'center', color: 'var(--accent-4)' }}>{feedback}</p> : null}
+
+        <Card style={{ display: 'grid', gap: '0.65rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, fontWeight: 600 }}>Safety tools</p>
+            {!entitlements.isPremium ? (
+              <Link href="/premium" className="text-brand" style={{ fontSize: '0.84rem' }}>
+                Upgrade to Premium
+              </Link>
+            ) : null}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+            <Button type="button" variant="ghost" disabled={isPending || !currentCandidate} onClick={blockCurrentUser}>Block</Button>
+            <Button type="button" variant="secondary" disabled={isPending || !currentCandidate} onClick={reportCurrentUser}>Report</Button>
+          </div>
+          <select
+            className="ui-select"
+            value={reportCategory}
+            onChange={(event) => setReportCategory(event.target.value as ReportCategory)}
+            disabled={isPending}
+          >
+            {REPORT_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category.replace('_', ' ')}
+              </option>
+            ))}
+          </select>
+          <Textarea
+            value={reportDetails}
+            onChange={(event) => setReportDetails(event.target.value)}
+            maxLength={1000}
+            placeholder="Optional details"
+            disabled={isPending}
+          />
+        </Card>
+      </div>
+
+      <div className="encounters-bottom-nav ui-glass">
+        <span className="encounters-nav-item">Discover</span>
+        <span className="encounters-nav-item encounters-nav-item-active">Encounters</span>
+        <span className="encounters-nav-item">Likes</span>
+        <span className="encounters-nav-item">Chats</span>
+        <span className="encounters-nav-item">Profile</span>
+      </div>
     </div>
   );
 };

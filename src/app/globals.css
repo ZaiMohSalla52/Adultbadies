@@ -751,3 +751,132 @@ a {
 .transition-colors { transition: color 0.2s ease, background 0.2s ease; }
 .disabled\:opacity-50:disabled { opacity: 0.5; }
 .hover\:underline:hover { text-decoration: underline; }
+
+.encounters-screen {
+  min-height: calc(100vh - 7rem);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.9rem;
+}
+
+.encounters-topbar {
+  border-radius: 999px;
+  min-height: 3.4rem;
+  padding: 0.5rem 0.65rem 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.encounters-page-label {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.encounters-icon-button {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(165, 180, 204, 0.3);
+  color: var(--text);
+  background: rgba(7, 11, 20, 0.65);
+  font-size: 1rem;
+}
+
+.encounters-main {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  gap: 0.85rem;
+  min-height: 0;
+}
+
+.encounters-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.encounters-card {
+  padding: 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.encounters-image-wrap {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  max-height: min(66vh, 680px);
+  position: relative;
+}
+
+.encounters-overlay {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 1.1rem;
+  display: grid;
+  gap: 0.25rem;
+  background: linear-gradient(180deg, rgba(7, 11, 20, 0.02), rgba(7, 11, 20, 0.95));
+}
+
+.encounters-intent-tag {
+  justify-self: start;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  color: #fff;
+  background: linear-gradient(135deg, #ff2e63, #8b5cf6);
+}
+
+.encounters-action-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.encounters-action-button {
+  height: 3.5rem;
+  font-size: 1.45rem;
+}
+
+.encounters-action-super {
+  background: linear-gradient(135deg, #ff2e63, #8b5cf6);
+}
+
+.encounters-bottom-nav {
+  border-radius: 999px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.28rem;
+  padding: 0.35rem;
+  position: sticky;
+  bottom: 0.6rem;
+}
+
+.encounters-nav-item {
+  min-height: 2.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.encounters-nav-item-active {
+  color: #fff;
+  background: linear-gradient(135deg, #ff2e63, #8b5cf6);
+}
+
+@media (min-width: 900px) {
+  .encounters-screen {
+    width: min(520px, 100%);
+    margin: 0 auto;
+  }
+
+  .encounters-image-wrap {
+    max-height: min(70vh, 740px);
+  }
+}
