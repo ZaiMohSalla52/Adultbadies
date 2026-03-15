@@ -34,7 +34,7 @@ export default async function AppLayout({ children }: PropsWithChildren) {
           <AppShellNav items={appNavItems} />
         </nav>
 
-        <form action={signOutAction}>
+        <form action={signOutAction} className="app-shell-signout-form">
           <Button type="submit" variant="ghost">
             Sign out
           </Button>
@@ -45,11 +45,6 @@ export default async function AppLayout({ children }: PropsWithChildren) {
 
       <nav className="app-shell-mobile-nav ui-glass" aria-label="Authenticated navigation mobile">
         <AppShellNav items={appNavItems} mobile />
-        <form action={signOutAction}>
-          <button type="submit" className="app-shell-mobile-link app-shell-mobile-signout">
-            Sign out
-          </button>
-        </form>
       </nav>
     </div>
   );
