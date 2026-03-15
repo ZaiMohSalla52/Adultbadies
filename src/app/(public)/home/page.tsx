@@ -59,7 +59,10 @@ export default function PublicHomePage() {
         </div>
         <div className="marketing-container marketing-hero-content">
           <p className="marketing-kicker">Futuristic dating for modern singles</p>
-          <h1>Adult Badies makes every swipe feel intentional, premium, and alive.</h1>
+          <h1>
+            Adult Badies makes every swipe feel intentional.
+            <span className="hero-emphasis">Premium chemistry, modern momentum.</span>
+          </h1>
           <p>
             Discover people with real chemistry, move naturally into chat, and build connections in a photo-first experience crafted for speed and trust.
           </p>

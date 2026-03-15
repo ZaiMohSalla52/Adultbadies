@@ -5,7 +5,6 @@ import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import type { AuthActionState } from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
 type AuthFormProps = {
@@ -19,7 +18,7 @@ const SubmitButton = ({ mode }: { mode: AuthFormProps['mode'] }) => {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" disabled={pending} className="auth-submit">
       {pending ? 'Please wait...' : mode === 'sign-in' ? 'Sign in' : 'Create account'}
     </Button>
   );
@@ -30,32 +29,46 @@ export const AuthForm = ({ mode, action }: AuthFormProps) => {
   const isSignIn = mode === 'sign-in';
 
   return (
-    <Card className="max-w-md">
-      <h1 className="mt-0 mb-2 text-lg font-semibold">{isSignIn ? 'Sign in' : 'Create your account'}</h1>
-      <p className="mb-6 text-sm text-muted">
+    <section className="auth-form-panel" aria-labelledby="auth-title">
+      <p className="auth-form-eyebrow">Adult Badies Access</p>
+      <h1 id="auth-title" className="auth-form-title">
+        {isSignIn ? 'Welcome back' : 'Create your profile'}
+      </h1>
+      <p className="auth-form-copy">
         {isSignIn
-          ? 'Welcome back. Sign in to continue to your dashboard.'
-          : 'Use email and password to create your account.'}
+          ? 'Sign in to continue your conversations and discover new matches.'
+          : 'Join with email and password to start discovering people who match your energy.'}
       </p>
-      <form action={formAction} className="flex flex-col gap-4" noValidate>
-        <Input type="email" name="email" placeholder="Email" autoComplete="email" required />
+
+      <form action={formAction} className="auth-form-fields" noValidate>
+        <label className="auth-form-label" htmlFor="auth-email">
+          Email
+        </label>
+        <Input id="auth-email" type="email" name="email" placeholder="you@example.com" autoComplete="email" required />
+
+        <label className="auth-form-label" htmlFor="auth-password">
+          Password
+        </label>
         <Input
+          id="auth-password"
           type="password"
           name="password"
-          placeholder="Password"
+          placeholder={isSignIn ? 'Enter your password' : 'Create a secure password'}
           autoComplete={isSignIn ? 'current-password' : 'new-password'}
           minLength={8}
           required
         />
-        {state.error ? <p className="m-0 text-sm text-red-400">{state.error}</p> : null}
+
+        {state.error ? <p className="auth-form-error">{state.error}</p> : null}
         <SubmitButton mode={mode} />
       </form>
-      <p className="mb-0 mt-4 text-sm text-muted">
+
+      <p className="auth-form-switch">
         {isSignIn ? "Don't have an account? " : 'Already have an account? '}
-        <Link className="text-brand hover:underline" href={isSignIn ? '/sign-up' : '/sign-in'}>
+        <Link className="auth-form-switch-link" href={isSignIn ? '/sign-up' : '/sign-in'}>
           {isSignIn ? 'Create one' : 'Sign in'}
         </Link>
       </p>
-    </Card>
+    </section>
   );
 };
