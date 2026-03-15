@@ -1,134 +1,69 @@
 import Link from 'next/link';
-import { Card } from '@/components/ui/card';
 
-const features = [
+const showcaseItems = [
   {
-    title: 'Swipe discovery',
-    description: 'Smart profile surfacing keeps every swipe fresh with cinematic card motion and intent-focused matching.',
-    accent: 'linear-gradient(130deg, rgba(255, 46, 99, 0.35), rgba(236, 72, 153, 0.1))',
+    title: 'Discovery that reads your vibe',
+    description: 'See people based on intent, proximity, and chemistry signals so every swipe feels more relevant.',
+    icon: (
+      <path
+        d="M12 5.75a6.25 6.25 0 0 1 6.25 6.25c0 1.8-.76 3.42-1.97 4.56L12 20.75l-4.28-4.2A6.22 6.22 0 0 1 5.75 12 6.25 6.25 0 0 1 12 5.75Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    ),
   },
   {
-    title: 'Instant chat',
-    description: 'Move from match to conversation in seconds with clean message threads and high-contrast readability.',
-    accent: 'linear-gradient(130deg, rgba(139, 92, 246, 0.35), rgba(56, 189, 248, 0.08))',
+    title: 'Chat that keeps momentum',
+    description: 'Fast, high-contrast conversation threads help matches turn into plans without friction.',
+    icon: (
+      <path
+        d="M6.25 6.25h11.5v8.5H10l-3.75 3.25v-3.25h0A2 2 0 0 1 4.25 12.75v-4.5a2 2 0 0 1 2-2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    ),
   },
   {
-    title: 'Safety controls',
-    description: 'Built-in report and block tools with profile signals to help you connect confidently every day.',
-    accent: 'linear-gradient(130deg, rgba(16, 185, 129, 0.3), rgba(34, 197, 94, 0.08))',
-  },
-  {
-    title: 'Premium mode',
-    description: 'Elevated visibility, advanced filters, and next-level personalization for power users.',
-    accent: 'linear-gradient(130deg, rgba(251, 191, 36, 0.3), rgba(245, 158, 11, 0.08))',
+    title: 'Safety built into every layer',
+    description: 'One-tap report and block controls with active moderation protect your experience.',
+    icon: (
+      <path d="M12 4.5 6.5 6.75v4.5c0 3.58 2.4 6.9 5.5 8.25 3.1-1.35 5.5-4.67 5.5-8.25v-4.5L12 4.5Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    ),
   },
 ];
 
 const testimonials = [
   {
-    quote: 'The app feels like a future dating experience. Matches finally feel intentional.',
+    quote: 'It feels premium from the first swipe. The quality of matches is noticeably better.',
     person: 'Maya, 27',
   },
   {
-    quote: 'Smooth swipes, gorgeous visuals, and the cleanest chat UI I\'ve used in a dating app.',
+    quote: 'The chat experience is elegant and fast. It actually makes conversations fun again.',
     person: 'Andre, 31',
   },
   {
-    quote: 'Safety tools are actually easy to use, and that makes a huge difference.',
+    quote: 'I appreciate how visible the safety controls are. It gives me confidence to connect.',
     person: 'Riley, 25',
   },
 ];
 
-const trustPoints = [
-  'Profile moderation + reporting flow',
-  'Fast block controls in every core touchpoint',
-  'Privacy-first account settings',
-  'Designed for respectful connections',
-];
-
 export default function PublicHomePage() {
   return (
-    <div style={{ display: 'grid', gap: '3.5rem', paddingBottom: '4rem' }}>
-      <section
-        style={{
-          minHeight: 'min(92vh, 880px)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid rgba(148, 163, 194, 0.28)',
-          overflow: 'hidden',
-          position: 'relative',
-          background: 'linear-gradient(160deg, rgba(5, 11, 24, 0.72), rgba(5, 11, 24, 0.95))',
-          boxShadow: 'var(--shadow-lg)',
-          display: 'grid',
-          alignItems: 'end',
-          padding: 'clamp(1.25rem, 4vw, 3rem)',
-        }}
-      >
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(circle at 20% 18%, rgba(236, 72, 153, 0.42), transparent 32%), radial-gradient(circle at 82% 20%, rgba(139, 92, 246, 0.4), transparent 35%), radial-gradient(circle at 50% 90%, rgba(14, 165, 233, 0.25), transparent 36%)',
-          }}
-        />
-
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: '8% 4% auto 4%',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-            gap: '0.65rem',
-            opacity: 0.35,
-            transform: 'perspective(1200px) rotateX(16deg)',
-          }}
-        >
-          {Array.from({ length: 9 }).map((_, index) => (
-            <Card
-              key={index}
-              className="ui-glass"
-              style={{
-                minHeight: '110px',
-                background:
-                  index % 2 === 0
-                    ? 'linear-gradient(145deg, rgba(236, 72, 153, 0.26), rgba(15, 23, 42, 0.86))'
-                    : 'linear-gradient(145deg, rgba(139, 92, 246, 0.26), rgba(15, 23, 42, 0.86))',
-              }}
-            />
-          ))}
+    <div className="marketing-page">
+      <section className="marketing-hero">
+        <div className="marketing-hero-media" aria-hidden>
+          <div className="marketing-hero-image marketing-hero-image-main" />
+          <div className="marketing-hero-image marketing-hero-image-alt" />
         </div>
-
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'linear-gradient(180deg, rgba(5, 11, 24, 0.32), rgba(5, 11, 24, 0.95) 70%)',
-          }}
-        />
-
-        <div style={{ position: 'relative', zIndex: 2, display: 'grid', gap: '1rem', maxWidth: '44rem' }}>
-          <p
-            style={{
-              margin: 0,
-              color: 'var(--text-muted)',
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              fontSize: '0.73rem',
-              fontWeight: 700,
-            }}
-          >
-            The future of modern dating
+        <div className="marketing-container marketing-hero-content">
+          <p className="marketing-kicker">Futuristic dating for modern singles</p>
+          <h1>Adult Badies makes every swipe feel intentional, premium, and alive.</h1>
+          <p>
+            Discover people with real chemistry, move naturally into chat, and build connections in a photo-first experience crafted for speed and trust.
           </p>
-          <h1 className="hero-gradient-text" style={{ margin: 0, fontSize: 'clamp(2.2rem, 7vw, 5rem)', lineHeight: 1.02 }}>
-            Adult Badies turns every swipe into a cinematic connection.
-          </h1>
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'clamp(1rem, 2.4vw, 1.2rem)', maxWidth: '55ch' }}>
-            Discover people nearby, match instantly, and chat in a premium dark interface designed for speed, trust, and attraction.
-          </p>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div className="marketing-hero-actions">
             <Link className="ui-button ui-button-primary" href="/sign-up">
               Create account
             </Link>
@@ -139,130 +74,85 @@ export default function PublicHomePage() {
         </div>
       </section>
 
-      <section
-        style={{
-          display: 'grid',
-          gap: '1.25rem',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          alignItems: 'center',
-        }}
-      >
-        <Card className="ui-glass" style={{ padding: '1.2rem', display: 'grid', gap: '0.75rem' }}>
-          <p style={{ margin: 0, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.74rem' }}>
-            Discovery preview
-          </p>
-          <div style={{ position: 'relative', minHeight: '320px' }}>
-            {[0, 1, 2].map((layer) => (
-              <div
-                key={layer}
-                style={{
-                  position: 'absolute',
-                  inset: layer === 0 ? '0 0 auto 0' : `${layer * 14}px ${layer * 10}px auto ${layer * 10}px`,
-                  height: '280px',
-                  borderRadius: '22px',
-                  border: '1px solid rgba(148, 163, 194, 0.35)',
-                  background:
-                    layer === 0
-                      ? 'linear-gradient(160deg, rgba(236, 72, 153, 0.32), rgba(15, 23, 42, 0.9))'
-                      : 'linear-gradient(160deg, rgba(139, 92, 246, 0.24), rgba(15, 23, 42, 0.84))',
-                  boxShadow: 'var(--shadow-lg)',
-                  transform: `rotate(${layer === 0 ? -3 : layer === 1 ? 2 : 6}deg)`,
-                }}
-              />
-            ))}
-            <div style={{ position: 'absolute', bottom: '1rem', left: '1rem', right: '1rem', zIndex: 3 }}>
-              <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Ari, 29</p>
-              <p style={{ margin: '0.4rem 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Designer • 4 miles away
-              </p>
-            </div>
+      <section id="discover" className="marketing-section">
+        <div className="marketing-container">
+          <div className="marketing-section-head">
+            <p className="marketing-kicker">Discovery</p>
+            <h2>Designed for attraction-first discovery on every screen.</h2>
           </div>
-        </Card>
-
-        <div style={{ display: 'grid', gap: '0.85rem' }}>
-          <p style={{ margin: 0, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.74rem' }}>
-            Swipe-first experience
-          </p>
-          <h2 style={{ margin: 0, fontSize: 'clamp(1.7rem, 5vw, 2.8rem)', lineHeight: 1.08 }}>
-            A phone-native flow designed for instant chemistry.
-          </h2>
-          <p style={{ margin: 0, color: 'var(--text-muted)', maxWidth: '46ch' }}>
-            Profile cards stack with fluid depth, helping you evaluate vibe, values, and attraction in seconds before you commit to a match.
-          </p>
+          <div className="marketing-feature-grid">
+            {showcaseItems.map((item) => (
+              <article key={item.title} className="marketing-feature-card">
+                <span className="marketing-feature-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24">{item.icon}</svg>
+                </span>
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-        {features.map((feature) => (
-          <Card key={feature.title} className="ui-glass" style={{ padding: '1.1rem', display: 'grid', gap: '0.6rem', background: feature.accent }}>
-            <h3 style={{ margin: 0, fontSize: '1.15rem' }}>{feature.title}</h3>
-            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.94rem' }}>{feature.description}</p>
-          </Card>
-        ))}
-      </section>
-
-      <section style={{ display: 'grid', gap: '1rem' }}>
-        <h2 style={{ margin: 0, fontSize: 'clamp(1.5rem, 4.2vw, 2.3rem)' }}>Loved by ambitious singles worldwide.</h2>
-        <div style={{ display: 'grid', gap: '0.9rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-          {testimonials.map((item) => (
-            <Card key={item.person} className="ui-glass" style={{ padding: '1rem', display: 'grid', gap: '0.65rem' }}>
-              <p style={{ margin: 0, color: 'var(--text)', fontSize: '0.98rem' }}>&ldquo;{item.quote}&rdquo;</p>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>{item.person}</p>
-            </Card>
-          ))}
+      <section id="chat" className="marketing-section">
+        <div className="marketing-container marketing-media-split">
+          <div>
+            <p className="marketing-kicker">Chat experience</p>
+            <h2>From match to conversation in seconds.</h2>
+            <p className="marketing-support-copy">
+              Clean typography, confident contrast, and mobile-first composition keep the focus on people, not noisy interface chrome.
+            </p>
+          </div>
+          <div className="marketing-panel-image" />
         </div>
       </section>
 
-      <section
-        style={{
-          display: 'grid',
-          gap: '0.95rem',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '1.25rem',
-          background: 'linear-gradient(165deg, rgba(11, 18, 38, 0.9), rgba(26, 40, 72, 0.72))',
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: 'clamp(1.4rem, 4vw, 2.2rem)' }}>Safety first, always.</h2>
-        <p style={{ margin: 0, color: 'var(--text-muted)', maxWidth: '56ch' }}>
-          Every part of Adult Badies is built to protect your comfort, from profile quality controls to fast moderation tooling.
-        </p>
-        <div style={{ display: 'grid', gap: '0.7rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-          {trustPoints.map((point) => (
-            <Card key={point} className="ui-glass" style={{ padding: '0.85rem' }}>
-              <p style={{ margin: 0, color: 'var(--text-muted)' }}>{point}</p>
-            </Card>
-          ))}
+      <section id="safety" className="marketing-section">
+        <div className="marketing-container marketing-trust-panel">
+          <p className="marketing-kicker">Safety & trust</p>
+          <h2>A safer space for better connections.</h2>
+          <p className="marketing-support-copy">Moderation, reporting, and profile quality checks are visible, fast, and built into the core experience.</p>
+          <div className="marketing-trust-points">
+            <span>Identity-aware profile checks</span>
+            <span>One-tap report and block actions</span>
+            <span>Privacy-first controls</span>
+            <span>Community safety standards</span>
+          </div>
         </div>
       </section>
 
-      <section
-        style={{
-          borderRadius: 'var(--radius-lg)',
-          padding: 'clamp(1.3rem, 4vw, 2.1rem)',
-          background: 'linear-gradient(118deg, rgba(255, 46, 99, 0.32), rgba(139, 92, 246, 0.3))',
-          border: '1px solid rgba(148, 163, 194, 0.35)',
-          display: 'grid',
-          gap: '0.9rem',
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: 'clamp(1.5rem, 4.5vw, 2.5rem)' }}>Your next match is already waiting.</h2>
-        <p style={{ margin: 0, color: 'var(--text-muted)', maxWidth: '48ch' }}>
-          Build your profile in minutes and enter a premium dating community designed to move at your pace.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link className="ui-button ui-button-primary" href="/sign-up">
-            Create account
-          </Link>
-          <Link className="ui-button ui-button-secondary" href="/sign-in">
-            Sign in
-          </Link>
+      <section id="stories" className="marketing-section">
+        <div className="marketing-container">
+          <div className="marketing-section-head">
+            <p className="marketing-kicker">Social proof</p>
+            <h2>Loved by ambitious singles worldwide.</h2>
+          </div>
+          <div className="marketing-testimonial-grid">
+            {testimonials.map((item) => (
+              <article key={item.person} className="marketing-testimonial-card">
+                <p>&ldquo;{item.quote}&rdquo;</p>
+                <span>{item.person}</span>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      <footer style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-        <p style={{ margin: 0 }}>© {new Date().getFullYear()} Adult Badies. Built for bold connections.</p>
-      </footer>
+      <section id="premium" className="marketing-section">
+        <div className="marketing-container marketing-final-cta">
+          <p className="marketing-kicker">Ready to match?</p>
+          <h2>Step into a premium dating network built for momentum.</h2>
+          <p className="marketing-support-copy">Set up your profile in minutes and connect with people who match your energy.</p>
+          <div className="marketing-hero-actions">
+            <Link className="ui-button ui-button-primary" href="/sign-up">
+              Join Adult Badies
+            </Link>
+            <Link className="ui-button ui-button-secondary" href="/sign-in">
+              Sign in
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
