@@ -20,6 +20,16 @@ const featureRows = [
     free: 'Locked teaser',
     premium: 'Included',
   },
+  {
+    name: 'Virtual Girlfriend text chat',
+    free: '20 messages/day',
+    premium: 'Expanded daily access',
+  },
+  {
+    name: 'Virtual Girlfriend voice chat',
+    free: 'Not available',
+    premium: 'Coming soon',
+  },
 ];
 
 export default async function PremiumPage() {
@@ -54,6 +64,7 @@ export default async function PremiumPage() {
         <Card className="app-surface-card space-y-2">
           <h2 className="my-0 text-base font-semibold">Usage</h2>
           <p className="text-sm text-muted">Swipes used today: {swipesToday}</p>
+          <p className="text-sm text-muted">Virtual Girlfriend text: {entitlements.limits.virtualGirlfriendMessagesPerDay ?? 'Expanded'} daily messages.</p>
           <p className="text-sm text-muted">
             {entitlements.limits.swipesPerDay === null
               ? 'Unlimited swipes are active on your plan.'

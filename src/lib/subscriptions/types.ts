@@ -28,8 +28,11 @@ export type Entitlements = {
     unlimitedSwipes: boolean;
     rewind: boolean;
     seeWhoLikedYou: boolean;
+    virtualGirlfriendExpandedText: boolean;
+    virtualGirlfriendVoice: boolean;
   };
   limits: {
     swipesPerDay: number | null;
+    virtualGirlfriendMessagesPerDay: number | null;
   };
 };

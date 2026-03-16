@@ -1,6 +1,11 @@
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 
-type EntitledFeature = 'unlimitedSwipes' | 'rewind' | 'seeWhoLikedYou';
+type EntitledFeature =
+  | 'unlimitedSwipes'
+  | 'rewind'
+  | 'seeWhoLikedYou'
+  | 'virtualGirlfriendExpandedText'
+  | 'virtualGirlfriendVoice';
 
 export const requireEntitledFeature = async (
   token: string,
