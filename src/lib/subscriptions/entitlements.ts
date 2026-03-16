@@ -3,6 +3,7 @@ import type { Entitlements, MembershipState, SubscriptionRecord } from '@/lib/su
 const FREE_PLAN_CODE = 'free';
 const PREMIUM_PLAN_CODE = 'premium_monthly';
 const FREE_DAILY_SWIPE_LIMIT = 25;
+const FREE_VIRTUAL_GIRLFRIEND_MESSAGES_PER_DAY = 20;
 
 const hasPeriodAccess = (subscription: SubscriptionRecord) => {
   if (!subscription.current_period_end) {
@@ -41,9 +42,12 @@ export const buildEntitlements = (subscription: SubscriptionRecord | null): Enti
       unlimitedSwipes: hasPremium,
       rewind: hasPremium,
       seeWhoLikedYou: hasPremium,
+      virtualGirlfriendExpandedText: hasPremium,
+      virtualGirlfriendVoice: hasPremium,
     },
     limits: {
       swipesPerDay: hasPremium ? null : FREE_DAILY_SWIPE_LIMIT,
+      virtualGirlfriendMessagesPerDay: hasPremium ? 500 : FREE_VIRTUAL_GIRLFRIEND_MESSAGES_PER_DAY,
     },
   };
 };

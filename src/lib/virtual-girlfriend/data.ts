@@ -1,0 +1,318 @@
+import { supabaseRest } from '@/lib/supabase/rest';
+import type {
+  PersonaProfile,
+  VirtualGirlfriendCompanionRecord,
+  VirtualGirlfriendConversationRecord,
+  VirtualGirlfriendMemoryCandidate,
+  VirtualGirlfriendMemoryRecord,
+  VirtualGirlfriendMessageRecord,
+} from '@/lib/virtual-girlfriend/types';
+
+const companionSelect =
+  'id,user_id,name,display_bio,persona_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,disclosure_label,is_active,created_at,updated_at';
+
+const tokenize = (input: string) =>
+  input
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 3);
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+export const getActiveVirtualGirlfriend = async (
+  token: string,
+  userId: string,
+): Promise<VirtualGirlfriendCompanionRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+    searchParams: new URLSearchParams({
+      select: companionSelect,
+      user_id: `eq.${userId}`,
+      is_active: 'eq.true',
+      order: 'updated_at.desc',
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
+};
+
+export const upsertVirtualGirlfriend = async (
+  token: string,
+  input: {
+    userId: string;
+    name: string;
+    bio: string;
+    personaProfile: PersonaProfile;
+    archetype: string;
+    tone: string;
+    affectionStyle: string;
+    visualAesthetic: string;
+    preferenceHints?: string;
+    profileTags?: string[];
+  },
+): Promise<VirtualGirlfriendCompanionRecord> => {
+  const existing = await getActiveVirtualGirlfriend(token, input.userId);
+
+  if (existing) {
+    const rows = await supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+      method: 'PATCH',
+      searchParams: new URLSearchParams({ id: `eq.${existing.id}`, user_id: `eq.${input.userId}` }),
+      body: {
+        name: input.name,
+        display_bio: input.bio,
+        persona_profile: input.personaProfile,
+        archetype: input.archetype,
+        tone: input.tone,
+        affection_style: input.affectionStyle,
+        visual_aesthetic: input.visualAesthetic,
+        preference_hints: input.preferenceHints ?? null,
+        profile_tags: input.profileTags ?? input.personaProfile.vibeTags,
+        setup_completed: true,
+        disclosure_label: 'AI-generated profile',
+      },
+      prefer: 'return=representation',
+    });
+
+    return rows[0]!;
+  }
+
+  const rows = await supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+    method: 'POST',
+    body: {
+      user_id: input.userId,
+      name: input.name,
+      persona_prompt: 'Stage 9 Virtual Girlfriend structured persona',
+      display_bio: input.bio,
+      persona_profile: input.personaProfile,
+      archetype: input.archetype,
+      tone: input.tone,
+      affection_style: input.affectionStyle,
+      visual_aesthetic: input.visualAesthetic,
+      preference_hints: input.preferenceHints ?? null,
+      profile_tags: input.profileTags ?? input.personaProfile.vibeTags,
+      setup_completed: true,
+      disclosure_label: 'AI-generated profile',
+      is_active: true,
+    },
+    prefer: 'return=representation',
+  });
+
+  return rows[0]!;
+};
+
+export const getOrCreateVirtualGirlfriendConversation = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendConversationRecord> => {
+  const existing = await supabaseRest<VirtualGirlfriendConversationRecord[]>('ai_conversations', token, {
+    searchParams: new URLSearchParams({
+      select: 'id,user_id,companion_id,title,mode,last_message_at,created_at,updated_at',
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      order: 'updated_at.desc',
+      limit: '1',
+    }),
+  });
+
+  if (existing[0]) return existing[0];
+
+  const inserted = await supabaseRest<VirtualGirlfriendConversationRecord[]>('ai_conversations', token, {
+    method: 'POST',
+    body: {
+      user_id: userId,
+      companion_id: companionId,
+      title: 'Virtual Girlfriend Chat',
+      mode: 'virtual_girlfriend',
+      last_message_at: new Date().toISOString(),
+    },
+    prefer: 'return=representation',
+  });
+
+  return inserted[0]!;
+};
+
+export const getVirtualGirlfriendMessages = async (
+  token: string,
+  conversationId: string,
+): Promise<VirtualGirlfriendMessageRecord[]> => {
+  return supabaseRest<VirtualGirlfriendMessageRecord[]>('ai_messages', token, {
+    searchParams: new URLSearchParams({
+      select: 'id,conversation_id,user_id,role,content,model,token_count,moderation,created_at',
+      conversation_id: `eq.${conversationId}`,
+      order: 'created_at.asc',
+      limit: '250',
+    }),
+  });
+};
+
+export const insertVirtualGirlfriendMessage = async (
+  token: string,
+  message: {
+    conversationId: string;
+    userId: string;
+    role: 'user' | 'assistant';
+    content: string;
+    model?: string;
+    moderation?: Record<string, unknown>;
+  },
+) => {
+  await supabaseRest('ai_messages', token, {
+    method: 'POST',
+    body: {
+      conversation_id: message.conversationId,
+      user_id: message.userId,
+      role: message.role,
+      content: message.content,
+      model: message.model ?? null,
+      moderation: message.moderation ?? {},
+    },
+    prefer: 'return=minimal',
+  });
+};
+
+export const touchVirtualGirlfriendConversation = async (token: string, conversationId: string) => {
+  await supabaseRest('ai_conversations', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ id: `eq.${conversationId}` }),
+    body: { last_message_at: new Date().toISOString() },
+    prefer: 'return=minimal',
+  });
+};
+
+export const getVirtualGirlfriendUserMessageCountForToday = async (token: string, userId: string): Promise<number> => {
+  const now = new Date();
+  const dayStartUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+
+  const rows = await supabaseRest<{ id: string }[]>('ai_messages', token, {
+    searchParams: new URLSearchParams({
+      select: 'id',
+      user_id: `eq.${userId}`,
+      role: 'eq.user',
+      created_at: `gte.${dayStartUtc}`,
+      limit: '2000',
+    }),
+  });
+
+  return rows.length;
+};
+
+export const getVirtualGirlfriendMemories = async (
+  token: string,
+  userId: string,
+  companionId: string,
+  limit = 200,
+): Promise<VirtualGirlfriendMemoryRecord[]> => {
+  return supabaseRest<VirtualGirlfriendMemoryRecord[]>('ai_memories', token, {
+    searchParams: new URLSearchParams({
+      select:
+        'id,user_id,companion_id,conversation_id,memory_key,memory_value,category,summary,source_role,importance,salience,confidence,metadata,archived,use_count,embedding_status,created_at,last_recalled_at,last_used_at',
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      archived: 'eq.false',
+      order: 'importance.desc,last_recalled_at.desc,created_at.desc',
+      limit: String(limit),
+    }),
+  });
+};
+
+export const upsertVirtualGirlfriendMemory = async (
+  token: string,
+  input: {
+    userId: string;
+    companionId: string;
+    conversationId: string | null;
+    candidate: VirtualGirlfriendMemoryCandidate;
+  },
+) => {
+  await supabaseRest('ai_memories', token, {
+    method: 'POST',
+    body: {
+      user_id: input.userId,
+      companion_id: input.companionId,
+      conversation_id: input.conversationId,
+      memory_key: input.candidate.key,
+      memory_value: input.candidate.value,
+      category: input.candidate.category,
+      summary: input.candidate.summary ?? null,
+      source_role: input.candidate.sourceRole,
+      importance: clamp(input.candidate.importance, 1, 5),
+      salience: clamp(input.candidate.salience, 1, 5),
+      confidence: clamp(input.candidate.confidence, 0, 1),
+      metadata: input.candidate.metadata ?? {},
+      archived: false,
+      last_recalled_at: new Date().toISOString(),
+    },
+    searchParams: new URLSearchParams({ on_conflict: 'user_id,companion_id,memory_key' }),
+    prefer: 'resolution=merge-duplicates,return=minimal',
+  });
+};
+
+export const recordRecalledVirtualGirlfriendMemories = async (token: string, memoryIds: string[]) => {
+  await Promise.all(
+    memoryIds.map((memoryId) =>
+      supabaseRest('ai_memories', token, {
+        method: 'PATCH',
+        searchParams: new URLSearchParams({ id: `eq.${memoryId}` }),
+        body: {
+          last_recalled_at: new Date().toISOString(),
+          last_used_at: new Date().toISOString(),
+        },
+        prefer: 'return=minimal',
+      }),
+    ),
+  );
+};
+
+export const retrieveRelevantVirtualGirlfriendMemories = async (
+  token: string,
+  input: {
+    userId: string;
+    companionId: string;
+    queryText: string;
+    maxItems?: number;
+  },
+): Promise<VirtualGirlfriendMemoryRecord[]> => {
+  const pool = await getVirtualGirlfriendMemories(token, input.userId, input.companionId, 200);
+
+  if (pool.length === 0) return [];
+
+  const queryTokens = new Set(tokenize(input.queryText));
+  const now = Date.now();
+
+  const scored = pool.map((memory) => {
+    const textTokens = tokenize(`${memory.memory_key} ${memory.memory_value} ${memory.summary ?? ''}`);
+    const overlap = textTokens.filter((token) => queryTokens.has(token)).length;
+    const relevance = queryTokens.size === 0 ? 0 : overlap / queryTokens.size;
+
+    const timestamp = new Date(memory.last_recalled_at ?? memory.created_at).getTime();
+    const ageDays = Math.max(0, (now - timestamp) / (1000 * 60 * 60 * 24));
+    const recency = 1 / (1 + ageDays / 7);
+
+    const categoryBoost =
+      memory.category === 'user_preference' && /(like|love|want|prefer|favorite)/i.test(input.queryText)
+        ? 0.12
+        : memory.category === 'emotional_signal' && /(feel|sad|happy|stressed|anxious|excited)/i.test(input.queryText)
+          ? 0.12
+          : memory.category === 'relationship_moment'
+            ? 0.08
+            : 0.04;
+
+    const score =
+      memory.importance * 0.23 +
+      memory.salience * 0.2 +
+      memory.confidence * 0.17 +
+      recency * 0.2 +
+      relevance * 0.2 +
+      categoryBoost;
+
+    return { memory, score };
+  });
+
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, input.maxItems ?? 8)
+    .map((entry) => entry.memory);
+};
