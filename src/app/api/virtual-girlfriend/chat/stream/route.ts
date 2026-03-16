@@ -14,7 +14,6 @@ import {
   recordRecalledVirtualGirlfriendMemories,
   retrieveRelevantVirtualGirlfriendMemories,
   touchVirtualGirlfriendConversation,
-  resolveVirtualGirlfriendCompanion,
 } from '@/lib/virtual-girlfriend/data';
 import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { generateVirtualGirlfriendReply } from '@/lib/virtual-girlfriend/orchestration';
