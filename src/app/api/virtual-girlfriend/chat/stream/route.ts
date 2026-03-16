@@ -3,6 +3,7 @@ import { requireAuth } from '@/app/api/onboarding/shared';
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
   getActiveVirtualGirlfriend,
+  getVirtualGirlfriendCompanionById,
   getLatestVisualProfileForCompanion,
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
@@ -26,14 +27,17 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
 
-  const body = (await request.json()) as { message?: string };
+  const body = (await request.json()) as { message?: string; companionId?: string };
   const message = String(body.message ?? '').trim();
+  const requestedCompanionId = String(body.companionId ?? '').trim();
 
   if (!message) {
     return new Response(JSON.stringify({ error: 'Message is required.' }), { status: 400 });
   }
 
-  const companion = await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
+  const companion = requestedCompanionId
+    ? await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
+    : await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
   if (!companion || !companion.setup_completed) {
     return new Response(JSON.stringify({ error: 'Complete Virtual Girlfriend setup first.' }), { status: 400 });
   }

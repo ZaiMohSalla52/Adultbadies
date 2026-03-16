@@ -10,7 +10,7 @@ const appNavItems = [
   { label: 'Discovery', href: '/discovery' },
   { label: 'Matches', href: '/matches' },
   { label: 'Chats', href: '/chats' },
-  { label: 'Virtual Girlfriend', href: '/virtual-girlfriend/profile' },
+  { label: 'Virtual Girlfriend', href: '/virtual-girlfriend' },
   { label: 'Account', href: '/account' },
 ] as const;
 

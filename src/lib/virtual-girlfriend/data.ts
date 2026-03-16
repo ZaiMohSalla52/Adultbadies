@@ -55,10 +55,59 @@ export const getActiveVirtualGirlfriend = async (
   return rows[0] ?? null;
 };
 
+export const getVirtualGirlfriendCompanionById = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendCompanionRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+    searchParams: new URLSearchParams({
+      select: companionSelect,
+      user_id: `eq.${userId}`,
+      id: `eq.${companionId}`,
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
+};
+
+export const listVirtualGirlfriendCompanions = async (
+  token: string,
+  userId: string,
+): Promise<VirtualGirlfriendCompanionRecord[]> => {
+  return supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+    searchParams: new URLSearchParams({
+      select: companionSelect,
+      user_id: `eq.${userId}`,
+      order: 'is_active.desc,updated_at.desc',
+      limit: '24',
+    }),
+  });
+};
+
+export const setActiveVirtualGirlfriend = async (token: string, userId: string, companionId: string) => {
+  await supabaseRest('ai_companions', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ user_id: `eq.${userId}`, is_active: 'eq.true' }),
+    body: { is_active: false },
+    prefer: 'return=minimal',
+  });
+
+  await supabaseRest('ai_companions', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ user_id: `eq.${userId}`, id: `eq.${companionId}` }),
+    body: { is_active: true },
+    prefer: 'return=minimal',
+  });
+};
+
 export const upsertVirtualGirlfriend = async (
   token: string,
   input: {
     userId: string;
+    companionId?: string;
+    createNew?: boolean;
     name: string;
     bio: string;
     personaProfile: PersonaProfile;
@@ -70,7 +119,11 @@ export const upsertVirtualGirlfriend = async (
     profileTags?: string[];
   },
 ): Promise<VirtualGirlfriendCompanionRecord> => {
-  const existing = await getActiveVirtualGirlfriend(token, input.userId);
+  const existing = input.createNew
+    ? null
+    : input.companionId
+      ? await getVirtualGirlfriendCompanionById(token, input.userId, input.companionId)
+      : await getActiveVirtualGirlfriend(token, input.userId);
 
   if (existing) {
     const rows = await supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
@@ -94,6 +147,13 @@ export const upsertVirtualGirlfriend = async (
 
     return rows[0]!;
   }
+
+  await supabaseRest('ai_companions', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ user_id: `eq.${input.userId}`, is_active: 'eq.true' }),
+    body: { is_active: false },
+    prefer: 'return=minimal',
+  });
 
   const rows = await supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
     method: 'POST',
