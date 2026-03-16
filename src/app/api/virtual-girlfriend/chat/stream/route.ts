@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
+  getActiveVirtualGirlfriend,
+  getVirtualGirlfriendCompanionById,
   getLatestVisualProfileForCompanion,
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
@@ -12,7 +14,6 @@ import {
   recordRecalledVirtualGirlfriendMemories,
   retrieveRelevantVirtualGirlfriendMemories,
   touchVirtualGirlfriendConversation,
-  resolveVirtualGirlfriendCompanion,
 } from '@/lib/virtual-girlfriend/data';
 import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { generateVirtualGirlfriendReply } from '@/lib/virtual-girlfriend/orchestration';
@@ -29,12 +30,15 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json()) as { message?: string; companionId?: string };
   const message = String(body.message ?? '').trim();
+  const requestedCompanionId = String(body.companionId ?? '').trim();
 
   if (!message) {
     return new Response(JSON.stringify({ error: 'Message is required.' }), { status: 400 });
   }
 
-  const companion = await resolveVirtualGirlfriendCompanion(auth.accessToken, auth.user.id, body.companionId);
+  const companion = requestedCompanionId
+    ? await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
+    : await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
   if (!companion || !companion.setup_completed) {
     return new Response(JSON.stringify({ error: 'Complete Virtual Girlfriend setup first.' }), { status: 400 });
   }

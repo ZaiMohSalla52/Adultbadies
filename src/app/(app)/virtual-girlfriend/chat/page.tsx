@@ -5,20 +5,32 @@ import {
   getActiveVirtualGirlfriend,
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
+  getVirtualGirlfriendCompanionById,
   getVirtualGirlfriendMessages,
   getVirtualGirlfriendUserMessageCountForToday,
+  setActiveVirtualGirlfriend,
 } from '@/lib/virtual-girlfriend/data';
 import { VirtualGirlfriendChatClient } from '@/components/virtual-girlfriend/chat-client';
 import { processDueVirtualGirlfriendProactiveEvents } from '@/lib/virtual-girlfriend/proactive';
 
-export default async function VirtualGirlfriendChatPage() {
+export default async function VirtualGirlfriendChatPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ companionId?: string }>;
+}) {
   const auth = await getAuthenticatedUser();
 
   if (!auth.user || !auth.accessToken) {
     redirect('/sign-in');
   }
 
-  const companion = await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
+  const params = await searchParams;
+  const requestedCompanionId = params.companionId;
+
+  const companion = requestedCompanionId
+    ? await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
+    : await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
+
   if (!companion?.setup_completed) {
     redirect('/virtual-girlfriend/setup');
   }
@@ -40,6 +52,7 @@ export default async function VirtualGirlfriendChatPage() {
 
   return (
     <VirtualGirlfriendChatClient
+      companionId={companion.id}
       companionName={companion.name}
       disclosureLabel={companion.disclosure_label}
       initialMessages={messages}

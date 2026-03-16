@@ -289,4 +289,5 @@ export type VirtualGirlfriendSetupPayload = {
   affectionStyle: string;
   visualAesthetic: string;
   preferenceHints?: string;
+  createNew?: boolean;
 };
