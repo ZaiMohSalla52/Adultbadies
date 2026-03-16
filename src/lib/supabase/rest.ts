@@ -15,8 +15,9 @@ export const supabaseRest = async <T>(
     prefer?: string;
   },
 ): Promise<T> => {
+  const requestMethod = options?.method ?? 'GET';
   const response = await fetch(buildUrl(path, options?.searchParams), {
-    method: options?.method ?? 'GET',
+    method: requestMethod,
     headers: {
       apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       Authorization: `Bearer ${token}`,
@@ -36,5 +37,22 @@ export const supabaseRest = async <T>(
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  const rawBody = await response.text();
+
+  if (!rawBody.trim()) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(rawBody) as T;
+  } catch (error) {
+    console.error('Failed to parse Supabase REST JSON response.', {
+      path,
+      method: requestMethod,
+      status: response.status,
+      contentType: response.headers.get('content-type'),
+      bodyPreview: rawBody.slice(0, 200),
+    });
+    throw error;
+  }
 };
