@@ -5,6 +5,7 @@ import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendVisualProfileRecord,
 } from '@/lib/virtual-girlfriend/types';
+import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 
 export const VirtualGirlfriendProfileView = ({
   companion,
@@ -15,8 +16,9 @@ export const VirtualGirlfriendProfileView = ({
   visualProfile: VirtualGirlfriendVisualProfileRecord | null;
   images: VirtualGirlfriendCompanionImageRecord[];
 }) => {
-  const canonical = images.find((image) => image.image_kind === 'canonical') ?? null;
-  const gallery = images.filter((image) => image.image_kind === 'gallery');
+  const curated = curateVirtualGirlfriendImages(images);
+  const canonical = curated.canonical;
+  const gallery = curated.gallery;
   const profileDisclosure = companion.disclosure_label;
   const photoDisclosure = visualProfile ? 'AI-generated photos' : null;
 

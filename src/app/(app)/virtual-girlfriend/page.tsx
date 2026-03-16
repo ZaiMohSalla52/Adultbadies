@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { VirtualGirlfriendRosterHub } from '@/components/virtual-girlfriend/roster-hub';
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
+import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
+import type { VirtualGirlfriendCompanionStatus } from '@/lib/virtual-girlfriend/types';
 import {
   getActiveVirtualGirlfriend,
   getVirtualGirlfriendCompanionImages,
@@ -25,11 +27,23 @@ export default async function VirtualGirlfriendIndexPage() {
     redirect('/virtual-girlfriend/setup');
   }
 
+  const uniqueCompanions = Array.from(new Map(companions.map((companion) => [companion.id, companion])).values());
+
   const cards = await Promise.all(
-    companions.map(async (companion) => {
+    uniqueCompanions.map(async (companion) => {
       const images = await getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user!.id, companion.id);
-      const primary = images.find((image) => image.image_kind === 'canonical') ?? images[0] ?? null;
-      return { companion, image: primary };
+      const curated = curateVirtualGirlfriendImages(images);
+      const hasImages = Boolean(curated.canonical || curated.gallery.length);
+      const ageMs = Date.now() - new Date(companion.updated_at).getTime();
+      const staleWithoutImages = ageMs > 2 * 60 * 1000;
+      const status: VirtualGirlfriendCompanionStatus = !companion.setup_completed
+        ? 'generating'
+        : hasImages
+          ? 'ready'
+          : staleWithoutImages
+            ? 'failed'
+            : 'generating';
+      return { companion, image: curated.canonical, status };
     }),
   );
 

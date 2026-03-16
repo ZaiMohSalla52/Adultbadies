@@ -97,6 +97,8 @@ export type VirtualGirlfriendVisualProfileRecord = {
 
 export type VirtualGirlfriendImageKind = 'canonical' | 'gallery' | 'thumbnail';
 
+export type VirtualGirlfriendCompanionStatus = 'ready' | 'generating' | 'failed';
+
 export type VirtualGirlfriendCompanionImageRecord = {
   id: string;
   user_id: string;
