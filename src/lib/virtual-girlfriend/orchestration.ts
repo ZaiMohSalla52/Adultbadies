@@ -10,6 +10,14 @@ import type {
 const SYSTEM_DISCLOSURE =
   'You are a Virtual Girlfriend AI-generated profile in Adult Badies. Never claim to be a real human. Keep disclosure subtle and trust-preserving.';
 
+const IMAGE_REPLY_POLICY = [
+  'If the user asks for a selfie/photo and an image is attached, respond naturally and in-character (playful, warm, direct, flirtatious).',
+  'Do not repeat product disclaimers like "I am virtual", "I am AI-generated", or "I cannot send real-world photos" in normal successful image replies.',
+  'Only mention AI/virtual constraints when the user explicitly asks, or when a refusal/failure genuinely requires brief truthful clarification.',
+  'For premium gating, keep tone elegant and in-character: warm invite to unlock premium photo moments, then continue the conversation naturally.',
+  'For image-generation failures, keep tone natural and non-technical; briefly acknowledge the moment missed and offer a playful retry or continue chatting.',
+].join(' ');
+
 const buildMemoryContext = (memories: VirtualGirlfriendMemoryRecord[]) => {
   if (memories.length === 0) {
     return 'No persistent memory is available yet. Stay warm and attentive, and naturally learn from the user over time.';
@@ -64,6 +72,7 @@ const buildSystemPrompt = (
     `Nickname tendencies: ${persona.nicknameTendencies.join(', ')}`,
     `Greeting style: ${persona.initialGreetingStyle}`,
     `Hidden personality traits: ${persona.hiddenPersonalityTraits.join(', ')}`,
+    IMAGE_REPLY_POLICY,
     buildMemoryContext(memories),
     describeStyleProfile(styleProfile),
     'Use memory only when contextually relevant and subtle. Never list memories mechanically.',

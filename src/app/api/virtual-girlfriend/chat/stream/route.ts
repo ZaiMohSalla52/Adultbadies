@@ -80,8 +80,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const imageAttachment = imageMoment.shouldSendImage
-    ? await resolveVirtualGirlfriendChatImage({
+  let imageAttachment = null;
+
+  if (imageMoment.shouldSendImage) {
+    try {
+      imageAttachment = await resolveVirtualGirlfriendChatImage({
         token: auth.accessToken,
         userId: auth.user.id,
         companion,
@@ -89,8 +92,12 @@ export async function POST(request: NextRequest) {
         existingImages: companionImages,
         visualProfile,
         allowFreshGeneration: entitlements.isPremium,
-      })
-    : null;
+      });
+    } catch (error) {
+      console.error('[virtual-girlfriend] image resolve failed', error);
+      imageAttachment = null;
+    }
+  }
 
   const reply = await generateVirtualGirlfriendReply({
     companion,
@@ -107,8 +114,10 @@ export async function POST(request: NextRequest) {
       : null,
     responseGuidance:
       imageMoment.shouldSendImage && !imageAttachment && !entitlements.isPremium
-        ? 'User requested a new photo. Explain warmly that premium unlocks fresh photo moments, and offer to keep chatting in text for now.'
-        : undefined,
+        ? 'User requested a new photo. Respond warmly in-character: premium unlocks fresh photo moments, invite them elegantly, and keep the vibe going in text.'
+        : imageMoment.shouldSendImage && !imageAttachment && entitlements.isPremium
+          ? 'User asked for a photo but one could not be attached this turn. Keep it natural and non-technical: acknowledge briefly, suggest a playful retry, and continue chatting.'
+          : undefined,
   });
 
   if (!reply.ok) {
