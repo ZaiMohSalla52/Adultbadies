@@ -49,6 +49,19 @@ export async function POST(request: NextRequest) {
       return json({ error: 'Complete Virtual Girlfriend setup first.', code: 'VG_SETUP_REQUIRED' }, 400);
     }
 
+    if (companion.generation_status !== 'ready') {
+      return json(
+        {
+          error:
+            companion.generation_status === 'failed'
+              ? 'Voice is unavailable because this companion\'s image generation failed. Create or regenerate a ready companion first.'
+              : 'Voice unlocks once this companion finishes generation.',
+          code: 'VG_COMPANION_NOT_READY',
+        },
+        409,
+      );
+    }
+
     const [styleProfile, memories] = await Promise.all([
       getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
       retrieveRelevantVirtualGirlfriendMemories(auth.accessToken, {
