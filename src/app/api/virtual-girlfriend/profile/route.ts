@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import {
   getActiveVirtualGirlfriend,
@@ -7,7 +7,6 @@ import {
   getLatestVisualProfileForCompanion,
   getVirtualGirlfriendCompanionImages,
   listVirtualGirlfriends,
-  resolveVirtualGirlfriendCompanion,
 } from '@/lib/virtual-girlfriend/data';
 
 export async function GET(request: Request) {
@@ -16,6 +15,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const requestedCompanionId = searchParams.get('companionId')?.trim() ?? '';
+  const companions = await listVirtualGirlfriends(auth.accessToken, auth.user.id);
 
   const companion = requestedCompanionId
     ? await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)

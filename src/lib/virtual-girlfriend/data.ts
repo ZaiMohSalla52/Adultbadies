@@ -148,7 +148,7 @@ export const upsertVirtualGirlfriend = async (
     setActive?: boolean;
   },
 ): Promise<VirtualGirlfriendCompanionRecord> => {
-  const existing = input.createNew
+  const targetCompanion = input.createNew
     ? null
     : input.companionId
       ? await getVirtualGirlfriendCompanionById(token, input.userId, input.companionId)
@@ -175,7 +175,7 @@ export const upsertVirtualGirlfriend = async (
     });
 
     if (input.setActive ?? true) {
-      await setActiveVirtualGirlfriendCompanion(token, input.userId, targetCompanion.id);
+      await setActiveVirtualGirlfriend(token, input.userId, targetCompanion.id);
       return { ...rows[0]!, is_active: true };
     }
 
@@ -212,7 +212,7 @@ export const upsertVirtualGirlfriend = async (
 
   const created = rows[0]!;
   if (input.setActive ?? true) {
-    await setActiveVirtualGirlfriendCompanion(token, input.userId, created.id);
+    await setActiveVirtualGirlfriend(token, input.userId, created.id);
     return { ...created, is_active: true };
   }
 
