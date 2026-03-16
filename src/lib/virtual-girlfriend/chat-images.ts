@@ -1,0 +1,202 @@
+import crypto from 'node:crypto';
+import { generateImageWithOpenAI } from '@/lib/virtual-girlfriend/image-openai';
+import { uploadToCloudinary } from '@/lib/storage/cloudinary';
+import { uploadToR2 } from '@/lib/storage/r2';
+import { insertCompanionImages } from '@/lib/virtual-girlfriend/data';
+import type {
+  VirtualGirlfriendCompanionImageRecord,
+  VirtualGirlfriendCompanionRecord,
+  VirtualGirlfriendImageCategory,
+  VirtualGirlfriendMessageAttachment,
+  VirtualGirlfriendMessageRecord,
+  VirtualGirlfriendVisualProfileRecord,
+} from '@/lib/virtual-girlfriend/types';
+
+const CATEGORY_KEYWORDS: Record<VirtualGirlfriendImageCategory, RegExp> = {
+  selfie: /\bselfie|photo|pic|picture|look like\b/i,
+  casual: /\bcasual|chill|relaxed\b/i,
+  outfit: /\boutfit|dress|wearing|fit check\b/i,
+  indoor: /\bindoor|inside|at home|room\b/i,
+  'night-out': /\bnight ?out|party|club|evening\b/i,
+  'good-morning': /\bgood\s*morning|morning\b/i,
+  'good-night': /\bgood\s*night|night\b/i,
+  lifestyle: /\blifestyle|day|daily|vibe\b/i,
+};
+
+const IMAGE_REQUEST_PATTERN = /\b(send|show|share|drop).{0,20}\b(selfie|photo|pic|picture)|\bwhat do you look like\b/i;
+
+const hash = (input: string) => crypto.createHash('sha256').update(input).digest('hex');
+
+export const detectRequestedImageCategory = (message: string): VirtualGirlfriendImageCategory => {
+  const normalized = message.toLowerCase();
+  const matched = Object.entries(CATEGORY_KEYWORDS).find(([, pattern]) => pattern.test(normalized));
+  return (matched?.[0] as VirtualGirlfriendImageCategory | undefined) ?? 'selfie';
+};
+
+export const decideVirtualGirlfriendImageMoment = (input: {
+  userMessage: string;
+  history: VirtualGirlfriendMessageRecord[];
+  isPremium: boolean;
+}) => {
+  const directRequest = IMAGE_REQUEST_PATTERN.test(input.userMessage);
+  const lastAssistantImageAt = [...input.history]
+    .reverse()
+    .find((message) => message.role === 'assistant' && message.attachments?.some((a) => a.kind === 'image'));
+
+  const minutesSinceLastImage = lastAssistantImageAt
+    ? (Date.now() - new Date(lastAssistantImageAt.created_at).getTime()) / (1000 * 60)
+    : Infinity;
+
+  const contextualNudge = /\bmiss you|show me|need to see you|wish i could see you\b/i.test(input.userMessage);
+  const rateLimited = minutesSinceLastImage < 18;
+
+  if (directRequest && !rateLimited) {
+    return { shouldSendImage: true, category: detectRequestedImageCategory(input.userMessage), trigger: 'user-request' as const };
+  }
+
+  if (contextualNudge && input.isPremium && !rateLimited) {
+    return {
+      shouldSendImage: true,
+      category: detectRequestedImageCategory(input.userMessage),
+      trigger: 'contextual-initiative' as const,
+    };
+  }
+
+  return { shouldSendImage: false, category: detectRequestedImageCategory(input.userMessage), trigger: 'none' as const };
+};
+
+const pickReusableImage = (
+  category: VirtualGirlfriendImageCategory,
+  images: VirtualGirlfriendCompanionImageRecord[],
+): VirtualGirlfriendCompanionImageRecord | null => {
+  const chatCategoryImages = images.filter(
+    (image) => typeof image.lineage_metadata?.chatCategory === 'string' && image.lineage_metadata.chatCategory === category,
+  );
+
+  if (chatCategoryImages[0]) return chatCategoryImages[0];
+
+  const gallery = images.filter((image) => image.image_kind === 'gallery' || image.image_kind === 'canonical');
+  if (gallery[0]) return gallery[Math.floor(Math.random() * gallery.length)];
+
+  return null;
+};
+
+const buildChatImagePrompt = (input: {
+  companion: VirtualGirlfriendCompanionRecord;
+  visualProfile: VirtualGirlfriendVisualProfileRecord;
+  category: VirtualGirlfriendImageCategory;
+}) => {
+  const identityPack = input.visualProfile.identity_pack;
+
+  return [
+    `Generate a premium ${input.category} chat photo of the same single AI-generated woman identity named ${input.companion.name}.`,
+    `Continuity anchors: ${identityPack.continuityAnchors.join(', ')}.`,
+    `Core look descriptors: ${identityPack.coreLookDescriptors.join(', ')}.`,
+    `Framing: ${identityPack.portraitFramingStyle}.`,
+    `Wardrobe direction: ${identityPack.wardrobeDirection}.`,
+    `Lighting direction: ${identityPack.lightingMoodDirection}.`,
+    `Realism quality: ${identityPack.realismPolishLevel}.`,
+    `Aesthetic lineage: ${input.companion.visual_aesthetic ?? 'premium romantic portrait'}.`,
+    'App-safe, elegant, warm emotional tone. Adult woman only. Exactly one person.',
+    'No explicit nudity, no lingerie closeups, no transparent clothing, no suggestive sexual framing.',
+    `Avoid: ${identityPack.negativeConstraints.join(', ')}.`,
+  ].join(' ');
+};
+
+export const resolveVirtualGirlfriendChatImage = async (input: {
+  token: string;
+  userId: string;
+  companion: VirtualGirlfriendCompanionRecord;
+  category: VirtualGirlfriendImageCategory;
+  existingImages: VirtualGirlfriendCompanionImageRecord[];
+  visualProfile: VirtualGirlfriendVisualProfileRecord | null;
+  allowFreshGeneration: boolean;
+}): Promise<VirtualGirlfriendMessageAttachment | null> => {
+  const reusable = pickReusableImage(input.category, input.existingImages);
+  if (reusable) {
+    return {
+      kind: 'image',
+      category: input.category,
+      imageId: reusable.id,
+      imageUrl: reusable.delivery_url,
+      width: reusable.width,
+      height: reusable.height,
+      source: 'gallery-reuse',
+      promptHash: reusable.prompt_hash,
+    };
+  }
+
+  if (!input.allowFreshGeneration || !input.visualProfile) {
+    return null;
+  }
+
+  const prompt = buildChatImagePrompt({
+    companion: input.companion,
+    visualProfile: input.visualProfile,
+    category: input.category,
+  });
+
+  const generated = await generateImageWithOpenAI(prompt);
+  const promptHash = hash(`${input.visualProfile.prompt_hash}:${input.category}:${prompt}`);
+
+  const key = `virtual-girlfriend-images/${input.userId}/${input.companion.id}/${input.visualProfile.style_version}/chat-${input.category}-${Date.now()}.png`;
+  const r2 = await uploadToR2({
+    key,
+    body: generated.bytes,
+    contentType: generated.mimeType,
+  });
+
+  const cloudinary = await uploadToCloudinary({
+    bytes: generated.bytes,
+    mimeType: generated.mimeType,
+    folderPath: `${input.userId}/${input.companion.id}`,
+    publicId: `${input.visualProfile.style_version}-chat-${input.category}-${Date.now()}`,
+  });
+
+  const [inserted] = await insertCompanionImages(input.token, [
+    {
+      user_id: input.userId,
+      companion_id: input.companion.id,
+      visual_profile_id: input.visualProfile.id,
+      image_kind: 'gallery',
+      variant_index: Math.floor(Math.random() * 100000),
+      origin_storage_provider: r2.provider,
+      origin_storage_key: r2.key,
+      origin_mime_type: generated.mimeType,
+      origin_byte_size: generated.bytes.byteLength,
+      delivery_provider: cloudinary.provider,
+      delivery_public_id: cloudinary.publicId,
+      delivery_url: cloudinary.deliveryUrl,
+      width: cloudinary.width,
+      height: cloudinary.height,
+      prompt_hash: promptHash,
+      style_version: input.visualProfile.style_version,
+      seed_metadata: {},
+      lineage_metadata: {
+        revisedPrompt: generated.revisedPrompt ?? null,
+        chatCategory: input.category,
+        source: 'chat-phase5',
+      },
+      moderation_status: 'pending',
+      moderation: { provider: 'openai-image-default', phase: 'stage9-phase5' },
+      provenance: {
+        generatedBy: 'openai:gpt-image-1',
+        generatedAt: new Date().toISOString(),
+        originalStorage: 'cloudflare_r2',
+        delivery: 'cloudinary',
+      },
+      quality_score: 0.92,
+    },
+  ]);
+
+  return {
+    kind: 'image',
+    category: input.category,
+    imageId: inserted.id,
+    imageUrl: inserted.delivery_url,
+    width: inserted.width,
+    height: inserted.height,
+    source: 'fresh-generation',
+    promptHash,
+  };
+};

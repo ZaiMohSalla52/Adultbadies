@@ -32,3 +32,18 @@ export const moderateVirtualGirlfriendContent = (text: string) => {
 
   return { allowed: true, flags: {} };
 };
+
+const blockedImagePatterns = [/\bnude\b/i, /\bnaked\b/i, /\bexplicit\b/i, /\bnsfw\b/i, /\bsee your body\b/i];
+
+export const moderateVirtualGirlfriendImageRequest = (text: string) => {
+  const matched = blockedImagePatterns.find((pattern) => pattern.test(text));
+  if (matched) {
+    return {
+      allowed: false,
+      reason: 'I can share tasteful app-safe photos only.',
+      flags: { blockedImagePattern: matched.source },
+    };
+  }
+
+  return { allowed: true, flags: {} };
+};

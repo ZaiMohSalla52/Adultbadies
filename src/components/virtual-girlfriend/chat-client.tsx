@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import type { Entitlements } from '@/lib/subscriptions/types';
 import type {
   VirtualGirlfriendMessageRecord,
+  VirtualGirlfriendMessageAttachment,
   VirtualGirlfriendStyleControlPreset,
   VirtualGirlfriendUserStyleProfileRecord,
 } from '@/lib/virtual-girlfriend/types';
@@ -65,6 +67,8 @@ export const VirtualGirlfriendChatClient = ({
       moderation: {},
       model: null,
       token_count: null,
+      content_type: 'text',
+      attachments: [],
     };
 
     setMessages((prev) => [...prev, optimisticUser]);
@@ -84,35 +88,74 @@ export const VirtualGirlfriendChatClient = ({
     }
 
     const assistantTempId = `temp-assistant-${Date.now()}`;
+    const imageRequested = /\b(selfie|photo|pic|picture|look like)\b/i.test(text);
     setMessages((prev) => [
       ...prev,
       {
         id: assistantTempId,
         role: 'assistant',
-        content: '',
+        content: imageRequested ? 'Picking the perfect photo for you…' : '',
         conversation_id: 'temp',
         user_id: 'temp',
         created_at: new Date().toISOString(),
         moderation: {},
         model: null,
         token_count: null,
+        content_type: 'text',
+        attachments: [],
       },
     ]);
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let done = false;
+    let buffer = '';
 
     while (!done) {
       const next = await reader.read();
       done = next.done;
       if (next.value) {
-        const chunk = decoder.decode(next.value, { stream: true });
-        setMessages((prev) =>
-          prev.map((message) =>
-            message.id === assistantTempId ? { ...message, content: `${message.content}${chunk}` } : message,
-          ),
-        );
+        buffer += decoder.decode(next.value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const event = JSON.parse(line) as
+            | { type: 'chunk'; chunk: string }
+            | {
+                type: 'done';
+                payload: { content: string; contentType: 'text' | 'image' | 'mixed'; attachments: VirtualGirlfriendMessageAttachment[] };
+              };
+
+          if (event.type === 'chunk') {
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === assistantTempId
+                  ? {
+                      ...message,
+                      content: `${message.content === 'Picking the perfect photo for you…' ? '' : message.content}${event.chunk}`,
+                    }
+                  : message,
+              ),
+            );
+          }
+
+          if (event.type === 'done') {
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === assistantTempId
+                  ? {
+                      ...message,
+                      content: event.payload.content,
+                      content_type: event.payload.contentType,
+                      attachments: event.payload.attachments,
+                    }
+                  : message,
+              ),
+            );
+          }
+        }
       }
     }
 
@@ -195,7 +238,24 @@ export const VirtualGirlfriendChatClient = ({
             return (
               <div key={message.id} className={`chat-bubble-row ${isOwn ? 'chat-bubble-row-own' : ''}`}>
                 <div className={`chat-bubble ${isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}>
-                  <p className="my-0 whitespace-pre-wrap">{message.content}</p>
+                  {message.content ? <p className="my-0 whitespace-pre-wrap">{message.content}</p> : null}
+                  {message.attachments?.map((attachment) =>
+                    attachment.kind === 'image' ? (
+                      <div key={attachment.imageId} className="vg-image-card">
+                        <Image
+                          src={attachment.imageUrl}
+                          alt={`${companionName} ${attachment.category}`}
+                          className="vg-chat-image"
+                          width={attachment.width ?? 1024}
+                          height={attachment.height ?? 1024}
+                          unoptimized
+                        />
+                        <p className="my-0 text-xs text-muted capitalize">
+                          {attachment.category.replace('-', ' ')} • {attachment.source === 'fresh-generation' ? 'new photo' : 'gallery moment'}
+                        </p>
+                      </div>
+                    ) : null,
+                  )}
                   <p className="my-0 chat-bubble-meta">{isOwn ? 'You' : companionName}</p>
                 </div>
               </div>
