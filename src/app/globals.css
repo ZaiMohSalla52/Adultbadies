@@ -988,6 +988,100 @@ a {
   white-space: nowrap;
 }
 
+
+.matches-list-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.matches-unmatch-button {
+  min-height: 2.2rem;
+}
+
+.chat-thread-pill {
+  display: inline-flex;
+  margin-left: 0.45rem;
+  border: 1px solid rgba(236, 72, 153, 0.45);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f9a8d4;
+}
+
+.vg-premium-profile {
+  gap: 1rem;
+}
+
+.vg-hero-card {
+  display: grid;
+  gap: 0.9rem;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(236, 72, 153, 0.22), transparent 36%),
+    radial-gradient(circle at 80% 8%, rgba(139, 92, 246, 0.2), transparent 35%),
+    linear-gradient(145deg, rgba(13, 21, 45, 0.95), rgba(11, 18, 38, 0.85));
+  border: 1px solid rgba(236, 72, 153, 0.26);
+}
+
+.vg-hero-copy {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.vg-hero-name {
+  font-size: clamp(1.7rem, 3.6vw, 2.5rem);
+  line-height: 1.05;
+}
+
+.vg-hero-bio {
+  max-width: 45ch;
+}
+
+.vg-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.vg-hero-image-wrap {
+  position: relative;
+  aspect-ratio: 4/5;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 194, 0.3);
+}
+
+.vg-hero-image-empty {
+  border: 1px dashed rgba(148, 163, 194, 0.34);
+  border-radius: 16px;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.vg-section-heading {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.vg-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.vg-gallery-item {
+  position: relative;
+  aspect-ratio: 3/4;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 194, 0.24);
+}
+
 .matches-empty-state {
   border-radius: 16px;
   border: 1px dashed rgba(148, 163, 194, 0.35);
@@ -1309,6 +1403,17 @@ a {
 
   .chat-mobile-back {
     display: none;
+  }
+
+
+  .vg-hero-card {
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+    align-items: stretch;
+    gap: 1.1rem;
+  }
+
+  .vg-gallery-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .encounters-image-wrap {
