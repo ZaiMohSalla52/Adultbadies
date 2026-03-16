@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Avatar, ProfileMediaFrame } from '@/components/ui/avatar';
+import { CompanionRosterMedia } from '@/components/virtual-girlfriend/companion-roster-media';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { Entitlements } from '@/lib/subscriptions/types';
@@ -37,19 +37,7 @@ const CompanionCard = ({
 
   return (
     <article className={`vg-roster-card ${isActive ? 'vg-roster-card-active' : ''}`}>
-      <ProfileMediaFrame className="vg-roster-image-wrap">
-        <Avatar
-          name={companion.name}
-          imageUrl={image?.delivery_url}
-          kind="ai"
-          size="hero"
-          variant="rounded"
-          ring
-          isActive={isActive}
-          className="vg-roster-avatar"
-        />
-        {!image ? <div className="vg-roster-image-empty">Portrait preparing</div> : null}
-      </ProfileMediaFrame>
+      <CompanionRosterMedia name={companion.name} imageUrl={image?.delivery_url} isActive={isActive} status={status} />
 
       <div className="vg-roster-copy">
         <div className="vg-roster-meta-row">
@@ -68,12 +56,22 @@ const CompanionCard = ({
       </div>
 
       <div className="vg-roster-actions">
-        <Link href={`/virtual-girlfriend/profile?companionId=${companion.id}`} className="ui-button ui-button-ghost vg-secondary-action">
-          View profile
+        <Link href={`/virtual-girlfriend/chat?companionId=${companion.id}`} className="ui-button ui-button-primary">
+          Chat
         </Link>
-        <Button type="button" onClick={() => onSwitch(companion.id)} disabled={pending && pendingId === companion.id}>
-          {pending && pendingId === companion.id ? 'Switching…' : isActive ? 'Open active' : 'Make active'}
-        </Button>
+        <div className="vg-roster-secondary-actions">
+          <Link href={`/virtual-girlfriend/profile?companionId=${companion.id}`} className="ui-button ui-button-ghost vg-secondary-action">
+            View profile
+          </Link>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => onSwitch(companion.id)}
+            disabled={pending && pendingId === companion.id}
+          >
+            {pending && pendingId === companion.id ? 'Switching…' : isActive ? 'Open active' : 'Make active'}
+          </Button>
+        </div>
       </div>
     </article>
   );
@@ -126,7 +124,7 @@ export const VirtualGirlfriendRosterHub = ({
       <Card className="app-page-header vg-hub-header">
         <p className="chat-label">Virtual Girlfriend</p>
         <h1 className="my-0">Your companion library</h1>
-        <p className="my-0 text-muted">Browse distinct profiles, keep relationships separate, and switch who is active anytime.</p>
+        <p className="my-0 text-muted">Browse distinct profiles, jump straight into chat, and switch active companions anytime.</p>
         <p className="my-0 text-xs text-muted">
           {entitlements.isPremium
             ? 'Premium membership is active. Companion limits may expand over time.'
@@ -135,9 +133,10 @@ export const VirtualGirlfriendRosterHub = ({
       </Card>
 
       {activeItem ? (
-        <section className="vg-hub-section">
+        <section className="vg-hub-section vg-hub-section-active">
           <div className="vg-section-heading">
             <h2 className="my-0 text-base font-semibold">Active companion</h2>
+            <p className="my-0 text-xs text-muted">Your main relationship entry point. Continue the current storyline or switch when needed.</p>
           </div>
           <CompanionCard item={activeItem} isActive pending={pending} pendingId={pendingId} onSwitch={onSwitch} />
         </section>
@@ -146,7 +145,8 @@ export const VirtualGirlfriendRosterHub = ({
       {otherItems.length ? (
         <section className="vg-hub-section">
           <div className="vg-section-heading">
-            <h2 className="my-0 text-base font-semibold">Other available companions</h2>
+            <h2 className="my-0 text-base font-semibold">Other companions</h2>
+            <p className="my-0 text-xs text-muted">Every ready companion in your library, each with direct chat and profile actions.</p>
           </div>
           <div className="vg-roster-grid">
             {otherItems.map((item) => (
@@ -166,7 +166,8 @@ export const VirtualGirlfriendRosterHub = ({
       {pendingItems.length ? (
         <section className="vg-hub-section">
           <div className="vg-section-heading">
-            <h2 className="my-0 text-base font-semibold">Pending / generating</h2>
+            <h2 className="my-0 text-base font-semibold">Pending companions</h2>
+            <p className="my-0 text-xs text-muted">Companions still generating images or final setup assets.</p>
           </div>
           <div className="vg-roster-grid">
             {pendingItems.map((item) => (
@@ -183,9 +184,9 @@ export const VirtualGirlfriendRosterHub = ({
         </section>
       ) : null}
 
-      <Card className="app-surface-card">
+      <Card className="app-surface-card vg-create-cta-card">
         <h2 className="my-0 text-base font-semibold">Create another Virtual Girlfriend</h2>
-        <p className="my-0 text-sm text-muted">Build a separate companion record with its own profile, gallery, and memory timeline.</p>
+        <p className="my-0 text-sm text-muted">Start a distinct companion with separate personality, images, memory timeline, and relationship arc.</p>
         <Link href="/virtual-girlfriend/setup?new=1" className="ui-button ui-button-primary">
           Create another companion
         </Link>

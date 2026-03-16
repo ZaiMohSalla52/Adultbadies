@@ -207,7 +207,7 @@ export const generateVirtualGirlfriendProactiveMessage = async (input: {
       {
         role: 'system',
         content: [
-          buildSystemPrompt(input.companion, input.memories, input.styleProfile),
+          buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile, 'text'),
           'You are proactively initiating a new chat turn. This is premium relationship behavior: warm, restrained, contextual, and never spammy.',
           proactiveTriggerGuidance[input.triggerType],
           `Trigger type: ${input.triggerType}.`,
