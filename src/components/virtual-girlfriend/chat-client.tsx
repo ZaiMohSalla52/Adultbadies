@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import type { Entitlements } from '@/lib/subscriptions/types';
 import type {
@@ -187,30 +186,26 @@ export const VirtualGirlfriendChatClient = ({
 
   const helperText = useMemo(() => {
     if (limit === null) {
-      return 'Premium access active: expanded Virtual Girlfriend messaging.';
+      return 'Premium messages available today.';
     }
 
-    return `Free plan usage today: ${usedToday}/${limit} messages.`;
+    return `${usedToday}/${limit} messages today`;
   }, [limit, usedToday]);
 
   return (
-    <div className="app-page-stack">
-      <Card className="chat-conversation-header">
-        <div>
-          <p className="chat-label">Virtual Girlfriend Chat</p>
-          <h1 className="my-0">{companionName}</h1>
-          <p className="my-0 text-sm text-muted">{disclosureLabel} • AI-generated conversation</p>
-          <p className="my-0 text-xs text-muted">{helperText}</p>
+    <div className="chat-screen">
+      <header className="chat-conversation-header chat-conversation-header-refined">
+        <div className="chat-title-wrap">
+          <h1 className="my-0 chat-title">{companionName}</h1>
+          <p className="my-0 text-xs text-muted">{disclosureLabel}</p>
         </div>
-      </Card>
+        <p className="my-0 text-xs text-muted chat-usage-pill">{helperText}</p>
+      </header>
 
-      <Card>
-        <div className="space-y-3">
-          <div>
-            <p className="my-0 text-sm font-medium">Style controls</p>
-            <p className="my-0 text-xs text-muted">Steer her vibe while preserving identity consistency.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+      <section className="chat-style-controls">
+        <details>
+          <summary className="chat-style-summary">Tone preferences</summary>
+          <div className="chat-style-controls-grid">
             {STYLE_PRESETS.map((preset) => (
               <Button
                 key={preset.key}
@@ -222,16 +217,16 @@ export const VirtualGirlfriendChatClient = ({
                 {stylePending === preset.key ? 'Updating…' : preset.label}
               </Button>
             ))}
+            {!isPremium ? <p className="my-0 text-xs text-muted">Premium unlocks tone steering.</p> : null}
           </div>
-          {!isPremium ? <p className="my-0 text-xs text-muted">Premium unlock: adaptive style steering.</p> : null}
           <p className="my-0 text-xs text-muted">
-            Adaptive profile strength {Math.round(styleProfile.adaptation_strength * 100)}% • stability{' '}
+            Adaptation {Math.round(styleProfile.adaptation_strength * 100)}% • stability{' '}
             {Math.round(styleProfile.stability_score * 100)}%
           </p>
-        </div>
-      </Card>
+        </details>
+      </section>
 
-      <Card className="chat-messages-panel">
+      <section className="chat-messages-panel chat-messages-panel-refined">
         <div className="chat-thread">
           {messages.map((message) => {
             const isOwn = message.role === 'user';
@@ -262,12 +257,12 @@ export const VirtualGirlfriendChatClient = ({
             );
           })}
         </div>
-      </Card>
+      </section>
 
-      <Card>
+      <section className="chat-composer-shell">
         {reachedLimit ? (
           <div className="space-y-3">
-            <p className="my-0 text-sm">You reached today&apos;s free Virtual Girlfriend message limit.</p>
+            <p className="my-0 text-sm">You reached today&apos;s free message limit.</p>
             <div className="flex gap-3">
               <Link href="/premium" className="ui-button">
                 Upgrade to Premium
@@ -285,14 +280,15 @@ export const VirtualGirlfriendChatClient = ({
               placeholder={`Message ${companionName}...`}
               rows={3}
               maxLength={2500}
+              className="chat-composer-input"
             />
             {error ? <p className="onboarding-error my-0">{error}</p> : null}
-            <Button type="button" disabled={pending || !draft.trim()} onClick={send}>
+            <Button type="button" disabled={pending || !draft.trim()} onClick={send} className="chat-send-button">
               {pending ? 'She is typing…' : 'Send'}
             </Button>
           </div>
         )}
-      </Card>
+      </section>
     </div>
   );
 };
