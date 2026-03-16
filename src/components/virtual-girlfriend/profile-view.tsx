@@ -4,6 +4,7 @@ import type {
   VirtualGirlfriendCompanionImageRecord,
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendVisualProfileRecord,
+  VirtualGirlfriendCompanionStatus,
 } from '@/lib/virtual-girlfriend/types';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 
@@ -11,16 +12,25 @@ export const VirtualGirlfriendProfileView = ({
   companion,
   visualProfile,
   images,
+  status,
 }: {
   companion: VirtualGirlfriendCompanionRecord;
   visualProfile: VirtualGirlfriendVisualProfileRecord | null;
   images: VirtualGirlfriendCompanionImageRecord[];
+  status: VirtualGirlfriendCompanionStatus;
 }) => {
   const curated = curateVirtualGirlfriendImages(images);
   const canonical = curated.canonical;
   const gallery = curated.gallery;
   const profileDisclosure = companion.disclosure_label;
   const photoDisclosure = visualProfile ? 'AI-generated photos' : null;
+
+  const statusMessage =
+    status === 'generating'
+      ? 'Her profile is still generating. Photos may appear in a moment.'
+      : status === 'failed'
+        ? 'Photo generation failed for this profile. You can still chat or create another companion.'
+        : null;
 
   return (
     <div className="app-page-stack vg-premium-profile">
@@ -40,6 +50,7 @@ export const VirtualGirlfriendProfileView = ({
             <span>{profileDisclosure}</span>
             {photoDisclosure ? <span>{photoDisclosure}</span> : null}
           </p>
+          {statusMessage ? <p className="my-0 text-xs text-muted">{statusMessage}</p> : null}
           <div className="vg-hero-actions">
             <Link href={`/virtual-girlfriend/chat?companionId=${companion.id}`} className="ui-button ui-button-primary">
               Chat now

@@ -50,6 +50,8 @@ export type PersonaProfile = {
   vibeTags: string[];
 };
 
+export type VirtualGirlfriendGenerationStatus = 'generating' | 'ready' | 'failed';
+
 export type VirtualGirlfriendCompanionRecord = {
   id: string;
   user_id: string;
@@ -63,6 +65,7 @@ export type VirtualGirlfriendCompanionRecord = {
   preference_hints: string | null;
   profile_tags: string[] | null;
   setup_completed: boolean;
+  generation_status: VirtualGirlfriendGenerationStatus;
   disclosure_label: string;
   is_active: boolean;
   created_at: string;

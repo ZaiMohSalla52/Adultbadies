@@ -33,16 +33,18 @@ export default async function VirtualGirlfriendIndexPage() {
     uniqueCompanions.map(async (companion) => {
       const images = await getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user!.id, companion.id);
       const curated = curateVirtualGirlfriendImages(images);
+      const explicitStatus = companion.generation_status;
       const hasImages = Boolean(curated.canonical || curated.gallery.length);
       const ageMs = Date.now() - new Date(companion.updated_at).getTime();
       const staleWithoutImages = ageMs > 2 * 60 * 1000;
-      const status: VirtualGirlfriendCompanionStatus = !companion.setup_completed
+      const fallbackStatus: VirtualGirlfriendCompanionStatus = !companion.setup_completed
         ? 'generating'
         : hasImages
           ? 'ready'
           : staleWithoutImages
             ? 'failed'
             : 'generating';
+      const status: VirtualGirlfriendCompanionStatus = explicitStatus ?? fallbackStatus;
       return { companion, image: curated.canonical, status };
     }),
   );
