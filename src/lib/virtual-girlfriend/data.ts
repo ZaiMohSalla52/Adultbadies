@@ -12,6 +12,9 @@ import type {
   VirtualGirlfriendCompanionImageRecord,
   VirtualGirlfriendUserStyleDimensions,
   VirtualGirlfriendUserStyleProfileRecord,
+  VirtualGirlfriendProactiveDeliveryStatus,
+  VirtualGirlfriendProactiveEventRecord,
+  VirtualGirlfriendProactiveTriggerType,
 } from '@/lib/virtual-girlfriend/types';
 
 const companionSelect =
@@ -27,6 +30,9 @@ const companionImageSelect =
 
 const userStyleSelect =
   'id,user_id,companion_id,verbosity_preference,emoji_tone,flirt_intensity_preference,warmth_reassurance_preference,conversational_pacing_preference,directness_preference,playful_serious_balance,conversational_energy,adaptation_strength,stability_score,signals,explicit_overrides,last_learned_at,created_at,updated_at';
+
+const proactiveEventSelect =
+  'id,user_id,companion_id,trigger_type,scheduled_at,delivery_status,context_snapshot,delivered_at,delivered_message_id,last_error,created_at,updated_at';
 
 const tokenize = (input: string) =>
   input
@@ -585,6 +591,144 @@ export const patchVirtualGirlfriendUserStyleProfile = async (
     method: 'PATCH',
     searchParams: new URLSearchParams({ user_id: `eq.${input.userId}`, companion_id: `eq.${input.companionId}` }),
     body,
+    prefer: 'return=representation',
+  });
+
+  return rows[0]!;
+};
+
+
+export const listPendingVirtualGirlfriendProactiveEvents = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendProactiveEventRecord[]> => {
+  return supabaseRest<VirtualGirlfriendProactiveEventRecord[]>('ai_proactive_events', token, {
+    searchParams: new URLSearchParams({
+      select: proactiveEventSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      delivery_status: 'eq.pending',
+      order: 'scheduled_at.asc',
+      limit: '10',
+    }),
+  });
+};
+
+export const listDueVirtualGirlfriendProactiveEvents = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendProactiveEventRecord[]> => {
+  return supabaseRest<VirtualGirlfriendProactiveEventRecord[]>('ai_proactive_events', token, {
+    searchParams: new URLSearchParams({
+      select: proactiveEventSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      delivery_status: 'eq.pending',
+      scheduled_at: `lte.${new Date().toISOString()}`,
+      order: 'scheduled_at.asc',
+      limit: '3',
+    }),
+  });
+};
+
+export const createVirtualGirlfriendProactiveEvent = async (
+  token: string,
+  input: {
+    userId: string;
+    companionId: string;
+    triggerType: VirtualGirlfriendProactiveTriggerType;
+    scheduledAt: string;
+    contextSnapshot: Record<string, unknown>;
+  },
+): Promise<VirtualGirlfriendProactiveEventRecord> => {
+  const rows = await supabaseRest<VirtualGirlfriendProactiveEventRecord[]>('ai_proactive_events', token, {
+    method: 'POST',
+    body: {
+      user_id: input.userId,
+      companion_id: input.companionId,
+      trigger_type: input.triggerType,
+      scheduled_at: input.scheduledAt,
+      context_snapshot: input.contextSnapshot,
+      delivery_status: 'pending',
+    },
+    prefer: 'return=representation',
+  });
+
+  return rows[0]!;
+};
+
+export const markVirtualGirlfriendProactiveEventStatus = async (
+  token: string,
+  input: {
+    eventId: string;
+    userId: string;
+    status: VirtualGirlfriendProactiveDeliveryStatus;
+    deliveredAt?: string | null;
+    deliveredMessageId?: string | null;
+    lastError?: string | null;
+  },
+) => {
+  const body: Record<string, unknown> = { delivery_status: input.status };
+
+  if (typeof input.deliveredAt !== 'undefined') body.delivered_at = input.deliveredAt;
+  if (typeof input.deliveredMessageId !== 'undefined') body.delivered_message_id = input.deliveredMessageId;
+  if (typeof input.lastError !== 'undefined') body.last_error = input.lastError;
+
+  await supabaseRest('ai_proactive_events', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ id: `eq.${input.eventId}`, user_id: `eq.${input.userId}` }),
+    body,
+    prefer: 'return=minimal',
+  });
+};
+
+export const getLatestDeliveredVirtualGirlfriendProactiveEvent = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendProactiveEventRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendProactiveEventRecord[]>('ai_proactive_events', token, {
+    searchParams: new URLSearchParams({
+      select: proactiveEventSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      delivery_status: 'eq.delivered',
+      order: 'delivered_at.desc,created_at.desc',
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
+};
+
+
+export const insertVirtualGirlfriendMessageReturningId = async (
+  token: string,
+  message: {
+    conversationId: string;
+    userId: string;
+    role: 'user' | 'assistant';
+    content: string;
+    model?: string;
+    moderation?: Record<string, unknown>;
+    contentType?: 'text' | 'image' | 'mixed';
+    attachments?: VirtualGirlfriendMessageAttachment[];
+  },
+): Promise<{ id: string }> => {
+  const rows = await supabaseRest<{ id: string }[]>('ai_messages', token, {
+    method: 'POST',
+    body: {
+      conversation_id: message.conversationId,
+      user_id: message.userId,
+      role: message.role,
+      content: message.content,
+      model: message.model ?? null,
+      moderation: message.moderation ?? {},
+      content_type: message.contentType ?? 'text',
+      attachments: message.attachments ?? [],
+    },
     prefer: 'return=representation',
   });
 

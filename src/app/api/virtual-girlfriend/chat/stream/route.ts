@@ -19,6 +19,7 @@ import { generateVirtualGirlfriendReply } from '@/lib/virtual-girlfriend/orchest
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
 import { decideVirtualGirlfriendImageMoment, resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
+import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
 
 const encoder = new TextEncoder();
 
@@ -173,6 +174,13 @@ export async function POST(request: NextRequest) {
       candidates,
     });
   }
+
+  await maybeScheduleVirtualGirlfriendProactiveEvent({
+    token: auth.accessToken,
+    userId: auth.user.id,
+    companion,
+    latestUserMessage: message,
+  });
 
   const chunks = reply.assistantText.split(/(\s+)/).filter(Boolean);
 
