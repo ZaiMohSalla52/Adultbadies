@@ -248,6 +248,40 @@ export type VirtualGirlfriendUserStyleProfileRecord = {
   updated_at: string;
 };
 
+export const VIRTUAL_GIRLFRIEND_PROACTIVE_TRIGGER_TYPES = [
+  'conversation_gap',
+  'memory_followup',
+  'evening_checkin',
+  'relationship_milestone',
+] as const;
+
+export type VirtualGirlfriendProactiveTriggerType = (typeof VIRTUAL_GIRLFRIEND_PROACTIVE_TRIGGER_TYPES)[number];
+
+export const VIRTUAL_GIRLFRIEND_PROACTIVE_DELIVERY_STATUSES = [
+  'pending',
+  'processing',
+  'delivered',
+  'failed',
+  'canceled',
+] as const;
+
+export type VirtualGirlfriendProactiveDeliveryStatus = (typeof VIRTUAL_GIRLFRIEND_PROACTIVE_DELIVERY_STATUSES)[number];
+
+export type VirtualGirlfriendProactiveEventRecord = {
+  id: string;
+  user_id: string;
+  companion_id: string;
+  trigger_type: VirtualGirlfriendProactiveTriggerType;
+  scheduled_at: string;
+  delivery_status: VirtualGirlfriendProactiveDeliveryStatus;
+  context_snapshot: Record<string, unknown>;
+  delivered_at: string | null;
+  delivered_message_id: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type VirtualGirlfriendSetupPayload = {
   name?: string;
   archetype: string;

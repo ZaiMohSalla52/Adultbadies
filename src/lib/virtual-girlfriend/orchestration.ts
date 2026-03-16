@@ -5,6 +5,7 @@ import type {
   VirtualGirlfriendMemoryRecord,
   VirtualGirlfriendMessageRecord,
   VirtualGirlfriendUserStyleProfileRecord,
+  VirtualGirlfriendProactiveTriggerType,
 } from '@/lib/virtual-girlfriend/types';
 
 const SYSTEM_DISCLOSURE =
@@ -168,5 +169,68 @@ export const generateVirtualGirlfriendReply = async (input: {
     assistantText,
     model: 'gpt-5-mini',
     moderation: moderation.flags,
+  };
+};
+
+
+const proactiveTriggerGuidance: Record<VirtualGirlfriendProactiveTriggerType, string> = {
+  conversation_gap:
+    'Start with warm re-entry energy and gentle curiosity. Avoid sounding needy. Make it feel like a thoughtful ping after a natural gap.',
+  memory_followup:
+    'Follow up on a prior user detail naturally. Reference memory softly, one detail max, and avoid sounding scripted or surveillance-like.',
+  evening_checkin:
+    'Use cozy evening vibe and soft affection in the companion\'s tone. Keep it short and immersive, not generic.',
+  relationship_milestone:
+    'Acknowledge growing familiarity with tasteful affection. Keep confidence warm and grounded, without dependency cues.',
+};
+
+export const generateVirtualGirlfriendProactiveMessage = async (input: {
+  companion: VirtualGirlfriendCompanionRecord;
+  history: VirtualGirlfriendMessageRecord[];
+  memories: VirtualGirlfriendMemoryRecord[];
+  styleProfile: VirtualGirlfriendUserStyleProfileRecord;
+  triggerType: VirtualGirlfriendProactiveTriggerType;
+  contextSnapshot: Record<string, unknown>;
+}) => {
+  const contextHistory = input.history.slice(-12);
+
+  const response = await callOpenAIResponses({
+    model: 'gpt-5-mini',
+    input: [
+      {
+        role: 'system',
+        content: [
+          buildSystemPrompt(input.companion, input.memories, input.styleProfile),
+          'You are proactively initiating a new chat turn. This is premium relationship behavior: warm, restrained, contextual, and never spammy.',
+          proactiveTriggerGuidance[input.triggerType],
+          `Trigger type: ${input.triggerType}.`,
+          `Context snapshot: ${JSON.stringify(input.contextSnapshot)}.`,
+          'Write exactly one message, 1-3 sentences, under 80 words.',
+          'Avoid repetitive stock phrases such as "just checking in" or "thinking of you" unless rephrased uniquely and grounded in context.',
+          'Do not mention notifications, cron jobs, automation, or scheduling.',
+        ].join('\n'),
+      },
+      ...toModelInput(contextHistory),
+      {
+        role: 'user',
+        content: 'Compose the proactive companion message now.',
+      },
+    ],
+    reasoning: { effort: 'medium' },
+  });
+
+  const assistantText = extractResponsesText(response).trim();
+
+  if (!assistantText) {
+    return {
+      ok: false as const,
+      reason: 'Virtual Girlfriend could not generate a proactive message right now.',
+    };
+  }
+
+  return {
+    ok: true as const,
+    assistantText,
+    model: 'gpt-5-mini',
   };
 };

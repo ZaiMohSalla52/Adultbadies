@@ -11,6 +11,7 @@ import {
   setActiveVirtualGirlfriend,
 } from '@/lib/virtual-girlfriend/data';
 import { VirtualGirlfriendChatClient } from '@/components/virtual-girlfriend/chat-client';
+import { processDueVirtualGirlfriendProactiveEvents } from '@/lib/virtual-girlfriend/proactive';
 
 export default async function VirtualGirlfriendChatPage({
   searchParams,
@@ -34,9 +35,11 @@ export default async function VirtualGirlfriendChatPage({
     redirect('/virtual-girlfriend/setup');
   }
 
-  if (!companion.is_active) {
-    await setActiveVirtualGirlfriend(auth.accessToken, auth.user.id, companion.id);
-  }
+  await processDueVirtualGirlfriendProactiveEvents({
+    token: auth.accessToken,
+    userId: auth.user.id,
+    companion,
+  });
 
   const [conversation, entitlements, usedToday, styleProfile] = await Promise.all([
     getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id),
