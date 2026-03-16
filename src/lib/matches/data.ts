@@ -1,3 +1,4 @@
+import { env } from '@/lib/env';
 import { getBlockedUserIds } from '@/lib/safety/data';
 import { supabaseRest } from '@/lib/supabase/rest';
 import type { ChatThreadItem, Conversation, MatchListItem, MatchRecord, MessageRecord, ProfilePreview } from '@/lib/matches/types';
@@ -5,7 +6,11 @@ import type { ChatThreadItem, Conversation, MatchListItem, MatchRecord, MessageR
 const EMPTY_OTHER_USER: ProfilePreview = {
   id: '',
   display_name: null,
+  avatar_url: null,
 };
+
+const toPhotoUrl = (storagePath: string) =>
+  `${env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/profile-photos/${storagePath}`;
 
 const getOtherUserId = (match: MatchRecord, userId: string) =>
   match.user_a_id === userId ? match.user_b_id : match.user_a_id;
@@ -21,8 +26,25 @@ const getProfilesByIds = async (token: string, userIds: string[]): Promise<Map<s
     id: `in.(${uniqueUserIds.join(',')})`,
   });
 
-  const rows = await supabaseRest<ProfilePreview[]>('profiles', token, { searchParams: query });
-  return new Map(rows.map((profile) => [profile.id, profile]));
+  const [rows, photos] = await Promise.all([
+    supabaseRest<ProfilePreview[]>('profiles', token, { searchParams: query }),
+    supabaseRest<Array<{ user_id: string; storage_path: string }>>('profile_photos', token, {
+      searchParams: new URLSearchParams({
+        select: 'user_id,storage_path',
+        user_id: `in.(${uniqueUserIds.join(',')})`,
+        is_primary: 'eq.true',
+      }),
+    }),
+  ]);
+
+  const photoByUserId = new Map(photos.map((photo) => [photo.user_id, toPhotoUrl(photo.storage_path)]));
+
+  return new Map(
+    rows.map((profile) => [
+      profile.id,
+      { ...profile, avatar_url: photoByUserId.get(profile.id) ?? null },
+    ]),
+  );
 };
 
 export const getMatchList = async (token: string, userId: string): Promise<MatchListItem[]> => {
@@ -80,6 +102,7 @@ export const getMatchList = async (token: string, userId: string): Promise<Match
         matchCreatedAt: match.created_at,
         lastMessageBody: latestMessage?.body ?? null,
         lastMessageAt,
+        avatarUrl: profile.avatar_url,
       };
     })
     .sort((a, b) => (a.lastMessageAt > b.lastMessageAt ? -1 : 1));
@@ -209,5 +232,6 @@ export const getHumanChatThreads = async (token: string, userId: string): Promis
     kind: 'human',
     lastActivityAt: match.lastMessageAt,
     preview: match.lastMessageBody,
+    avatarUrl: match.avatarUrl,
   }));
 };

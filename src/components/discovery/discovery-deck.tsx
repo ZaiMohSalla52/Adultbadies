@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { Avatar, ProfileMediaFrame } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -149,13 +151,13 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
             </Card>
           ) : (
             <Card className="discovery-card-enter encounters-card">
-              <div className="encounters-image-wrap">
+              <ProfileMediaFrame className="encounters-image-wrap">
                 {currentCandidate.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={currentCandidate.photoUrl} alt={currentCandidate.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <Image src={currentCandidate.photoUrl} alt={currentCandidate.displayName} fill className="avatar-image" unoptimized priority />
                 ) : (
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>
-                    No photo uploaded
+                  <div className="encounters-avatar-fallback">
+                    <Avatar name={currentCandidate.displayName} size="xl" ring />
+                    <p className="my-0 text-sm text-muted">No photo uploaded</p>
                   </div>
                 )}
                 <div className="encounters-overlay">
@@ -167,7 +169,7 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday }: 
                   <p style={{ margin: '0.15rem 0', color: 'var(--text-muted)' }}>{currentCandidate.location}</p>
                   {currentCandidate.bio ? <p style={{ margin: 0, fontSize: '0.92rem' }}>{currentCandidate.bio}</p> : null}
                 </div>
-              </div>
+              </ProfileMediaFrame>
             </Card>
           )}
 

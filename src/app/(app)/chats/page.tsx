@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { getHumanChatThreads } from '@/lib/matches/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import {
   getActiveVirtualGirlfriend,
   getLatestVirtualGirlfriendConversation,
+  getVirtualGirlfriendCompanionImages,
   getVirtualGirlfriendMessages,
 } from '@/lib/virtual-girlfriend/data';
+import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import type { ChatThreadItem } from '@/lib/matches/types';
 
 const formatDate = (value: string) =>
@@ -34,7 +37,11 @@ export default async function ChatsPage() {
     const conversation = await getLatestVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
 
     if (conversation) {
-      const messages = await getVirtualGirlfriendMessages(auth.accessToken, conversation.id);
+      const [messages, companionImages] = await Promise.all([
+        getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
+        getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
+      ]);
+      const curated = curateVirtualGirlfriendImages(companionImages);
       const latestMessage = messages.at(-1) ?? null;
 
       virtualThread = {
@@ -44,6 +51,7 @@ export default async function ChatsPage() {
         kind: 'virtual_girlfriend',
         lastActivityAt: latestMessage?.created_at ?? conversation.last_message_at ?? conversation.updated_at,
         preview: latestMessage?.content ?? null,
+        avatarUrl: curated.canonical?.delivery_url ?? null,
       };
     }
   }
@@ -70,6 +78,16 @@ export default async function ChatsPage() {
           <div className="matches-list-items" role="list" aria-label="Chats">
             {threads.map((thread) => (
               <Link key={`${thread.kind}-${thread.id}`} href={thread.href} className="matches-list-item" role="listitem">
+                <div className="matches-list-row">
+                  <Avatar
+                    name={thread.title}
+                    imageUrl={thread.avatarUrl}
+                    kind={thread.kind === 'virtual_girlfriend' ? 'ai' : 'human'}
+                    size="lg"
+                    ring
+                    isActive={thread.kind === 'virtual_girlfriend'}
+                  />
+                  <div className="matches-list-main">
                 <div className="matches-list-item-top">
                   <p className="my-0 matches-list-name">
                     {thread.title}
@@ -78,6 +96,8 @@ export default async function ChatsPage() {
                   <span className="matches-list-time">{formatDate(thread.lastActivityAt)}</span>
                 </div>
                 <p className="my-0 matches-list-preview">{thread.preview ?? 'No messages yet.'}</p>
+                  </div>
+                </div>
               </Link>
             ))}
           </div>

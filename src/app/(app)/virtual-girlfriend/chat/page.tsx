@@ -6,12 +6,13 @@ import {
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
   getVirtualGirlfriendCompanionById,
+  getVirtualGirlfriendCompanionImages,
   getVirtualGirlfriendMessages,
   getVirtualGirlfriendUserMessageCountForToday,
-  setActiveVirtualGirlfriend,
 } from '@/lib/virtual-girlfriend/data';
 import { VirtualGirlfriendChatClient } from '@/components/virtual-girlfriend/chat-client';
 import { processDueVirtualGirlfriendProactiveEvents } from '@/lib/virtual-girlfriend/proactive';
+import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 
 export default async function VirtualGirlfriendChatPage({
   searchParams,
@@ -48,12 +49,17 @@ export default async function VirtualGirlfriendChatPage({
     getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
   ]);
 
-  const messages = await getVirtualGirlfriendMessages(auth.accessToken, conversation.id);
+  const [messages, companionImages] = await Promise.all([
+    getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
+    getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
+  ]);
+  const curated = curateVirtualGirlfriendImages(companionImages);
 
   return (
     <VirtualGirlfriendChatClient
       companionId={companion.id}
       companionName={companion.name}
+      companionAvatarUrl={curated.canonical?.delivery_url ?? null}
       disclosureLabel={companion.disclosure_label}
       initialMessages={messages}
       entitlements={entitlements}

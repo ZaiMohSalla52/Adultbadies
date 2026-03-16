@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { Avatar, ProfileMediaFrame } from '@/components/ui/avatar';
 import type {
   VirtualGirlfriendCompanionImageRecord,
   VirtualGirlfriendCompanionRecord,
@@ -36,9 +37,9 @@ export const VirtualGirlfriendProfileView = ({
     <div className="app-page-stack vg-premium-profile">
       <section className="vg-hero-card">
         {canonical ? (
-          <div className="vg-hero-image-wrap">
-            <Image src={canonical.delivery_url} alt={`${companion.name} portrait`} fill className="object-cover" priority />
-          </div>
+          <ProfileMediaFrame className="vg-hero-image-wrap">
+            <Avatar name={companion.name} imageUrl={canonical.delivery_url} kind="ai" size="hero" variant="rounded" ring className="vg-hero-avatar" />
+          </ProfileMediaFrame>
         ) : (
           <div className="vg-hero-image-empty">Her profile portrait is being prepared. Check back in a moment.</div>
         )}

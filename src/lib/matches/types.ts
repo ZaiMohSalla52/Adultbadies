@@ -19,6 +19,7 @@ export type MessageRecord = {
 export type ProfilePreview = {
   id: string;
   display_name: string | null;
+  avatar_url: string | null;
 };
 
 export type MatchListItem = {
@@ -28,6 +29,7 @@ export type MatchListItem = {
   matchCreatedAt: string;
   lastMessageBody: string | null;
   lastMessageAt: string;
+  avatarUrl: string | null;
 };
 
 export type Conversation = {
@@ -43,4 +45,5 @@ export type ChatThreadItem = {
   kind: 'human' | 'virtual_girlfriend';
   lastActivityAt: string;
   preview: string | null;
+  avatarUrl?: string | null;
 };

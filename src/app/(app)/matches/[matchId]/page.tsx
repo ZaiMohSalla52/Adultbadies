@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { getConversation, getMatchList, sendConversationMessage } from '@/lib/matches/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
@@ -60,10 +61,19 @@ export default async function MatchConversationPage({ params }: { params: Promis
 
       <section className="chat-conversation-panel">
         <Card className="chat-conversation-header">
-          <div>
-            <p className="chat-label">Conversation</p>
-            <h1 className="my-0">{conversation.otherUser.display_name ?? 'Unnamed user'}</h1>
-            <p className="my-0 text-sm text-muted">Private and encrypted conversation thread.</p>
+          <div className="chat-title-wrap">
+            <Avatar
+              name={conversation.otherUser.display_name ?? 'Unnamed user'}
+              imageUrl={conversation.otherUser.avatar_url}
+              size="lg"
+              ring
+              isActive
+            />
+            <div>
+              <p className="chat-label">Conversation</p>
+              <h1 className="my-0">{conversation.otherUser.display_name ?? 'Unnamed user'}</h1>
+              <p className="my-0 text-sm text-muted">Private and encrypted conversation thread.</p>
+            </div>
           </div>
           <Link className="ui-button ui-button-ghost chat-mobile-back" href="/matches">
             Back
