@@ -69,6 +69,61 @@ export type VirtualGirlfriendCompanionRecord = {
   updated_at: string;
 };
 
+export type VirtualGirlfriendVisualIdentityPack = {
+  coreLookDescriptors: string[];
+  portraitFramingStyle: string;
+  wardrobeDirection: string;
+  lightingMoodDirection: string;
+  realismPolishLevel: string;
+  continuityAnchors: string[];
+  negativeConstraints: string[];
+};
+
+export type VirtualGirlfriendVisualProfileRecord = {
+  id: string;
+  user_id: string;
+  companion_id: string;
+  profile_version: string;
+  style_version: string;
+  prompt_hash: string;
+  source_setup: Record<string, unknown>;
+  identity_pack: VirtualGirlfriendVisualIdentityPack;
+  continuity_notes: string | null;
+  moderation_status: string;
+  provenance: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type VirtualGirlfriendImageKind = 'canonical' | 'gallery' | 'thumbnail';
+
+export type VirtualGirlfriendCompanionImageRecord = {
+  id: string;
+  user_id: string;
+  companion_id: string;
+  visual_profile_id: string;
+  image_kind: VirtualGirlfriendImageKind;
+  variant_index: number;
+  origin_storage_provider: string;
+  origin_storage_key: string;
+  origin_mime_type: string | null;
+  origin_byte_size: number | null;
+  delivery_provider: string;
+  delivery_public_id: string | null;
+  delivery_url: string;
+  width: number | null;
+  height: number | null;
+  prompt_hash: string;
+  style_version: string;
+  seed_metadata: Record<string, unknown>;
+  lineage_metadata: Record<string, unknown>;
+  moderation_status: string;
+  moderation: Record<string, unknown>;
+  provenance: Record<string, unknown>;
+  quality_score: number | null;
+  created_at: string;
+};
+
 export type VirtualGirlfriendConversationRecord = {
   id: string;
   user_id: string;

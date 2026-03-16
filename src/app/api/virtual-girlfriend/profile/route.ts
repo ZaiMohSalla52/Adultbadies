@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
-import { getActiveVirtualGirlfriend, getOrCreateVirtualGirlfriendConversation } from '@/lib/virtual-girlfriend/data';
+import {
+  getActiveVirtualGirlfriend,
+  getOrCreateVirtualGirlfriendConversation,
+  getLatestVisualProfileForCompanion,
+  getVirtualGirlfriendCompanionImages,
+} from '@/lib/virtual-girlfriend/data';
 
 export async function GET() {
   const auth = await requireAuth();
@@ -12,6 +17,8 @@ export async function GET() {
   }
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
+  const visualProfile = await getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id);
+  const images = await getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id);
 
-  return NextResponse.json({ companion, conversationId: conversation.id });
+  return NextResponse.json({ companion, conversationId: conversation.id, visualProfile, images });
 }
