@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { generateImageWithOpenAI } from '@/lib/virtual-girlfriend/image-openai';
+import { generateVirtualGirlfriendImage } from '@/lib/virtual-girlfriend/image-provider';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
 import { uploadToR2 } from '@/lib/storage/r2';
 import { insertCompanionImages } from '@/lib/virtual-girlfriend/data';
@@ -139,7 +139,11 @@ export const resolveVirtualGirlfriendChatImage = async (input: {
     category: input.category,
   });
 
-  const generated = await generateImageWithOpenAI(prompt);
+  const generated = await generateVirtualGirlfriendImage({
+    prompt,
+    mode: 'legacy_independent',
+    provider: 'openai',
+  });
   const promptHash = hash(`${input.visualProfile.prompt_hash}:${input.category}:${prompt}`);
 
   const key = `virtual-girlfriend-images/${input.userId}/${input.companion.id}/${input.visualProfile.style_version}/chat-${input.category}-${Date.now()}.png`;
@@ -179,11 +183,17 @@ export const resolveVirtualGirlfriendChatImage = async (input: {
         revisedPrompt: generated.revisedPrompt ?? null,
         chatCategory: input.category,
         source: 'chat-phase5',
+        reference_image_id: null,
+        generation_mode: 'legacy_independent',
+        provider: generated.provider,
+        provider_model: generated.providerModel,
+        provider_request_id: generated.providerRequestId,
+        provider_job_id: generated.providerJobId,
       },
       moderation_status: 'pending',
       moderation: { provider: 'openai-image-default', phase: 'stage9-phase5' },
       provenance: {
-        generatedBy: 'openai:gpt-image-1',
+        generatedBy: `${generated.provider}:${generated.providerModel}`,
         generatedAt: new Date().toISOString(),
         originalStorage: 'cloudflare_r2',
         delivery: 'cloudinary',

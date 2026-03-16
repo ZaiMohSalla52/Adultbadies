@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
-import { generateImageWithOpenAI } from '@/lib/virtual-girlfriend/image-openai';
+import { generateVirtualGirlfriendImage } from '@/lib/virtual-girlfriend/image-provider';
 import { uploadToR2 } from '@/lib/storage/r2';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
 import type {
@@ -9,7 +9,7 @@ import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendVisualIdentityPack,
 } from '@/lib/virtual-girlfriend/types';
-import { createVisualProfile, insertCompanionImages } from '@/lib/virtual-girlfriend/data';
+import { createVisualProfile, insertCompanionImages, setCanonicalReferenceImageForVisualProfile } from '@/lib/virtual-girlfriend/data';
 
 const STYLE_VERSION = 'vg-image-v3';
 
@@ -246,7 +246,11 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     });
 
     const promptHash = sha(`${promptBaseHash}:${capture.kind}:${capture.variantIndex}:${prompt}`);
-    const generated = await generateImageWithOpenAI(prompt);
+    const generated = await generateVirtualGirlfriendImage({
+      prompt,
+      mode: capture.kind === 'canonical' ? 'canonical' : 'legacy_independent',
+      provider: 'openai',
+    });
 
     const key = `virtual-girlfriend-images/${input.userId}/${input.companion.id}/${STYLE_VERSION}/${capture.kind}-${capture.variantIndex}-${Date.now()}.png`;
     const r2 = await uploadToR2({
@@ -287,11 +291,17 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
           captureLabel: capture.label,
           captureMood: capture.mood,
           captureEnvironment: capture.environment,
+          reference_image_id: null,
+          generation_mode: capture.kind === 'canonical' ? 'canonical' : 'legacy_independent',
+          provider: generated.provider,
+          provider_model: generated.providerModel,
+          provider_request_id: generated.providerRequestId,
+          provider_job_id: generated.providerJobId,
         },
         moderation_status: 'pending',
         moderation: { provider: 'openai-image-default' },
         provenance: {
-          generatedBy: 'openai:gpt-image-1',
+          generatedBy: `${generated.provider}:${generated.providerModel}`,
           originalStorage: 'cloudflare_r2',
           delivery: 'cloudinary',
           generatedAt: new Date().toISOString(),
@@ -316,5 +326,18 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
   const imageRows = prepared.map((entry) => ({ ...entry.row, visual_profile_id: visualProfile.id }));
   const images = await insertCompanionImages(input.token, imageRows);
 
-  return { visualProfile, images };
+  const canonical = images.find((image) => image.image_kind === 'canonical') ?? null;
+  const updatedVisualProfile = canonical
+    ? await setCanonicalReferenceImageForVisualProfile(input.token, {
+        userId: input.userId,
+        visualProfileId: visualProfile.id,
+        canonicalReferenceImageId: canonical.id,
+        canonicalReferenceMetadata: {
+          source: 'initial_pack',
+          styleVersion: STYLE_VERSION,
+        },
+      })
+    : visualProfile;
+
+  return { visualProfile: updatedVisualProfile ?? visualProfile, images };
 };
