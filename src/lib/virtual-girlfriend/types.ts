@@ -144,7 +144,33 @@ export type VirtualGirlfriendMessageRecord = {
   model: string | null;
   token_count: number | null;
   moderation: Record<string, unknown>;
+  content_type: 'text' | 'image' | 'mixed';
+  attachments: VirtualGirlfriendMessageAttachment[];
   created_at: string;
+};
+
+export const VIRTUAL_GIRLFRIEND_IMAGE_CATEGORIES = [
+  'selfie',
+  'casual',
+  'outfit',
+  'indoor',
+  'night-out',
+  'good-morning',
+  'good-night',
+  'lifestyle',
+] as const;
+
+export type VirtualGirlfriendImageCategory = (typeof VIRTUAL_GIRLFRIEND_IMAGE_CATEGORIES)[number];
+
+export type VirtualGirlfriendMessageAttachment = {
+  kind: 'image';
+  category: VirtualGirlfriendImageCategory;
+  imageId: string;
+  imageUrl: string;
+  width: number | null;
+  height: number | null;
+  source: 'gallery-reuse' | 'fresh-generation';
+  promptHash?: string;
 };
 
 export type VirtualGirlfriendMemoryRecord = {

@@ -3,8 +3,10 @@ import { requireAuth } from '@/app/api/onboarding/shared';
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
   getActiveVirtualGirlfriend,
+  getLatestVisualProfileForCompanion,
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
+  getVirtualGirlfriendCompanionImages,
   getVirtualGirlfriendMessages,
   getVirtualGirlfriendUserMessageCountForToday,
   insertVirtualGirlfriendMessage,
@@ -15,6 +17,8 @@ import {
 import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { generateVirtualGirlfriendReply } from '@/lib/virtual-girlfriend/orchestration';
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
+import { decideVirtualGirlfriendImageMoment, resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
+import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 
 const encoder = new TextEncoder();
 
@@ -50,7 +54,7 @@ export async function POST(request: NextRequest) {
   }
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
-  const [history, retrievedMemories, styleProfile] = await Promise.all([
+  const [history, retrievedMemories, styleProfile, companionImages, visualProfile] = await Promise.all([
     getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
     retrieveRelevantVirtualGirlfriendMemories(auth.accessToken, {
       userId: auth.user.id,
@@ -59,7 +63,34 @@ export async function POST(request: NextRequest) {
       maxItems: 8,
     }),
     getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
+    getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
+    getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id),
   ]);
+
+  const imageMoment = decideVirtualGirlfriendImageMoment({
+    userMessage: message,
+    history,
+    isPremium: entitlements.isPremium,
+  });
+
+  if (imageMoment.shouldSendImage) {
+    const moderation = moderateVirtualGirlfriendImageRequest(message);
+    if (!moderation.allowed) {
+      return new Response(JSON.stringify({ error: moderation.reason }), { status: 400 });
+    }
+  }
+
+  const imageAttachment = imageMoment.shouldSendImage
+    ? await resolveVirtualGirlfriendChatImage({
+        token: auth.accessToken,
+        userId: auth.user.id,
+        companion,
+        category: imageMoment.category,
+        existingImages: companionImages,
+        visualProfile,
+        allowFreshGeneration: entitlements.isPremium,
+      })
+    : null;
 
   const reply = await generateVirtualGirlfriendReply({
     companion,
@@ -67,6 +98,17 @@ export async function POST(request: NextRequest) {
     memories: retrievedMemories,
     styleProfile,
     userMessage: message,
+    imageContext: imageAttachment
+      ? {
+          category: imageAttachment.category,
+          source: imageAttachment.source,
+          trigger: imageMoment.trigger === 'contextual-initiative' ? 'contextual-initiative' : 'user-request',
+        }
+      : null,
+    responseGuidance:
+      imageMoment.shouldSendImage && !imageAttachment && !entitlements.isPremium
+        ? 'User requested a new photo. Explain warmly that premium unlocks fresh photo moments, and offer to keep chatting in text for now.'
+        : undefined,
   });
 
   if (!reply.ok) {
@@ -88,6 +130,8 @@ export async function POST(request: NextRequest) {
     content: reply.assistantText,
     model: reply.model,
     moderation: {},
+    contentType: imageAttachment ? 'mixed' : 'text',
+    attachments: imageAttachment ? [imageAttachment] : [],
   });
 
   await Promise.all([
@@ -126,15 +170,28 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     start(controller) {
       for (const chunk of chunks) {
-        controller.enqueue(encoder.encode(chunk));
+        controller.enqueue(encoder.encode(JSON.stringify({ type: 'chunk', chunk }) + '\n'));
       }
+      controller.enqueue(
+        encoder.encode(
+          JSON.stringify({
+            type: 'done',
+            payload: {
+              content: reply.assistantText,
+              contentType: imageAttachment ? 'mixed' : 'text',
+              attachments: imageAttachment ? [imageAttachment] : [],
+              generationMode: imageAttachment?.source ?? null,
+            },
+          }) + '\n',
+        ),
+      );
       controller.close();
     },
   });
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
       'Cache-Control': 'no-store',
     },
   });

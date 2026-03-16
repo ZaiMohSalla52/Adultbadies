@@ -6,6 +6,7 @@ import type {
   VirtualGirlfriendMemoryCandidate,
   VirtualGirlfriendMemoryRecord,
   VirtualGirlfriendMessageRecord,
+  VirtualGirlfriendMessageAttachment,
   VirtualGirlfriendVisualIdentityPack,
   VirtualGirlfriendVisualProfileRecord,
   VirtualGirlfriendCompanionImageRecord,
@@ -156,7 +157,7 @@ export const getVirtualGirlfriendMessages = async (
 ): Promise<VirtualGirlfriendMessageRecord[]> => {
   return supabaseRest<VirtualGirlfriendMessageRecord[]>('ai_messages', token, {
     searchParams: new URLSearchParams({
-      select: 'id,conversation_id,user_id,role,content,model,token_count,moderation,created_at',
+      select: 'id,conversation_id,user_id,role,content,model,token_count,moderation,content_type,attachments,created_at',
       conversation_id: `eq.${conversationId}`,
       order: 'created_at.asc',
       limit: '250',
@@ -173,6 +174,8 @@ export const insertVirtualGirlfriendMessage = async (
     content: string;
     model?: string;
     moderation?: Record<string, unknown>;
+    contentType?: 'text' | 'image' | 'mixed';
+    attachments?: VirtualGirlfriendMessageAttachment[];
   },
 ) => {
   await supabaseRest('ai_messages', token, {
@@ -184,6 +187,8 @@ export const insertVirtualGirlfriendMessage = async (
       content: message.content,
       model: message.model ?? null,
       moderation: message.moderation ?? {},
+      content_type: message.contentType ?? 'text',
+      attachments: message.attachments ?? [],
     },
     prefer: 'return=minimal',
   });

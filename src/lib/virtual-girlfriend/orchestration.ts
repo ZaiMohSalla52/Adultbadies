@@ -85,6 +85,12 @@ export const generateVirtualGirlfriendReply = async (input: {
   memories: VirtualGirlfriendMemoryRecord[];
   styleProfile: VirtualGirlfriendUserStyleProfileRecord;
   userMessage: string;
+  imageContext?: {
+    category: string;
+    source: 'gallery-reuse' | 'fresh-generation';
+    trigger: 'user-request' | 'contextual-initiative';
+  } | null;
+  responseGuidance?: string;
 }) => {
   const moderation = moderateVirtualGirlfriendContent(input.userMessage);
   if (!moderation.allowed) {
@@ -100,7 +106,16 @@ export const generateVirtualGirlfriendReply = async (input: {
   const response = await callOpenAIResponses({
     model: 'gpt-5-mini',
     input: [
-      { role: 'system', content: buildSystemPrompt(input.companion, input.memories, input.styleProfile) },
+      {
+        role: 'system',
+        content: [
+          buildSystemPrompt(input.companion, input.memories, input.styleProfile),
+          input.imageContext
+            ? `You are attaching a ${input.imageContext.category} image (${input.imageContext.source}) triggered by ${input.imageContext.trigger}. Write a natural premium companion line that pairs with the photo and feels intentional (1-3 sentences).`
+            : 'No image is attached for this turn.',
+          input.responseGuidance ?? '',
+        ].join('\n'),
+      },
       ...toModelInput(contextHistory),
       { role: 'user', content: input.userMessage },
     ],
