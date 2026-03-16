@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { Entitlements } from '@/lib/subscriptions/types';
@@ -16,6 +17,7 @@ import type {
 type ChatClientProps = {
   companionId: string;
   companionName: string;
+  companionAvatarUrl?: string | null;
   disclosureLabel: string;
   initialMessages: VirtualGirlfriendMessageRecord[];
   entitlements: Entitlements;
@@ -34,6 +36,7 @@ const STYLE_PRESETS: Array<{ key: VirtualGirlfriendStyleControlPreset; label: st
 export const VirtualGirlfriendChatClient = ({
   companionId,
   companionName,
+  companionAvatarUrl,
   disclosureLabel,
   initialMessages,
   entitlements,
@@ -198,8 +201,11 @@ export const VirtualGirlfriendChatClient = ({
     <div className="chat-screen">
       <header className="chat-conversation-header chat-conversation-header-refined">
         <div className="chat-title-wrap">
-          <h1 className="my-0 chat-title">{companionName}</h1>
-          <p className="my-0 text-xs text-muted">{disclosureLabel}</p>
+          <Avatar name={companionName} imageUrl={companionAvatarUrl} kind="ai" size="lg" ring isActive />
+          <div>
+            <h1 className="my-0 chat-title">{companionName}</h1>
+            <p className="my-0 text-xs text-muted">{disclosureLabel}</p>
+          </div>
         </div>
         <p className="my-0 text-xs text-muted chat-usage-pill">{helperText}</p>
       </header>

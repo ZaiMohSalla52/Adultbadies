@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import type { MatchListItem } from '@/lib/matches/types';
 import { UnmatchButton } from '@/components/matches/unmatch-button';
@@ -38,6 +39,9 @@ export const MatchesListPanel = ({ matches, activeMatchId }: MatchesListPanelPro
 
               return (
                 <article key={match.matchId} className={`matches-list-item ${isActive ? 'matches-list-item-active' : ''}`} role="listitem">
+                  <div className="matches-list-row">
+                    <Avatar name={match.otherUserName} imageUrl={match.avatarUrl} size="lg" ring isActive={isActive} />
+                    <div className="matches-list-main">
                   <div className="matches-list-item-top">
                     <p className="my-0 matches-list-name">{match.otherUserName}</p>
                     <span className="matches-list-time">Matched {formatDate(match.matchCreatedAt)}</span>
@@ -47,6 +51,8 @@ export const MatchesListPanel = ({ matches, activeMatchId }: MatchesListPanelPro
                       Open chat
                     </Link>
                     <UnmatchButton matchId={match.matchId} />
+                  </div>
+                    </div>
                   </div>
                 </article>
               );

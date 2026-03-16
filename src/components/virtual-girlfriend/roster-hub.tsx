@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Avatar, ProfileMediaFrame } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { Entitlements } from '@/lib/subscriptions/types';
@@ -37,13 +37,19 @@ const CompanionCard = ({
 
   return (
     <article className={`vg-roster-card ${isActive ? 'vg-roster-card-active' : ''}`}>
-      <div className="vg-roster-image-wrap">
-        {image ? (
-          <Image src={image.delivery_url} alt={`${companion.name} portrait`} fill className="object-cover" />
-        ) : (
-          <div className="vg-roster-image-empty">Portrait preparing</div>
-        )}
-      </div>
+      <ProfileMediaFrame className="vg-roster-image-wrap">
+        <Avatar
+          name={companion.name}
+          imageUrl={image?.delivery_url}
+          kind="ai"
+          size="hero"
+          variant="rounded"
+          ring
+          isActive={isActive}
+          className="vg-roster-avatar"
+        />
+        {!image ? <div className="vg-roster-image-empty">Portrait preparing</div> : null}
+      </ProfileMediaFrame>
 
       <div className="vg-roster-copy">
         <div className="vg-roster-meta-row">
