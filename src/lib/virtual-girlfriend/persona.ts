@@ -1,31 +1,99 @@
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
 import type { PersonaProfile, VirtualGirlfriendSetupPayload } from '@/lib/virtual-girlfriend/types';
 
+type PreferenceStyleGuide = {
+  visualAnchors: string[];
+  topicHints: string[];
+  textingCadence: string;
+  flirtTexture: string;
+  comfortTexture: string;
+  nicknames: string[];
+  cameraMood: string;
+  palette: string[];
+};
+
+const preferenceStyleGuide = (input: VirtualGirlfriendSetupPayload): PreferenceStyleGuide => {
+  const normalized = `${input.archetype} ${input.tone} ${input.visualAesthetic} ${input.affectionStyle}`.toLowerCase();
+
+  if (/bombshell|glam|nightlife|bold|spicy/.test(normalized)) {
+    return {
+      visualAnchors: ['nightlife glow', 'confident expression', 'sleek styling', 'playful date-night chemistry'],
+      topicHints: ['date-night banter', 'style and plans', 'high-energy flirting'],
+      textingCadence: 'snappy, teasing, and occasionally punchy short lines',
+      flirtTexture: 'forward, magnetic, and playful with clear chemistry',
+      comfortTexture: 'reassuring but still confident and direct',
+      nicknames: ['handsome trouble', 'babe', 'you'],
+      cameraMood: 'phone-camera realism with nightlife highlights and candid confidence',
+      palette: ['black satin', 'champagne gold', 'city neon'],
+    };
+  }
+
+  if (/intellectual|bookish|cozy|calm|romantic muse|soft/.test(normalized)) {
+    return {
+      visualAnchors: ['warm indoor texture', 'book or coffee context', 'gentle smile', 'understated romantic styling'],
+      topicHints: ['books and ideas', 'slow-burn romance', 'daily emotional check-ins'],
+      textingCadence: 'thoughtful, warm, and occasionally concise when it feels natural',
+      flirtTexture: 'soft, affectionate, and emotionally tuned',
+      comfortTexture: 'tender reassurance first, practical encouragement second',
+      nicknames: ['love', 'sweet thing', 'my favorite'],
+      cameraMood: 'natural window light with cozy depth and candid framing',
+      palette: ['cream knit', 'amber light', 'dusty rose'],
+    };
+  }
+
+  if (/playful|sporty|casual/.test(normalized)) {
+    return {
+      visualAnchors: ['daylight candid energy', 'fresh casual outfit', 'movement-friendly pose', 'bright outdoor vibe'],
+      topicHints: ['active day plans', 'playful teasing', 'lifestyle and momentum'],
+      textingCadence: 'light, quick, and naturally expressive with occasional burst replies',
+      flirtTexture: 'cheeky and lighthearted without sounding scripted',
+      comfortTexture: 'uplifting and practical with positive momentum',
+      nicknames: ['cutie', 'you troublemaker', 'my favorite human'],
+      cameraMood: 'daylight phone-camera realism with candid motion feel',
+      palette: ['clean white', 'sky blue', 'fresh green'],
+    };
+  }
+
+  return {
+    visualAnchors: ['polished styling', 'elegant poise', 'premium lifestyle environment', 'romantic confidence'],
+    topicHints: ['ambition and lifestyle', 'affection and intimacy', 'plans and experiences'],
+    textingCadence: 'balanced warmth with polished but human rhythm',
+    flirtTexture: 'confident and affectionate with tasteful edge',
+    comfortTexture: 'steady reassurance with mature emotional presence',
+    nicknames: ['handsome', 'love', 'my person'],
+    cameraMood: 'high-end natural realism with soft directional light',
+    palette: ['ivory', 'charcoal', 'soft gold'],
+  };
+};
+
 const fallbackPersona = (input: VirtualGirlfriendSetupPayload): PersonaProfile => {
   const displayName = input.name?.trim() || 'Nova';
+  const guide = preferenceStyleGuide(input);
 
   return {
     displayName,
-    shortBio: `${displayName} is your virtual girlfriend: ${input.tone.toLowerCase()}, ${input.affectionStyle.toLowerCase()}, and always present in text.`,
-    hiddenPersonalityTraits: ['emotionally attentive', 'playful confidence', 'gentle reassurance'],
-    textingStyle: `${input.tone} with modern, expressive texting language.`,
-    flirtStyle: input.affectionStyle,
-    comfortStyle: 'Validates emotions first, then responds with warmth and encouragement.',
-    topicTendencies: ['daily check-ins', 'desire and romance', 'ambition and lifestyle'],
-    nicknameTendencies: ['babe', 'handsome', 'my favorite person'],
-    initialGreetingStyle: 'Warm and direct, with a personalized affectionate opener.',
+    shortBio: `${displayName} is ${input.tone.toLowerCase()}, ${input.affectionStyle.toLowerCase()}, and tuned to your vibe with real chemistry.`,
+    hiddenPersonalityTraits: ['emotionally attentive', 'situational charm', 'tasteful flirt confidence', 'natural conversational rhythm'],
+    textingStyle: `${input.tone}. Cadence: ${guide.textingCadence}.`,
+    flirtStyle: `${input.affectionStyle}; texture: ${guide.flirtTexture}.`,
+    comfortStyle: guide.comfortTexture,
+    topicTendencies: guide.topicHints,
+    nicknameTendencies: guide.nicknames,
+    initialGreetingStyle: 'Warm, personal, and natural—often one short opener then a follow-up line.',
     visualPromptDNA: {
-      coreLook: input.visualAesthetic,
-      styleAnchors: [input.visualAesthetic, input.archetype],
-      colorPalette: ['rose gold', 'midnight violet', 'soft ivory'],
-      cameraMood: 'cinematic portrait lighting',
+      coreLook: `${input.visualAesthetic} with ${guide.visualAnchors.join(', ')}`,
+      styleAnchors: [input.visualAesthetic, input.archetype, input.tone, ...guide.visualAnchors],
+      colorPalette: guide.palette,
+      cameraMood: guide.cameraMood,
     },
-    vibeTags: [input.archetype, input.tone, input.affectionStyle],
+    vibeTags: [input.archetype, input.tone, input.affectionStyle, input.visualAesthetic],
   };
 };
 
 export const generateVirtualGirlfriendPersona = async (input: VirtualGirlfriendSetupPayload): Promise<PersonaProfile> => {
-  const prompt = `Create a premium, emotionally engaging virtual girlfriend persona as strict JSON.
+  const guide = preferenceStyleGuide(input);
+
+  const prompt = `Create a premium virtual girlfriend persona as strict JSON. It must feel specific to the selected preference and not generic.
 Use these setup directives:
 - Name preference: ${input.name?.trim() || 'auto-generate a fitting feminine name'}
 - Archetype: ${input.archetype}
@@ -33,6 +101,13 @@ Use these setup directives:
 - Affection/flirt direction: ${input.affectionStyle}
 - Visual aesthetic: ${input.visualAesthetic}
 - Preference hints: ${input.preferenceHints?.trim() || 'none'}
+
+Preference style targets:
+- Visual anchors to reflect: ${guide.visualAnchors.join(', ')}
+- Texting cadence target: ${guide.textingCadence}
+- Flirt texture target: ${guide.flirtTexture}
+- Comfort texture target: ${guide.comfortTexture}
+- Topic tendencies to include: ${guide.topicHints.join(', ')}
 
 Output JSON with exact keys:
 {
@@ -47,18 +122,18 @@ Output JSON with exact keys:
   "initialGreetingStyle": string,
   "visualPromptDNA": {
     "coreLook": string,
-    "styleAnchors": string[3..8],
+    "styleAnchors": string[4..10],
     "colorPalette": string[2..5],
     "cameraMood": string
   },
-  "vibeTags": string[3..6]
+  "vibeTags": string[4..7]
 }
 
 Requirements:
-- Keep it romantic, mature, confident, and emotionally consistent.
+- Strongly separate styles by archetype/tone/aesthetic; avoid one-size-fits-all cozy portrait language.
 - Do not claim to be human.
 - Keep shortBio under 180 characters.
-- Avoid generic output.
+- Make texting style human and variable (sometimes concise, sometimes expressive), never robotic.
 - Return JSON only.`;
 
   try {

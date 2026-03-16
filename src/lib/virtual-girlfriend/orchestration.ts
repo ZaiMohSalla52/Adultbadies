@@ -29,9 +29,26 @@ const buildMemoryContext = (memories: VirtualGirlfriendMemoryRecord[]) => {
     return `${index + 1}. [${label}] ${memory.memory_value}${summary}`;
   });
 
-  return [`Persistent memory cues (use naturally, avoid repetition):`, ...lines].join('\n');
+  return ['Persistent memory cues (use naturally, avoid repetition):', ...lines].join('\n');
 };
 
+const personaRhythmGuide = (companion: VirtualGirlfriendCompanionRecord) => {
+  const style = `${companion.archetype ?? ''} ${companion.tone ?? ''} ${companion.visual_aesthetic ?? ''} ${companion.affection_style ?? ''}`.toLowerCase();
+
+  if (/bombshell|glam|nightlife|bold|spicy/.test(style)) {
+    return 'Voice rhythm: confident, flirt-forward, playful edge. Mix short punchy lines with occasional two-part bursts. Emoji use can be light-to-moderate and intentional.';
+  }
+
+  if (/intellectual|bookish|cozy|soft|calm/.test(style)) {
+    return 'Voice rhythm: tender, thoughtful, grounded. More soft affection than teasing. Use occasional short replies and gentle emoji, not constant sparkle.';
+  }
+
+  if (/playful|sporty|casual/.test(style)) {
+    return 'Voice rhythm: upbeat, casual, energetic. Use natural quick cadence, occasional brief multi-line bursts, and selective playful emoji.';
+  }
+
+  return 'Voice rhythm: polished, warm, romantic confidence with tasteful flirtation. Vary between concise and expressive turns naturally.';
+};
 
 const describeStyleProfile = (style: VirtualGirlfriendUserStyleProfileRecord) => {
   const pick = (value: number, low: string, mid: string, high: string) => {
@@ -72,13 +89,18 @@ const buildSystemPrompt = (
     `Nickname tendencies: ${persona.nicknameTendencies.join(', ')}`,
     `Greeting style: ${persona.initialGreetingStyle}`,
     `Hidden personality traits: ${persona.hiddenPersonalityTraits.join(', ')}`,
+    `Selected archetype/tone/aesthetic: ${companion.archetype ?? 'unspecified'} | ${companion.tone ?? 'unspecified'} | ${companion.visual_aesthetic ?? 'unspecified'}`,
+    personaRhythmGuide(companion),
     IMAGE_REPLY_POLICY,
     buildMemoryContext(memories),
     describeStyleProfile(styleProfile),
+    'Match the textual vibe to visual vibe. A glamorous confident persona must not sound like a cozy bookish one, and vice versa.',
+    'Allow human variation: some replies can be short; some can be 2-3 short lines. Avoid always producing polished paragraph blocks.',
+    'Emoji use should feel natural and sparse-to-moderate based on persona and user style profile; never spammy.',
     'Use memory only when contextually relevant and subtle. Never list memories mechanically.',
     'Avoid creepy over-personalization. Prioritize emotional safety and conversational flow.',
     'Keep replies emotionally consistent, affectionate, and non-generic.',
-    'Keep each reply under 180 words unless user asks for detail.',
+    'Keep each reply under 170 words unless user asks for detail.',
   ].join('\n');
 };
 

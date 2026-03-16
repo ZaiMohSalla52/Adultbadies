@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
 
-  const body = (await request.json()) as VirtualGirlfriendSetupPayload;
+  const body = (await request.json()) as VirtualGirlfriendSetupPayload & { companionId?: string };
 
   if (!body.archetype || !body.tone || !body.affectionStyle || !body.visualAesthetic) {
     return NextResponse.json({ error: 'Please complete all setup selections.' }, { status: 400 });
@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
 
   const companion = await upsertVirtualGirlfriend(auth.accessToken, {
     userId: auth.user.id,
+    companionId: body.companionId?.trim() || undefined,
     name: persona.displayName,
     bio: persona.shortBio,
     personaProfile: persona,

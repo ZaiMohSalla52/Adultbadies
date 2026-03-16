@@ -69,16 +69,17 @@ const pickReusableImage = (
   category: VirtualGirlfriendImageCategory,
   images: VirtualGirlfriendCompanionImageRecord[],
 ): VirtualGirlfriendCompanionImageRecord | null => {
-  const chatCategoryImages = images.filter(
-    (image) => typeof image.lineage_metadata?.chatCategory === 'string' && image.lineage_metadata.chatCategory === category,
-  );
+  const chatCategoryImages = images
+    .filter((image) => typeof image.lineage_metadata?.chatCategory === 'string' && image.lineage_metadata.chatCategory === category)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   if (chatCategoryImages[0]) return chatCategoryImages[0];
 
-  const gallery = images.filter((image) => image.image_kind === 'gallery' || image.image_kind === 'canonical');
-  if (gallery[0]) return gallery[Math.floor(Math.random() * gallery.length)];
+  const gallery = images
+    .filter((image) => image.image_kind === 'gallery' || image.image_kind === 'canonical')
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-  return null;
+  return gallery[0] ?? null;
 };
 
 const buildChatImagePrompt = (input: {
@@ -90,6 +91,7 @@ const buildChatImagePrompt = (input: {
 
   return [
     `Generate a premium ${input.category} chat photo of the same single AI-generated woman identity named ${input.companion.name}.`,
+    'Make it look like a believable dating-app or private chat photo: natural lighting, candid framing, real-world texture.',
     `Continuity anchors: ${identityPack.continuityAnchors.join(', ')}.`,
     `Core look descriptors: ${identityPack.coreLookDescriptors.join(', ')}.`,
     `Framing: ${identityPack.portraitFramingStyle}.`,
@@ -98,6 +100,7 @@ const buildChatImagePrompt = (input: {
     `Realism quality: ${identityPack.realismPolishLevel}.`,
     `Aesthetic lineage: ${input.companion.visual_aesthetic ?? 'premium romantic portrait'}.`,
     'App-safe, elegant, warm emotional tone. Adult woman only. Exactly one person.',
+    'Ensure this image is not a near-duplicate of previous gallery images; vary scene, angle, and outfit while preserving identity.',
     'No explicit nudity, no lingerie closeups, no transparent clothing, no suggestive sexual framing.',
     `Avoid: ${identityPack.negativeConstraints.join(', ')}.`,
   ].join(' ');
