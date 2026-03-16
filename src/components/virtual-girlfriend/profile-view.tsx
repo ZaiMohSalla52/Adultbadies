@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Card } from '@/components/ui/card';
 import type {
   VirtualGirlfriendCompanionImageRecord,
   VirtualGirlfriendCompanionRecord,
@@ -18,25 +17,12 @@ export const VirtualGirlfriendProfileView = ({
 }) => {
   const canonical = images.find((image) => image.image_kind === 'canonical') ?? null;
   const gallery = images.filter((image) => image.image_kind === 'gallery');
+  const profileDisclosure = companion.disclosure_label;
+  const photoDisclosure = visualProfile ? 'AI-generated photos' : null;
 
   return (
     <div className="app-page-stack vg-premium-profile">
-      <Card className="vg-hero-card">
-        <div className="vg-hero-copy">
-          <p className="chat-label">Virtual Girlfriend</p>
-          <h1 className="my-0 vg-hero-name">{companion.name}</h1>
-          <p className="my-0 text-muted vg-hero-bio">{companion.display_bio ?? companion.persona_profile.shortBio}</p>
-          <p className="my-0 text-xs text-muted">{companion.disclosure_label} • AI-generated photos</p>
-          <div className="vg-hero-actions">
-            <Link href="/virtual-girlfriend/chat" className="ui-button">
-              Chat now
-            </Link>
-            <Link href="/virtual-girlfriend/setup" className="ui-button ui-button-ghost">
-              Refine setup
-            </Link>
-          </div>
-        </div>
-
+      <section className="vg-hero-card">
         {canonical ? (
           <div className="vg-hero-image-wrap">
             <Image src={canonical.delivery_url} alt={`${companion.name} portrait`} fill className="object-cover" priority />
@@ -44,12 +30,29 @@ export const VirtualGirlfriendProfileView = ({
         ) : (
           <div className="vg-hero-image-empty">Her profile portrait is being prepared. Check back in a moment.</div>
         )}
-      </Card>
 
-      <Card className="app-surface-card space-y-3">
+        <div className="vg-hero-copy">
+          <h1 className="my-0 vg-hero-name">{companion.name}</h1>
+          <p className="my-0 text-muted vg-hero-bio">{companion.display_bio ?? companion.persona_profile.shortBio}</p>
+          <p className="my-0 vg-disclosure-row text-muted text-xs">
+            <span>{profileDisclosure}</span>
+            {photoDisclosure ? <span>{photoDisclosure}</span> : null}
+          </p>
+          <div className="vg-hero-actions">
+            <Link href="/virtual-girlfriend/chat" className="ui-button ui-button-primary">
+              Chat now
+            </Link>
+            <Link href="/virtual-girlfriend/setup" className="ui-button ui-button-ghost vg-secondary-action">
+              Refine setup
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="vg-gallery-section">
         <div className="vg-section-heading">
-          <h2 className="my-0 text-base font-semibold">Photo gallery</h2>
-          <p className="my-0 text-sm text-muted">Curated visual identity with continuity across generations.</p>
+          <h2 className="my-0 text-base font-semibold">Photos</h2>
+          <p className="my-0 text-sm text-muted">A closer look at her moments.</p>
         </div>
 
         {gallery.length ? (
@@ -63,15 +66,7 @@ export const VirtualGirlfriendProfileView = ({
         ) : (
           <p className="my-0 text-sm text-muted">No gallery photos generated yet.</p>
         )}
-      </Card>
-
-      {visualProfile ? (
-        <Card className="app-surface-card">
-          <p className="my-0 text-sm text-muted">
-            Visual profile {visualProfile.style_version} active. Identity continuity is enabled for profile and gallery images.
-          </p>
-        </Card>
-      ) : null}
+      </section>
     </div>
   );
 };
