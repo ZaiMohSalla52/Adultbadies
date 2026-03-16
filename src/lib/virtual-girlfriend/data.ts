@@ -18,7 +18,7 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 
 const companionSelect =
-  'id,user_id,name,display_bio,persona_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,disclosure_label,is_active,created_at,updated_at';
+  'id,user_id,name,display_bio,persona_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,generation_status,disclosure_label,is_active,created_at,updated_at';
 
 
 const visualProfileSelect =
@@ -175,6 +175,7 @@ export const upsertVirtualGirlfriend = async (
         preference_hints: input.preferenceHints ?? null,
         profile_tags: input.profileTags ?? input.personaProfile.vibeTags,
         setup_completed: true,
+        generation_status: 'generating',
         disclosure_label: 'AI-generated profile',
       },
       prefer: 'return=representation',
@@ -210,6 +211,7 @@ export const upsertVirtualGirlfriend = async (
       preference_hints: input.preferenceHints ?? null,
       profile_tags: input.profileTags ?? input.personaProfile.vibeTags,
       setup_completed: true,
+      generation_status: 'generating',
       disclosure_label: 'AI-generated profile',
       is_active: false,
     },
@@ -223,6 +225,21 @@ export const upsertVirtualGirlfriend = async (
   }
 
   return created;
+};
+
+
+export const setVirtualGirlfriendGenerationStatus = async (
+  token: string,
+  userId: string,
+  companionId: string,
+  status: 'generating' | 'ready' | 'failed',
+) => {
+  await supabaseRest('ai_companions', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ user_id: `eq.${userId}`, id: `eq.${companionId}` }),
+    body: { generation_status: status },
+    prefer: 'return=minimal',
+  });
 };
 
 
