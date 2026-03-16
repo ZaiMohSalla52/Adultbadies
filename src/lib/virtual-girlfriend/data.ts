@@ -6,10 +6,20 @@ import type {
   VirtualGirlfriendMemoryCandidate,
   VirtualGirlfriendMemoryRecord,
   VirtualGirlfriendMessageRecord,
+  VirtualGirlfriendVisualIdentityPack,
+  VirtualGirlfriendVisualProfileRecord,
+  VirtualGirlfriendCompanionImageRecord,
 } from '@/lib/virtual-girlfriend/types';
 
 const companionSelect =
   'id,user_id,name,display_bio,persona_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,disclosure_label,is_active,created_at,updated_at';
+
+
+const visualProfileSelect =
+  'id,user_id,companion_id,profile_version,style_version,prompt_hash,source_setup,identity_pack,continuity_notes,moderation_status,provenance,created_at,updated_at';
+
+const companionImageSelect =
+  'id,user_id,companion_id,visual_profile_id,image_kind,variant_index,origin_storage_provider,origin_storage_key,origin_mime_type,origin_byte_size,delivery_provider,delivery_public_id,delivery_url,width,height,prompt_hash,style_version,seed_metadata,lineage_metadata,moderation_status,moderation,provenance,quality_score,created_at';
 
 const tokenize = (input: string) =>
   input
@@ -315,4 +325,84 @@ export const retrieveRelevantVirtualGirlfriendMemories = async (
     .sort((a, b) => b.score - a.score)
     .slice(0, input.maxItems ?? 8)
     .map((entry) => entry.memory);
+};
+
+
+export const createVisualProfile = async (
+  token: string,
+  input: {
+    userId: string;
+    companionId: string;
+    styleVersion: string;
+    promptHash: string;
+    sourceSetup: Record<string, unknown>;
+    identityPack: VirtualGirlfriendVisualIdentityPack;
+    continuityNotes?: string;
+    moderationStatus?: string;
+    provenance?: Record<string, unknown>;
+  },
+): Promise<VirtualGirlfriendVisualProfileRecord> => {
+  const rows = await supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
+    method: 'POST',
+    body: {
+      user_id: input.userId,
+      companion_id: input.companionId,
+      profile_version: 'vg-v1',
+      style_version: input.styleVersion,
+      prompt_hash: input.promptHash,
+      source_setup: input.sourceSetup,
+      identity_pack: input.identityPack,
+      continuity_notes: input.continuityNotes ?? null,
+      moderation_status: input.moderationStatus ?? 'pending',
+      provenance: input.provenance ?? {},
+    },
+    prefer: 'return=representation',
+  });
+
+  return rows[0]!;
+};
+
+export const insertCompanionImages = async (
+  token: string,
+  images: Array<Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>>,
+): Promise<VirtualGirlfriendCompanionImageRecord[]> => {
+  return supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+    method: 'POST',
+    body: images,
+    prefer: 'return=representation',
+  });
+};
+
+export const getVirtualGirlfriendCompanionImages = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendCompanionImageRecord[]> => {
+  return supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+    searchParams: new URLSearchParams({
+      select: companionImageSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      order: 'image_kind.asc,variant_index.asc,created_at.asc',
+      limit: '30',
+    }),
+  });
+};
+
+export const getLatestVisualProfileForCompanion = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendVisualProfileRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
+    searchParams: new URLSearchParams({
+      select: visualProfileSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      order: 'created_at.desc',
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
 };

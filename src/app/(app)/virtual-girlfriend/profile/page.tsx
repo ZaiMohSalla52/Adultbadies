@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
-import { getActiveVirtualGirlfriend } from '@/lib/virtual-girlfriend/data';
+import {
+  getActiveVirtualGirlfriend,
+  getLatestVisualProfileForCompanion,
+  getVirtualGirlfriendCompanionImages,
+} from '@/lib/virtual-girlfriend/data';
 import { VirtualGirlfriendProfileView } from '@/components/virtual-girlfriend/profile-view';
 
 export default async function VirtualGirlfriendProfilePage() {
@@ -16,5 +20,10 @@ export default async function VirtualGirlfriendProfilePage() {
     redirect('/virtual-girlfriend/setup');
   }
 
-  return <VirtualGirlfriendProfileView companion={companion} />;
+  const [visualProfile, images] = await Promise.all([
+    getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id),
+    getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
+  ]);
+
+  return <VirtualGirlfriendProfileView companion={companion} visualProfile={visualProfile} images={images} />;
 }

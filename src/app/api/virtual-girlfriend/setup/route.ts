@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { getOrCreateVirtualGirlfriendConversation, upsertVirtualGirlfriend } from '@/lib/virtual-girlfriend/data';
+import { generateAndPersistVirtualGirlfriendImagePack } from '@/lib/virtual-girlfriend/visual-identity';
 import { generateVirtualGirlfriendPersona } from '@/lib/virtual-girlfriend/persona';
 import type { VirtualGirlfriendSetupPayload } from '@/lib/virtual-girlfriend/types';
 
@@ -30,6 +31,19 @@ export async function POST(request: NextRequest) {
   });
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
+
+  await generateAndPersistVirtualGirlfriendImagePack({
+    token: auth.accessToken,
+    userId: auth.user.id,
+    companion,
+    setup: {
+      archetype: body.archetype,
+      tone: body.tone,
+      affectionStyle: body.affectionStyle,
+      visualAesthetic: body.visualAesthetic,
+      preferenceHints: body.preferenceHints,
+    },
+  });
 
   return NextResponse.json({ ok: true, companionId: companion.id, conversationId: conversation.id });
 }
