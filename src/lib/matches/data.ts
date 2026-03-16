@@ -1,6 +1,6 @@
 import { getBlockedUserIds } from '@/lib/safety/data';
 import { supabaseRest } from '@/lib/supabase/rest';
-import type { Conversation, MatchListItem, MatchRecord, MessageRecord, ProfilePreview } from '@/lib/matches/types';
+import type { ChatThreadItem, Conversation, MatchListItem, MatchRecord, MessageRecord, ProfilePreview } from '@/lib/matches/types';
 
 const EMPTY_OTHER_USER: ProfilePreview = {
   id: '',
@@ -166,4 +166,48 @@ export const sendConversationMessage = async (
     },
     prefer: 'return=minimal',
   });
+};
+
+
+export const unmatchUserMatch = async (token: string, userId: string, matchId: string): Promise<void> => {
+  const matchQuery = new URLSearchParams({
+    select: 'id,user_a_id,user_b_id,status,created_at,updated_at',
+    id: `eq.${matchId}`,
+    status: 'eq.active',
+    limit: '1',
+  });
+
+  const rows = await supabaseRest<MatchRecord[]>('matches', token, { searchParams: matchQuery });
+  const match = rows[0];
+
+  if (!match) {
+    throw new Error('Match is no longer available.');
+  }
+
+  if (match.user_a_id !== userId && match.user_b_id !== userId) {
+    throw new Error('You do not have permission to modify this match.');
+  }
+
+  await supabaseRest('matches', token, {
+    method: 'PATCH',
+    body: {
+      status: 'unmatched',
+      unmatched_at: new Date().toISOString(),
+    },
+    searchParams: new URLSearchParams({ id: `eq.${matchId}` }),
+    prefer: 'return=minimal',
+  });
+};
+
+export const getHumanChatThreads = async (token: string, userId: string): Promise<ChatThreadItem[]> => {
+  const matches = await getMatchList(token, userId);
+
+  return matches.map((match) => ({
+    id: match.matchId,
+    href: `/matches/${match.matchId}`,
+    title: match.otherUserName,
+    kind: 'human',
+    lastActivityAt: match.lastMessageAt,
+    preview: match.lastMessageBody,
+  }));
 };

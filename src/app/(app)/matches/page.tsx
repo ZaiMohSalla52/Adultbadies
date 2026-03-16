@@ -19,9 +19,9 @@ export default async function MatchesPage() {
 
       <section className="chat-conversation-panel">
         <Card className="chat-empty-intro">
-          <p className="chat-label">Messages</p>
-          <h2 className="my-0">Select a match to start chatting.</h2>
-          <p className="my-0 text-muted">On desktop, your matches stay visible here while conversations open. On mobile, tap any match to open a full chat view.</p>
+          <p className="chat-label">Matches</p>
+          <h2 className="my-0">Choose someone to open your conversation.</h2>
+          <p className="my-0 text-muted">This space is focused on match management. Your full inbox lives in Chats.</p>
         </Card>
       </section>
     </div>

@@ -35,3 +35,12 @@ export type Conversation = {
   otherUser: ProfilePreview;
   messages: MessageRecord[];
 };
+
+export type ChatThreadItem = {
+  id: string;
+  href: string;
+  title: string;
+  kind: 'human' | 'virtual_girlfriend';
+  lastActivityAt: string;
+  preview: string | null;
+};

@@ -118,6 +118,25 @@ export const upsertVirtualGirlfriend = async (
   return rows[0]!;
 };
 
+
+export const getLatestVirtualGirlfriendConversation = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendConversationRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendConversationRecord[]>('ai_conversations', token, {
+    searchParams: new URLSearchParams({
+      select: 'id,user_id,companion_id,title,mode,last_message_at,created_at,updated_at',
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      order: 'updated_at.desc',
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
+};
+
 export const getOrCreateVirtualGirlfriendConversation = async (
   token: string,
   userId: string,
