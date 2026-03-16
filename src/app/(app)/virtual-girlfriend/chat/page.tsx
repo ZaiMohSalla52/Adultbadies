@@ -4,6 +4,7 @@ import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
   getActiveVirtualGirlfriend,
   getOrCreateVirtualGirlfriendConversation,
+  getOrCreateVirtualGirlfriendUserStyleProfile,
   getVirtualGirlfriendMessages,
   getVirtualGirlfriendUserMessageCountForToday,
 } from '@/lib/virtual-girlfriend/data';
@@ -21,10 +22,11 @@ export default async function VirtualGirlfriendChatPage() {
     redirect('/virtual-girlfriend/setup');
   }
 
-  const [conversation, entitlements, usedToday] = await Promise.all([
+  const [conversation, entitlements, usedToday, styleProfile] = await Promise.all([
     getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id),
     getUserEntitlements(auth.accessToken, auth.user.id),
     getVirtualGirlfriendUserMessageCountForToday(auth.accessToken, auth.user.id),
+    getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
   ]);
 
   const messages = await getVirtualGirlfriendMessages(auth.accessToken, conversation.id);
@@ -36,6 +38,8 @@ export default async function VirtualGirlfriendChatPage() {
       initialMessages={messages}
       entitlements={entitlements}
       usedToday={usedToday}
+      initialStyleProfile={styleProfile}
+      isPremium={entitlements.isPremium}
     />
   );
 }

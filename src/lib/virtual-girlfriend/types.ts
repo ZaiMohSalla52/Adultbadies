@@ -181,6 +181,47 @@ export type VirtualGirlfriendMemoryCandidate = {
   metadata?: Record<string, unknown>;
 };
 
+export const VIRTUAL_GIRLFRIEND_STYLE_CONTROL_PRESETS = [
+  'more_playful',
+  'more_caring',
+  'shorter_replies',
+  'bolder_flirting',
+] as const;
+
+export type VirtualGirlfriendStyleControlPreset = (typeof VIRTUAL_GIRLFRIEND_STYLE_CONTROL_PRESETS)[number];
+
+export type VirtualGirlfriendUserStyleDimensions = {
+  verbosityPreference: number;
+  emojiTone: number;
+  flirtIntensityPreference: number;
+  warmthReassurancePreference: number;
+  conversationalPacingPreference: number;
+  directnessPreference: number;
+  playfulSeriousBalance: number;
+  conversationalEnergy: number;
+};
+
+export type VirtualGirlfriendUserStyleProfileRecord = {
+  id: string;
+  user_id: string;
+  companion_id: string;
+  verbosity_preference: number;
+  emoji_tone: number;
+  flirt_intensity_preference: number;
+  warmth_reassurance_preference: number;
+  conversational_pacing_preference: number;
+  directness_preference: number;
+  playful_serious_balance: number;
+  conversational_energy: number;
+  adaptation_strength: number;
+  stability_score: number;
+  signals: Record<string, unknown>;
+  explicit_overrides: Record<string, unknown>;
+  last_learned_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type VirtualGirlfriendSetupPayload = {
   name?: string;
   archetype: string;

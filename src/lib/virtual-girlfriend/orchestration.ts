@@ -4,6 +4,7 @@ import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendMemoryRecord,
   VirtualGirlfriendMessageRecord,
+  VirtualGirlfriendUserStyleProfileRecord,
 } from '@/lib/virtual-girlfriend/types';
 
 const SYSTEM_DISCLOSURE =
@@ -23,7 +24,33 @@ const buildMemoryContext = (memories: VirtualGirlfriendMemoryRecord[]) => {
   return [`Persistent memory cues (use naturally, avoid repetition):`, ...lines].join('\n');
 };
 
-const buildSystemPrompt = (companion: VirtualGirlfriendCompanionRecord, memories: VirtualGirlfriendMemoryRecord[]) => {
+
+const describeStyleProfile = (style: VirtualGirlfriendUserStyleProfileRecord) => {
+  const pick = (value: number, low: string, mid: string, high: string) => {
+    if (value <= 0.33) return low;
+    if (value >= 0.67) return high;
+    return mid;
+  };
+
+  const guidance = [
+    `Reply length preference: ${pick(style.verbosity_preference, 'short and concise', 'balanced length', 'more detailed and expressive')}`,
+    `Emoji tone: ${pick(style.emoji_tone, 'minimal emojis', 'light emoji seasoning', 'frequent playful emoji use')}`,
+    `Flirt intensity: ${pick(style.flirt_intensity_preference, 'gentle and subtle flirtation', 'moderate flirty chemistry', 'bold flirt energy while respectful')}`,
+    `Warmth and reassurance: ${pick(style.warmth_reassurance_preference, 'brief reassurance', 'steady warmth', 'extra tender reassurance')}`,
+    `Pacing preference: ${pick(style.conversational_pacing_preference, 'slow and reflective pacing', 'balanced pacing', 'faster and punchier pacing')}`,
+    `Directness vs softness: ${pick(style.directness_preference, 'softer wording', 'balanced directness', 'clear direct wording')}`,
+    `Playful vs serious: ${pick(style.playful_serious_balance, 'mostly grounded/serious', 'mixed playful-serious', 'light, playful vibe')}`,
+    `Conversational energy: ${pick(style.conversational_energy, 'calm low-key tone', 'medium energy', 'high upbeat energy')}`,
+  ];
+
+  return ['User style adaptation profile (apply gradually, preserve core persona):', ...guidance].join('\n');
+};
+
+const buildSystemPrompt = (
+  companion: VirtualGirlfriendCompanionRecord,
+  memories: VirtualGirlfriendMemoryRecord[],
+  styleProfile: VirtualGirlfriendUserStyleProfileRecord,
+) => {
   const persona = companion.persona_profile;
 
   return [
@@ -38,6 +65,7 @@ const buildSystemPrompt = (companion: VirtualGirlfriendCompanionRecord, memories
     `Greeting style: ${persona.initialGreetingStyle}`,
     `Hidden personality traits: ${persona.hiddenPersonalityTraits.join(', ')}`,
     buildMemoryContext(memories),
+    describeStyleProfile(styleProfile),
     'Use memory only when contextually relevant and subtle. Never list memories mechanically.',
     'Avoid creepy over-personalization. Prioritize emotional safety and conversational flow.',
     'Keep replies emotionally consistent, affectionate, and non-generic.',
@@ -55,6 +83,7 @@ export const generateVirtualGirlfriendReply = async (input: {
   companion: VirtualGirlfriendCompanionRecord;
   history: VirtualGirlfriendMessageRecord[];
   memories: VirtualGirlfriendMemoryRecord[];
+  styleProfile: VirtualGirlfriendUserStyleProfileRecord;
   userMessage: string;
 }) => {
   const moderation = moderateVirtualGirlfriendContent(input.userMessage);
@@ -71,7 +100,7 @@ export const generateVirtualGirlfriendReply = async (input: {
   const response = await callOpenAIResponses({
     model: 'gpt-5-mini',
     input: [
-      { role: 'system', content: buildSystemPrompt(input.companion, input.memories) },
+      { role: 'system', content: buildSystemPrompt(input.companion, input.memories, input.styleProfile) },
       ...toModelInput(contextHistory),
       { role: 'user', content: input.userMessage },
     ],
