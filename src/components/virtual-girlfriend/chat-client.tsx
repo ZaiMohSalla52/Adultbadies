@@ -6,7 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import type { Entitlements } from '@/lib/subscriptions/types';
-import type { VirtualGirlfriendMessageRecord } from '@/lib/virtual-girlfriend/types';
+import type {
+  VirtualGirlfriendMessageRecord,
+  VirtualGirlfriendStyleControlPreset,
+  VirtualGirlfriendUserStyleProfileRecord,
+} from '@/lib/virtual-girlfriend/types';
 
 type ChatClientProps = {
   companionName: string;
@@ -14,7 +18,16 @@ type ChatClientProps = {
   initialMessages: VirtualGirlfriendMessageRecord[];
   entitlements: Entitlements;
   usedToday: number;
+  initialStyleProfile: VirtualGirlfriendUserStyleProfileRecord;
+  isPremium: boolean;
 };
+
+const STYLE_PRESETS: Array<{ key: VirtualGirlfriendStyleControlPreset; label: string }> = [
+  { key: 'more_playful', label: 'More playful' },
+  { key: 'more_caring', label: 'More caring' },
+  { key: 'shorter_replies', label: 'Shorter replies' },
+  { key: 'bolder_flirting', label: 'Bolder flirting' },
+];
 
 export const VirtualGirlfriendChatClient = ({
   companionName,
@@ -22,10 +35,14 @@ export const VirtualGirlfriendChatClient = ({
   initialMessages,
   entitlements,
   usedToday,
+  initialStyleProfile,
+  isPremium,
 }: ChatClientProps) => {
   const [messages, setMessages] = useState(initialMessages);
+  const [styleProfile, setStyleProfile] = useState(initialStyleProfile);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
+  const [stylePending, setStylePending] = useState<VirtualGirlfriendStyleControlPreset | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const limit = entitlements.limits.virtualGirlfriendMessagesPerDay;
@@ -103,6 +120,28 @@ export const VirtualGirlfriendChatClient = ({
     window.location.reload();
   };
 
+  const applyPreset = async (preset: VirtualGirlfriendStyleControlPreset) => {
+    if (!isPremium || stylePending) return;
+    setStylePending(preset);
+    setError(null);
+
+    const response = await fetch('/api/virtual-girlfriend/style', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preset }),
+    });
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      setError(body.error ?? 'Unable to apply style update.');
+      setStylePending(null);
+      return;
+    }
+    const body = (await response.json()) as { styleProfile: VirtualGirlfriendUserStyleProfileRecord };
+    setStyleProfile(body.styleProfile);
+    setStylePending(null);
+  };
+
   const helperText = useMemo(() => {
     if (limit === null) {
       return 'Premium access active: expanded Virtual Girlfriend messaging.';
@@ -119,6 +158,33 @@ export const VirtualGirlfriendChatClient = ({
           <h1 className="my-0">{companionName}</h1>
           <p className="my-0 text-sm text-muted">{disclosureLabel} • AI-generated conversation</p>
           <p className="my-0 text-xs text-muted">{helperText}</p>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="space-y-3">
+          <div>
+            <p className="my-0 text-sm font-medium">Style controls</p>
+            <p className="my-0 text-xs text-muted">Steer her vibe while preserving identity consistency.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {STYLE_PRESETS.map((preset) => (
+              <Button
+                key={preset.key}
+                type="button"
+                variant="secondary"
+                disabled={!isPremium || !!stylePending}
+                onClick={() => applyPreset(preset.key)}
+              >
+                {stylePending === preset.key ? 'Updating…' : preset.label}
+              </Button>
+            ))}
+          </div>
+          {!isPremium ? <p className="my-0 text-xs text-muted">Premium unlock: adaptive style steering.</p> : null}
+          <p className="my-0 text-xs text-muted">
+            Adaptive profile strength {Math.round(styleProfile.adaptation_strength * 100)}% • stability{' '}
+            {Math.round(styleProfile.stability_score * 100)}%
+          </p>
         </div>
       </Card>
 
@@ -143,8 +209,12 @@ export const VirtualGirlfriendChatClient = ({
           <div className="space-y-3">
             <p className="my-0 text-sm">You reached today&apos;s free Virtual Girlfriend message limit.</p>
             <div className="flex gap-3">
-              <Link href="/premium" className="ui-button">Upgrade to Premium</Link>
-              <Link href="/virtual-girlfriend/profile" className="ui-button ui-button-ghost">Back to profile</Link>
+              <Link href="/premium" className="ui-button">
+                Upgrade to Premium
+              </Link>
+              <Link href="/virtual-girlfriend/profile" className="ui-button ui-button-ghost">
+                Back to profile
+              </Link>
             </div>
           </div>
         ) : (

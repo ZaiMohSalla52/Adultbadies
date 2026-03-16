@@ -4,6 +4,7 @@ import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
   getActiveVirtualGirlfriend,
   getOrCreateVirtualGirlfriendConversation,
+  getOrCreateVirtualGirlfriendUserStyleProfile,
   getVirtualGirlfriendMessages,
   getVirtualGirlfriendUserMessageCountForToday,
   insertVirtualGirlfriendMessage,
@@ -13,6 +14,7 @@ import {
 } from '@/lib/virtual-girlfriend/data';
 import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { generateVirtualGirlfriendReply } from '@/lib/virtual-girlfriend/orchestration';
+import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
 
 const encoder = new TextEncoder();
 
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
   }
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
-  const [history, retrievedMemories] = await Promise.all([
+  const [history, retrievedMemories, styleProfile] = await Promise.all([
     getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
     retrieveRelevantVirtualGirlfriendMemories(auth.accessToken, {
       userId: auth.user.id,
@@ -56,12 +58,14 @@ export async function POST(request: NextRequest) {
       queryText: message,
       maxItems: 8,
     }),
+    getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
   ]);
 
   const reply = await generateVirtualGirlfriendReply({
     companion,
     history,
     memories: retrievedMemories,
+    styleProfile,
     userMessage: message,
   });
 
@@ -92,6 +96,14 @@ export async function POST(request: NextRequest) {
       auth.accessToken,
       retrievedMemories.map((memory) => memory.id),
     ),
+    learnAndPersistVirtualGirlfriendStyle({
+      token: auth.accessToken,
+      userId: auth.user.id,
+      companionId: companion.id,
+      current: styleProfile,
+      userMessage: message,
+      assistantMessage: reply.assistantText,
+    }),
   ]);
 
   const candidates = extractVirtualGirlfriendMemoryCandidates({

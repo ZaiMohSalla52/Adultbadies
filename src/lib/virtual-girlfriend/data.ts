@@ -9,6 +9,8 @@ import type {
   VirtualGirlfriendVisualIdentityPack,
   VirtualGirlfriendVisualProfileRecord,
   VirtualGirlfriendCompanionImageRecord,
+  VirtualGirlfriendUserStyleDimensions,
+  VirtualGirlfriendUserStyleProfileRecord,
 } from '@/lib/virtual-girlfriend/types';
 
 const companionSelect =
@@ -20,6 +22,10 @@ const visualProfileSelect =
 
 const companionImageSelect =
   'id,user_id,companion_id,visual_profile_id,image_kind,variant_index,origin_storage_provider,origin_storage_key,origin_mime_type,origin_byte_size,delivery_provider,delivery_public_id,delivery_url,width,height,prompt_hash,style_version,seed_metadata,lineage_metadata,moderation_status,moderation,provenance,quality_score,created_at';
+
+
+const userStyleSelect =
+  'id,user_id,companion_id,verbosity_preference,emoji_tone,flirt_intensity_preference,warmth_reassurance_preference,conversational_pacing_preference,directness_preference,playful_serious_balance,conversational_energy,adaptation_strength,stability_score,signals,explicit_overrides,last_learned_at,created_at,updated_at';
 
 const tokenize = (input: string) =>
   input
@@ -405,4 +411,85 @@ export const getLatestVisualProfileForCompanion = async (
   });
 
   return rows[0] ?? null;
+};
+
+
+export const getVirtualGirlfriendUserStyleProfile = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendUserStyleProfileRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendUserStyleProfileRecord[]>('ai_user_style_profiles', token, {
+    searchParams: new URLSearchParams({
+      select: userStyleSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      order: 'updated_at.desc',
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
+};
+
+export const getOrCreateVirtualGirlfriendUserStyleProfile = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendUserStyleProfileRecord> => {
+  const existing = await getVirtualGirlfriendUserStyleProfile(token, userId, companionId);
+  if (existing) return existing;
+
+  const rows = await supabaseRest<VirtualGirlfriendUserStyleProfileRecord[]>('ai_user_style_profiles', token, {
+    method: 'POST',
+    body: {
+      user_id: userId,
+      companion_id: companionId,
+    },
+    prefer: 'return=representation',
+  });
+
+  return rows[0]!;
+};
+
+export const patchVirtualGirlfriendUserStyleProfile = async (
+  token: string,
+  input: {
+    userId: string;
+    companionId: string;
+    dimensions?: Partial<VirtualGirlfriendUserStyleDimensions>;
+    adaptationStrength?: number;
+    stabilityScore?: number;
+    lastLearnedAt?: string | null;
+    explicitOverrides?: Record<string, unknown>;
+    signals?: Record<string, unknown>;
+  },
+): Promise<VirtualGirlfriendUserStyleProfileRecord> => {
+  const body: Record<string, unknown> = {};
+
+  if (input.dimensions) {
+    if (typeof input.dimensions.verbosityPreference === 'number') body.verbosity_preference = clamp(input.dimensions.verbosityPreference, 0, 1);
+    if (typeof input.dimensions.emojiTone === 'number') body.emoji_tone = clamp(input.dimensions.emojiTone, 0, 1);
+    if (typeof input.dimensions.flirtIntensityPreference === 'number') body.flirt_intensity_preference = clamp(input.dimensions.flirtIntensityPreference, 0, 1);
+    if (typeof input.dimensions.warmthReassurancePreference === 'number') body.warmth_reassurance_preference = clamp(input.dimensions.warmthReassurancePreference, 0, 1);
+    if (typeof input.dimensions.conversationalPacingPreference === 'number') body.conversational_pacing_preference = clamp(input.dimensions.conversationalPacingPreference, 0, 1);
+    if (typeof input.dimensions.directnessPreference === 'number') body.directness_preference = clamp(input.dimensions.directnessPreference, 0, 1);
+    if (typeof input.dimensions.playfulSeriousBalance === 'number') body.playful_serious_balance = clamp(input.dimensions.playfulSeriousBalance, 0, 1);
+    if (typeof input.dimensions.conversationalEnergy === 'number') body.conversational_energy = clamp(input.dimensions.conversationalEnergy, 0, 1);
+  }
+
+  if (typeof input.adaptationStrength === 'number') body.adaptation_strength = clamp(input.adaptationStrength, 0, 1);
+  if (typeof input.stabilityScore === 'number') body.stability_score = clamp(input.stabilityScore, 0, 1);
+  if (typeof input.lastLearnedAt !== 'undefined') body.last_learned_at = input.lastLearnedAt;
+  if (input.explicitOverrides) body.explicit_overrides = input.explicitOverrides;
+  if (input.signals) body.signals = input.signals;
+
+  const rows = await supabaseRest<VirtualGirlfriendUserStyleProfileRecord[]>('ai_user_style_profiles', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ user_id: `eq.${input.userId}`, companion_id: `eq.${input.companionId}` }),
+    body,
+    prefer: 'return=representation',
+  });
+
+  return rows[0]!;
 };
