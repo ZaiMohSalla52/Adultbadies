@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { getUserEntitlements } from '@/lib/subscriptions/data';
-import { getActiveVirtualGirlfriend, getOrCreateVirtualGirlfriendUserStyleProfile } from '@/lib/virtual-girlfriend/data';
+import {
+  getActiveVirtualGirlfriend,
+  getOrCreateVirtualGirlfriendUserStyleProfile,
+  getVirtualGirlfriendCompanionById,
+} from '@/lib/virtual-girlfriend/data';
 import { applyStyleControlPreset } from '@/lib/virtual-girlfriend/style-adaptation';
 import {
   VIRTUAL_GIRLFRIEND_STYLE_CONTROL_PRESETS,
@@ -17,12 +21,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Style controls are available for Premium members.' }, { status: 402 });
   }
 
-  const companion = await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
+  const body = (await request.json()) as { preset?: string; companionId?: string };
+  const requestedCompanionId = String(body.companionId ?? '').trim();
+
+  const companion = requestedCompanionId
+    ? await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
+    : await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
   if (!companion?.setup_completed) {
     return NextResponse.json({ error: 'Complete Virtual Girlfriend setup first.' }, { status: 400 });
   }
 
-  const body = (await request.json()) as { preset?: string };
   const preset = body.preset as VirtualGirlfriendStyleControlPreset;
 
   if (!VIRTUAL_GIRLFRIEND_STYLE_CONTROL_PRESETS.includes(preset)) {
