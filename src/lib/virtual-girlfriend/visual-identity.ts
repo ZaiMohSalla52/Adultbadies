@@ -11,7 +11,7 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 import { createVisualProfile, insertCompanionImages } from '@/lib/virtual-girlfriend/data';
 
-const STYLE_VERSION = 'vg-image-v2';
+const STYLE_VERSION = 'vg-image-v3';
 
 type BuildIdentityInput = {
   archetype: string;
@@ -151,9 +151,9 @@ const buildCapturePlan = (companion: VirtualGirlfriendCompanionRecord): CaptureP
     {
       kind: 'canonical',
       variantIndex: 0,
-      label: 'hero close-up portrait',
-      framing: 'tight close-up portrait, eye-level, subtle depth of field',
-      environment: 'clean believable background tied to selected aesthetic',
+      label: 'signature portrait',
+      framing: 'tight chest-up portrait, eye-level camera, strong face-first composition',
+      environment: 'clean but scene-real background tied to selected aesthetic without clutter',
       mood: 'inviting chemistry with premium realism',
       wardrobe: 'signature look that defines her identity',
       expression: 'confident and warm eye contact',
@@ -162,30 +162,19 @@ const buildCapturePlan = (companion: VirtualGirlfriendCompanionRecord): CaptureP
     {
       kind: 'gallery',
       variantIndex: 1,
-      label: 'casual selfie',
-      framing: 'phone-like handheld selfie framing, slightly imperfect crop',
-      environment: 'real lived-in setting with natural details',
-      mood: 'candid and relaxed',
-      wardrobe: 'casual everyday outfit',
-      expression: 'easy natural smile',
-      glamourLevel: 'low glamour',
+      label: 'lifestyle moment',
+      framing: 'waist-up candid framing with visible activity and environment context',
+      environment: 'lived-in daytime setting that feels personal and active',
+      mood: 'candid and relaxed daily-life warmth',
+      wardrobe: 'casual everyday outfit with movement-friendly styling',
+      expression: 'easy natural smile while interacting with an object or activity',
+      glamourLevel: 'low glamour casual realism',
     },
     {
       kind: 'gallery',
       variantIndex: 2,
-      label: 'soft daylight lifestyle',
-      framing: 'medium shot with environment context',
-      environment: 'daylight scene with natural shadows',
-      mood: 'authentic day-in-the-life warmth',
-      wardrobe: 'clean lifestyle styling',
-      expression: 'gentle candid expression',
-      glamourLevel: 'natural premium casual',
-    },
-    {
-      kind: 'gallery',
-      variantIndex: 3,
-      label: personaSpecificLifestyle.label,
-      framing: 'half-body or 3/4 framing with intentional composition',
+      label: `date-night vibe — ${personaSpecificLifestyle.label}`,
+      framing: 'half-body cinematic framing with intentional depth and clear subject separation',
       environment: personaSpecificLifestyle.environment,
       mood: personaSpecificLifestyle.mood,
       wardrobe: personaSpecificLifestyle.wardrobe,
@@ -212,6 +201,9 @@ const buildImagePrompt = (input: {
     `Lighting/mood direction: ${input.identityPack.lightingMoodDirection}.`,
     `Realism target: ${input.identityPack.realismPolishLevel}; natural skin texture, true-to-life lighting, smartphone-photo authenticity.`,
     `Aesthetic context: ${input.companion.visual_aesthetic ?? 'premium romantic portrait aesthetic'}.`,
+    'This companion must remain the same woman identity across all 3 total images in this set.',
+    'Each slot must look like a different moment from her life, not alternate crops of the same scene.',
+    'Do not repeat framing, camera angle, background, expression, or props from other slots.',
     'Must be meaningfully distinct from other variants in scene, framing, and styling while preserving the same identity.',
     'Keep dating-app appropriate, emotionally warm, and believable.',
     'Show exactly one adult woman, no extra people, no text overlays, no logos.',
