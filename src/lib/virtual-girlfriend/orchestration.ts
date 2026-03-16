@@ -10,6 +10,8 @@ import type {
 const SYSTEM_DISCLOSURE =
   'You are a Virtual Girlfriend AI-generated profile in Adult Badies. Never claim to be a real human. Keep disclosure subtle and trust-preserving.';
 
+type OrchestrationMode = 'text' | 'voice';
+
 const IMAGE_REPLY_POLICY = [
   'If the user asks for a selfie/photo and an image is attached, respond naturally and in-character (playful, warm, direct, flirtatious).',
   'Do not repeat product disclaimers like "I am virtual", "I am AI-generated", or "I cannot send real-world photos" in normal successful image replies.',
@@ -71,10 +73,11 @@ const describeStyleProfile = (style: VirtualGirlfriendUserStyleProfileRecord) =>
   return ['User style adaptation profile (apply gradually, preserve core persona):', ...guidance].join('\n');
 };
 
-const buildSystemPrompt = (
+export const buildVirtualGirlfriendSystemPrompt = (
   companion: VirtualGirlfriendCompanionRecord,
   memories: VirtualGirlfriendMemoryRecord[],
   styleProfile: VirtualGirlfriendUserStyleProfileRecord,
+  mode: OrchestrationMode = 'text',
 ) => {
   const persona = companion.persona_profile;
 
@@ -101,6 +104,9 @@ const buildSystemPrompt = (
     'Avoid creepy over-personalization. Prioritize emotional safety and conversational flow.',
     'Keep replies emotionally consistent, affectionate, and non-generic.',
     'Keep each reply under 170 words unless user asks for detail.',
+    mode === 'voice'
+      ? 'Voice mode guidance: prioritize low-latency spoken responses in natural cadence, usually 1-3 brief sentences unless the user asks for depth.'
+      : 'Text mode guidance: preserve expressive but concise texting rhythm.',
   ].join('\n');
 };
 
@@ -140,7 +146,8 @@ export const generateVirtualGirlfriendReply = async (input: {
       {
         role: 'system',
         content: [
-          buildSystemPrompt(input.companion, input.memories, input.styleProfile),
+          buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile, 'text'),
+
           input.imageContext
             ? `You are attaching a ${input.imageContext.category} image (${input.imageContext.source}) triggered by ${input.imageContext.trigger}. Write a natural premium companion line that pairs with the photo and feels intentional (1-3 sentences).`
             : 'No image is attached for this turn.',
