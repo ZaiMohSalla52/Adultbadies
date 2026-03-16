@@ -22,7 +22,7 @@ const companionSelect =
 
 
 const visualProfileSelect =
-  'id,user_id,companion_id,profile_version,style_version,prompt_hash,source_setup,identity_pack,continuity_notes,moderation_status,provenance,created_at,updated_at';
+  'id,user_id,companion_id,profile_version,style_version,prompt_hash,source_setup,identity_pack,canonical_reference_image_id,canonical_reference_metadata,continuity_notes,moderation_status,provenance,created_at,updated_at';
 
 const companionImageSelect =
   'id,user_id,companion_id,visual_profile_id,image_kind,variant_index,origin_storage_provider,origin_storage_key,origin_mime_type,origin_byte_size,delivery_provider,delivery_public_id,delivery_url,width,height,prompt_hash,style_version,seed_metadata,lineage_metadata,moderation_status,moderation,provenance,quality_score,created_at';
@@ -490,6 +490,8 @@ export const createVisualProfile = async (
     promptHash: string;
     sourceSetup: Record<string, unknown>;
     identityPack: VirtualGirlfriendVisualIdentityPack;
+    canonicalReferenceImageId?: string | null;
+    canonicalReferenceMetadata?: Record<string, unknown>;
     continuityNotes?: string;
     moderationStatus?: string;
     provenance?: Record<string, unknown>;
@@ -505,6 +507,8 @@ export const createVisualProfile = async (
       prompt_hash: input.promptHash,
       source_setup: input.sourceSetup,
       identity_pack: input.identityPack,
+      canonical_reference_image_id: input.canonicalReferenceImageId ?? null,
+      canonical_reference_metadata: input.canonicalReferenceMetadata ?? {},
       continuity_notes: input.continuityNotes ?? null,
       moderation_status: input.moderationStatus ?? 'pending',
       provenance: input.provenance ?? {},
@@ -540,6 +544,49 @@ export const getVirtualGirlfriendCompanionImages = async (
       limit: '30',
     }),
   });
+};
+
+export const setCanonicalReferenceImageForVisualProfile = async (
+  token: string,
+  input: {
+    userId: string;
+    visualProfileId: string;
+    canonicalReferenceImageId: string;
+    canonicalReferenceMetadata?: Record<string, unknown>;
+  },
+) => {
+  const rows = await supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ user_id: `eq.${input.userId}`, id: `eq.${input.visualProfileId}` }),
+    body: {
+      canonical_reference_image_id: input.canonicalReferenceImageId,
+      canonical_reference_metadata: input.canonicalReferenceMetadata ?? {},
+    },
+    prefer: 'return=representation',
+  });
+
+  return rows[0] ?? null;
+};
+
+export const getCanonicalReferenceImageForCompanion = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendCompanionImageRecord | null> => {
+  const visualProfile = await getLatestVisualProfileForCompanion(token, userId, companionId);
+  if (!visualProfile?.canonical_reference_image_id) return null;
+
+  const rows = await supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+    searchParams: new URLSearchParams({
+      select: companionImageSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      id: `eq.${visualProfile.canonical_reference_image_id}`,
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
 };
 
 export const getLatestVisualProfileForCompanion = async (
