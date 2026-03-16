@@ -11,7 +11,7 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 import { createVisualProfile, insertCompanionImages } from '@/lib/virtual-girlfriend/data';
 
-const STYLE_VERSION = 'vg-image-v1';
+const STYLE_VERSION = 'vg-image-v2';
 
 type BuildIdentityInput = {
   archetype: string;
@@ -23,14 +23,33 @@ type BuildIdentityInput = {
   persona: PersonaProfile;
 };
 
+type CapturePlan = {
+  kind: 'canonical' | 'gallery';
+  variantIndex: number;
+  label: string;
+  framing: string;
+  environment: string;
+  mood: string;
+  wardrobe: string;
+  expression: string;
+  glamourLevel: string;
+};
+
 const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisualIdentityPack => ({
-  coreLookDescriptors: [input.visualAesthetic, input.archetype, 'romantic dating profile', 'high-end portrait'],
-  portraitFramingStyle: 'close-up and half-body portrait mix, eye-level camera, shallow depth of field',
-  wardrobeDirection: 'modern elegant wardrobe with tasteful styling and premium fabrics',
-  lightingMoodDirection: 'cinematic soft key lighting with gentle highlights and warm skin tones',
-  realismPolishLevel: 'high realism, polished, natural skin texture, editorial-quality finishing',
+  coreLookDescriptors: [input.visualAesthetic, input.archetype, input.tone, 'premium dating photography', 'real phone-camera portrait'],
+  portraitFramingStyle: 'mix of close-up portrait, mirror selfie, and medium lifestyle framing; natural eye-level camera',
+  wardrobeDirection: 'wardrobe changes by scene: one polished look, one casual look, one lifestyle look',
+  lightingMoodDirection: 'mostly natural light with scene-true practical lighting; avoid studio flash look',
+  realismPolishLevel: 'high realism with natural skin texture, candid imperfections, and believable phone-camera detail',
   continuityAnchors: [...input.persona.visualPromptDNA.styleAnchors, input.companionName],
-  negativeConstraints: ['avoid multiple people', 'avoid distorted anatomy', 'avoid low-resolution', 'avoid explicit nudity'],
+  negativeConstraints: [
+    'avoid multiple people',
+    'avoid distorted anatomy',
+    'avoid low-resolution',
+    'avoid plastic skin smoothing',
+    'avoid repetitive same room composition',
+    'avoid explicit nudity',
+  ],
 });
 
 const sanitizePack = (raw: VirtualGirlfriendVisualIdentityPack, fallback: VirtualGirlfriendVisualIdentityPack) => ({
@@ -44,10 +63,36 @@ const sanitizePack = (raw: VirtualGirlfriendVisualIdentityPack, fallback: Virtua
 export const buildVisualIdentityPack = async (input: BuildIdentityInput) => {
   const fallback = fallbackIdentityPack(input);
 
-  const prompt = `Build a strict JSON visual identity pack for a premium AI virtual girlfriend image system.\n
-Context:\n- Name: ${input.companionName}\n- Archetype: ${input.archetype}\n- Tone: ${input.tone}\n- Affection style: ${input.affectionStyle}\n- Visual aesthetic: ${input.visualAesthetic}\n- User hints: ${input.preferenceHints || 'none'}\n- Persona core look: ${input.persona.visualPromptDNA.coreLook}\n- Persona anchors: ${input.persona.visualPromptDNA.styleAnchors.join(', ')}\n- Persona camera mood: ${input.persona.visualPromptDNA.cameraMood}\n
-Output JSON only with keys:\n{\n  "coreLookDescriptors": string[4..10],\n  "portraitFramingStyle": string,\n  "wardrobeDirection": string,\n  "lightingMoodDirection": string,\n  "realismPolishLevel": string,\n  "continuityAnchors": string[4..12],\n  "negativeConstraints": string[4..12]\n}\n
-Requirements:\n- Ensure same-identity continuity across future images.\n- Dating-app appropriate, premium and believable.\n- No explicit sexual content.`;
+  const prompt = `Build a strict JSON visual identity pack for a premium virtual girlfriend image system.
+Context:
+- Name: ${input.companionName}
+- Archetype: ${input.archetype}
+- Tone: ${input.tone}
+- Affection style: ${input.affectionStyle}
+- Visual aesthetic: ${input.visualAesthetic}
+- User hints: ${input.preferenceHints || 'none'}
+- Persona core look: ${input.persona.visualPromptDNA.coreLook}
+- Persona anchors: ${input.persona.visualPromptDNA.styleAnchors.join(', ')}
+- Persona camera mood: ${input.persona.visualPromptDNA.cameraMood}
+
+Output JSON only with keys:
+{
+  "coreLookDescriptors": string[5..12],
+  "portraitFramingStyle": string,
+  "wardrobeDirection": string,
+  "lightingMoodDirection": string,
+  "realismPolishLevel": string,
+  "continuityAnchors": string[5..14],
+  "negativeConstraints": string[5..14]
+}
+
+Requirements:
+- Strongly map archetype/tone/aesthetic to wardrobe, scene, expression, and energy.
+- Prevent all outputs from collapsing into cozy indoor portraits.
+- Prioritize realistic natural-lighting and believable phone-camera photography.
+- Maintain same-identity continuity across future images.
+- Dating-app appropriate, premium, and believable.
+- No explicit sexual content.`;
 
   try {
     const response = await callOpenAIResponses({
@@ -63,24 +108,112 @@ Requirements:\n- Ensure same-identity continuity across future images.\n- Dating
   }
 };
 
+const buildCapturePlan = (companion: VirtualGirlfriendCompanionRecord): CapturePlan[] => {
+  const style = `${companion.archetype ?? ''} ${companion.tone ?? ''} ${companion.visual_aesthetic ?? ''} ${companion.affection_style ?? ''}`.toLowerCase();
+
+  const personaSpecificLifestyle = /bombshell|glam|nightlife|bold/.test(style)
+    ? {
+        label: 'date-night glam look',
+        environment: 'upscale evening venue or chic city backdrop',
+        mood: 'playful confident date-night energy',
+        wardrobe: 'dressy evening outfit with polished accessories',
+        expression: 'confident smile with teasing eye contact',
+        glamourLevel: 'high glamour',
+      }
+    : /intellectual|bookish|cozy|soft|calm/.test(style)
+      ? {
+          label: 'bookish cozy lifestyle',
+          environment: 'warm cafe corner or home reading nook with texture',
+          mood: 'soft understated romance',
+          wardrobe: 'minimalist knit or cardigan with subtle elegance',
+          expression: 'gentle half-smile and thoughtful gaze',
+          glamourLevel: 'low-to-medium glamour',
+        }
+      : /playful|sporty|casual/.test(style)
+        ? {
+            label: 'daylight active lifestyle',
+            environment: 'park, boardwalk, or casual outdoor city path',
+            mood: 'fresh upbeat playful vibe',
+            wardrobe: 'athleisure or casual sporty outfit',
+            expression: 'energetic candid smile',
+            glamourLevel: 'casual-fresh styling',
+          }
+        : {
+            label: 'polished luxury lifestyle',
+            environment: 'elegant hotel lounge or upscale modern interior',
+            mood: 'poised romantic confidence',
+            wardrobe: 'tailored refined outfit with clean lines',
+            expression: 'composed warm confidence',
+            glamourLevel: 'polished premium styling',
+          };
+
+  return [
+    {
+      kind: 'canonical',
+      variantIndex: 0,
+      label: 'hero close-up portrait',
+      framing: 'tight close-up portrait, eye-level, subtle depth of field',
+      environment: 'clean believable background tied to selected aesthetic',
+      mood: 'inviting chemistry with premium realism',
+      wardrobe: 'signature look that defines her identity',
+      expression: 'confident and warm eye contact',
+      glamourLevel: 'balanced premium styling',
+    },
+    {
+      kind: 'gallery',
+      variantIndex: 1,
+      label: 'casual selfie',
+      framing: 'phone-like handheld selfie framing, slightly imperfect crop',
+      environment: 'real lived-in setting with natural details',
+      mood: 'candid and relaxed',
+      wardrobe: 'casual everyday outfit',
+      expression: 'easy natural smile',
+      glamourLevel: 'low glamour',
+    },
+    {
+      kind: 'gallery',
+      variantIndex: 2,
+      label: 'soft daylight lifestyle',
+      framing: 'medium shot with environment context',
+      environment: 'daylight scene with natural shadows',
+      mood: 'authentic day-in-the-life warmth',
+      wardrobe: 'clean lifestyle styling',
+      expression: 'gentle candid expression',
+      glamourLevel: 'natural premium casual',
+    },
+    {
+      kind: 'gallery',
+      variantIndex: 3,
+      label: personaSpecificLifestyle.label,
+      framing: 'half-body or 3/4 framing with intentional composition',
+      environment: personaSpecificLifestyle.environment,
+      mood: personaSpecificLifestyle.mood,
+      wardrobe: personaSpecificLifestyle.wardrobe,
+      expression: personaSpecificLifestyle.expression,
+      glamourLevel: personaSpecificLifestyle.glamourLevel,
+    },
+  ];
+};
+
 const buildImagePrompt = (input: {
   companion: VirtualGirlfriendCompanionRecord;
   identityPack: VirtualGirlfriendVisualIdentityPack;
-  variant: 'canonical' | 'gallery';
-  variantIndex: number;
+  capture: CapturePlan;
 }) => {
-  const v = input.variant === 'canonical' ? 'primary dating-profile portrait hero shot' : `gallery variant ${input.variantIndex}`;
-
   return [
-    `Create a premium ${v} of the same single AI-generated woman identity named ${input.companion.name}.`,
+    `Create a premium ${input.capture.label} image of the same single AI-generated woman identity named ${input.companion.name}.`,
     `Identity anchors: ${input.identityPack.continuityAnchors.join(', ')}.`,
     `Core look: ${input.identityPack.coreLookDescriptors.join(', ')}.`,
-    `Framing: ${input.identityPack.portraitFramingStyle}.`,
-    `Wardrobe: ${input.identityPack.wardrobeDirection}.`,
-    `Lighting/mood: ${input.identityPack.lightingMoodDirection}.`,
-    `Realism/polish: ${input.identityPack.realismPolishLevel}.`,
+    `Framing: ${input.capture.framing}.`,
+    `Background/environment: ${input.capture.environment}.`,
+    `Wardrobe: ${input.capture.wardrobe}.`,
+    `Expression and energy: ${input.capture.expression}; mood ${input.capture.mood}.`,
+    `Glamour-to-casual level: ${input.capture.glamourLevel}.`,
+    `Lighting/mood direction: ${input.identityPack.lightingMoodDirection}.`,
+    `Realism target: ${input.identityPack.realismPolishLevel}; natural skin texture, true-to-life lighting, smartphone-photo authenticity.`,
     `Aesthetic context: ${input.companion.visual_aesthetic ?? 'premium romantic portrait aesthetic'}.`,
-    'Keep it dating-app appropriate and emotionally warm.',
+    'Must be meaningfully distinct from other variants in scene, framing, and styling while preserving the same identity.',
+    'Keep dating-app appropriate, emotionally warm, and believable.',
     'Show exactly one adult woman, no extra people, no text overlays, no logos.',
     `Avoid: ${input.identityPack.negativeConstraints.join(', ')}.`,
   ].join(' ');
@@ -107,12 +240,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
   });
 
   const promptBaseHash = sha(JSON.stringify(identityPack));
-  const captures = [
-    { kind: 'canonical' as const, variantIndex: 0 },
-    { kind: 'gallery' as const, variantIndex: 1 },
-    { kind: 'gallery' as const, variantIndex: 2 },
-    { kind: 'gallery' as const, variantIndex: 3 },
-  ];
+  const captures = buildCapturePlan(input.companion);
 
   const prepared = [] as Array<{
     row: Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>;
@@ -122,8 +250,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     const prompt = buildImagePrompt({
       companion: input.companion,
       identityPack,
-      variant: capture.kind,
-      variantIndex: capture.variantIndex,
+      capture,
     });
 
     const promptHash = sha(`${promptBaseHash}:${capture.kind}:${capture.variantIndex}:${prompt}`);
@@ -162,7 +289,13 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
         prompt_hash: promptHash,
         style_version: STYLE_VERSION,
         seed_metadata: {},
-        lineage_metadata: { revisedPrompt: generated.revisedPrompt ?? null, continuityAnchors: identityPack.continuityAnchors },
+        lineage_metadata: {
+          revisedPrompt: generated.revisedPrompt ?? null,
+          continuityAnchors: identityPack.continuityAnchors,
+          captureLabel: capture.label,
+          captureMood: capture.mood,
+          captureEnvironment: capture.environment,
+        },
         moderation_status: 'pending',
         moderation: { provider: 'openai-image-default' },
         provenance: {
@@ -171,7 +304,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
           delivery: 'cloudinary',
           generatedAt: new Date().toISOString(),
         },
-        quality_score: 0.9,
+        quality_score: 0.92,
       },
     });
   }
@@ -183,9 +316,9 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     promptHash: promptBaseHash,
     sourceSetup: input.setup,
     identityPack,
-    continuityNotes: 'Identity continuity anchored by visual profile pack and shared style version.',
+    continuityNotes: 'Identity continuity anchored by profile pack with varied scene plans for non-duplicate gallery outcomes.',
     moderationStatus: 'pending',
-    provenance: { generatedBy: 'openai:gpt-5-mini', phase: 'stage9-phase3' },
+    provenance: { generatedBy: 'openai:gpt-5-mini', phase: 'stage9-phase3-refinement' },
   });
 
   const imageRows = prepared.map((entry) => ({ ...entry.row, visual_profile_id: visualProfile.id }));

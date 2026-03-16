@@ -38,6 +38,34 @@ const tokenize = (input: string) =>
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+export const listVirtualGirlfriends = async (token: string, userId: string): Promise<VirtualGirlfriendCompanionRecord[]> => {
+  return supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+    searchParams: new URLSearchParams({
+      select: companionSelect,
+      user_id: `eq.${userId}`,
+      order: 'is_active.desc,updated_at.desc',
+      limit: '50',
+    }),
+  });
+};
+
+export const getVirtualGirlfriendById = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendCompanionRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+    searchParams: new URLSearchParams({
+      select: companionSelect,
+      user_id: `eq.${userId}`,
+      id: `eq.${companionId}`,
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
+};
+
 export const getActiveVirtualGirlfriend = async (
   token: string,
   userId: string,
@@ -117,6 +145,7 @@ export const upsertVirtualGirlfriend = async (
     visualAesthetic: string;
     preferenceHints?: string;
     profileTags?: string[];
+    setActive?: boolean;
   },
 ): Promise<VirtualGirlfriendCompanionRecord> => {
   const existing = input.createNew
@@ -125,10 +154,10 @@ export const upsertVirtualGirlfriend = async (
       ? await getVirtualGirlfriendCompanionById(token, input.userId, input.companionId)
       : await getActiveVirtualGirlfriend(token, input.userId);
 
-  if (existing) {
+  if (targetCompanion) {
     const rows = await supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
       method: 'PATCH',
-      searchParams: new URLSearchParams({ id: `eq.${existing.id}`, user_id: `eq.${input.userId}` }),
+      searchParams: new URLSearchParams({ id: `eq.${targetCompanion.id}`, user_id: `eq.${input.userId}` }),
       body: {
         name: input.name,
         display_bio: input.bio,
@@ -144,6 +173,11 @@ export const upsertVirtualGirlfriend = async (
       },
       prefer: 'return=representation',
     });
+
+    if (input.setActive ?? true) {
+      await setActiveVirtualGirlfriendCompanion(token, input.userId, targetCompanion.id);
+      return { ...rows[0]!, is_active: true };
+    }
 
     return rows[0]!;
   }
@@ -171,12 +205,18 @@ export const upsertVirtualGirlfriend = async (
       profile_tags: input.profileTags ?? input.personaProfile.vibeTags,
       setup_completed: true,
       disclosure_label: 'AI-generated profile',
-      is_active: true,
+      is_active: false,
     },
     prefer: 'return=representation',
   });
 
-  return rows[0]!;
+  const created = rows[0]!;
+  if (input.setActive ?? true) {
+    await setActiveVirtualGirlfriendCompanion(token, input.userId, created.id);
+    return { ...created, is_active: true };
+  }
+
+  return created;
 };
 
 
