@@ -14,7 +14,7 @@ import {
   VIRTUAL_GIRLFRIEND_VISUAL_AESTHETICS,
 } from '@/lib/virtual-girlfriend/types';
 
-export const VirtualGirlfriendSetupFlow = () => {
+export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: boolean }) => {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -26,16 +26,21 @@ export const VirtualGirlfriendSetupFlow = () => {
       const response = await fetch('/api/virtual-girlfriend/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.fromEntries(formData)),
+        body: JSON.stringify({ ...Object.fromEntries(formData), createNew }),
       });
 
+      const body = (await response.json()) as { error?: string; companionId?: string };
+
       if (!response.ok) {
-        const body = (await response.json()) as { error?: string };
         setError(body.error ?? 'Unable to create your Virtual Girlfriend.');
         return;
       }
 
-      router.push('/virtual-girlfriend/profile');
+      const destination = body.companionId
+        ? `/virtual-girlfriend/profile?companionId=${body.companionId}`
+        : '/virtual-girlfriend/profile';
+
+      router.push(destination);
       router.refresh();
     });
   };
@@ -44,8 +49,10 @@ export const VirtualGirlfriendSetupFlow = () => {
     <div className="app-page-stack">
       <Card className="app-page-header">
         <p className="chat-label">Virtual Girlfriend</p>
-        <h1 className="my-0">Design your ideal virtual relationship</h1>
-        <p className="my-0 text-muted">Craft her vibe, tone, and chemistry. Your profile is AI-generated and tailored to your setup.</p>
+        <h1 className="my-0">{createNew ? 'Create another relationship profile' : 'Design your ideal virtual relationship'}</h1>
+        <p className="my-0 text-muted">{createNew
+            ? 'Build a distinct companion with her own tone, identity, and chat memory track.'
+            : 'Craft her vibe, tone, and chemistry. Your profile is AI-generated and tailored to your setup.'}</p>
       </Card>
 
       <Card className="app-surface-card">
@@ -82,7 +89,7 @@ export const VirtualGirlfriendSetupFlow = () => {
           {error ? <p className="onboarding-error my-0">{error}</p> : null}
 
           <Button disabled={pending} type="submit">
-            {pending ? 'Generating profile…' : 'Create Virtual Girlfriend'}
+            {pending ? 'Generating profile…' : createNew ? 'Create another companion' : 'Create Virtual Girlfriend'}
           </Button>
         </form>
       </Card>

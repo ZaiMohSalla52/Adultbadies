@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import {
+  getActiveVirtualGirlfriend,
+  getVirtualGirlfriendCompanionById,
   getOrCreateVirtualGirlfriendConversation,
   getLatestVisualProfileForCompanion,
   getVirtualGirlfriendCompanionImages,
@@ -8,14 +10,16 @@ import {
   resolveVirtualGirlfriendCompanion,
 } from '@/lib/virtual-girlfriend/data';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
 
-  const companionId = request.nextUrl.searchParams.get('companionId');
-  const companion = await resolveVirtualGirlfriendCompanion(auth.accessToken, auth.user.id, companionId);
-  const companions = await listVirtualGirlfriends(auth.accessToken, auth.user.id);
+  const { searchParams } = new URL(request.url);
+  const requestedCompanionId = searchParams.get('companionId')?.trim() ?? '';
 
+  const companion = requestedCompanionId
+    ? await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
+    : await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
   if (!companion || !companion.setup_completed) {
     return NextResponse.json({ companion: null, companions, conversationId: null });
   }

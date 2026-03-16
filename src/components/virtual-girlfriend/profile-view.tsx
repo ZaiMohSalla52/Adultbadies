@@ -39,11 +39,14 @@ export const VirtualGirlfriendProfileView = ({
             {photoDisclosure ? <span>{photoDisclosure}</span> : null}
           </p>
           <div className="vg-hero-actions">
-            <Link href="/virtual-girlfriend/chat" className="ui-button ui-button-primary">
+            <Link href={`/virtual-girlfriend/chat?companionId=${companion.id}`} className="ui-button ui-button-primary">
               Chat now
             </Link>
-            <Link href="/virtual-girlfriend/setup" className="ui-button ui-button-ghost vg-secondary-action">
-              Refine setup
+            <Link href="/virtual-girlfriend" className="ui-button ui-button-ghost vg-secondary-action">
+              Switch companion
+            </Link>
+            <Link href={`/virtual-girlfriend/setup?new=1`} className="ui-button ui-button-ghost vg-secondary-action">
+              Create another
             </Link>
           </div>
         </div>

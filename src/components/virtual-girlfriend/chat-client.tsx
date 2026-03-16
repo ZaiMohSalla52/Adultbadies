@@ -14,6 +14,7 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 
 type ChatClientProps = {
+  companionId: string;
   companionName: string;
   disclosureLabel: string;
   initialMessages: VirtualGirlfriendMessageRecord[];
@@ -31,6 +32,7 @@ const STYLE_PRESETS: Array<{ key: VirtualGirlfriendStyleControlPreset; label: st
 ];
 
 export const VirtualGirlfriendChatClient = ({
+  companionId,
   companionName,
   disclosureLabel,
   initialMessages,
@@ -76,7 +78,7 @@ export const VirtualGirlfriendChatClient = ({
     const response = await fetch('/api/virtual-girlfriend/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify({ message: text, companionId }),
     });
 
     if (!response.ok || !response.body) {
@@ -170,7 +172,7 @@ export const VirtualGirlfriendChatClient = ({
     const response = await fetch('/api/virtual-girlfriend/style', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preset }),
+      body: JSON.stringify({ preset, companionId }),
     });
 
     if (!response.ok) {
@@ -267,7 +269,7 @@ export const VirtualGirlfriendChatClient = ({
               <Link href="/premium" className="ui-button">
                 Upgrade to Premium
               </Link>
-              <Link href="/virtual-girlfriend/profile" className="ui-button ui-button-ghost">
+              <Link href={`/virtual-girlfriend/profile?companionId=${companionId}`} className="ui-button ui-button-ghost">
                 Back to profile
               </Link>
             </div>
