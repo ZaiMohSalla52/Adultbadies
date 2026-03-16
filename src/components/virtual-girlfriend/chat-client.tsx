@@ -12,6 +12,7 @@ import type {
   VirtualGirlfriendMessageAttachment,
   VirtualGirlfriendStyleControlPreset,
   VirtualGirlfriendUserStyleProfileRecord,
+  VirtualGirlfriendGenerationStatus,
 } from '@/lib/virtual-girlfriend/types';
 
 type ChatClientProps = {
@@ -24,6 +25,7 @@ type ChatClientProps = {
   usedToday: number;
   initialStyleProfile: VirtualGirlfriendUserStyleProfileRecord;
   isPremium: boolean;
+  companionGenerationStatus: VirtualGirlfriendGenerationStatus;
 };
 
 const STYLE_PRESETS: Array<{ key: VirtualGirlfriendStyleControlPreset; label: string }> = [
@@ -43,6 +45,7 @@ export const VirtualGirlfriendChatClient = ({
   usedToday,
   initialStyleProfile,
   isPremium,
+  companionGenerationStatus,
 }: ChatClientProps) => {
   const [messages, setMessages] = useState(initialMessages);
   const [styleProfile, setStyleProfile] = useState(initialStyleProfile);
@@ -68,10 +71,17 @@ export const VirtualGirlfriendChatClient = ({
   const [voiceLevel, setVoiceLevel] = useState(0);
 
   const micStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const companionAudioContextRef = useRef<AudioContext | null>(null);
+  const companionAnalyserRef = useRef<AnalyserNode | null>(null);
   const meterFrameRef = useRef<number | null>(null);
-  const companionPulseTimeoutRef = useRef<number | null>(null);
+  const companionMeterFrameRef = useRef<number | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const eventsChannelRef = useRef<RTCDataChannel | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const voiceRunRef = useRef(0);
 
   const limit = entitlements.limits.virtualGirlfriendMessagesPerDay;
   const reachedLimit = limit !== null && usedToday >= limit;
@@ -212,10 +222,16 @@ export const VirtualGirlfriendChatClient = ({
   };
 
 
-  const clearCompanionPulse = () => {
-    if (companionPulseTimeoutRef.current !== null) {
-      window.clearTimeout(companionPulseTimeoutRef.current);
-      companionPulseTimeoutRef.current = null;
+  const closeCompanionMeter = () => {
+    if (companionMeterFrameRef.current !== null) {
+      window.cancelAnimationFrame(companionMeterFrameRef.current);
+      companionMeterFrameRef.current = null;
+    }
+    companionAnalyserRef.current = null;
+
+    if (companionAudioContextRef.current) {
+      void companionAudioContextRef.current.close();
+      companionAudioContextRef.current = null;
     }
   };
 
@@ -242,11 +258,62 @@ export const VirtualGirlfriendChatClient = ({
   };
 
   const teardownVoiceRealtimeUi = () => {
-    clearCompanionPulse();
+    closeCompanionMeter();
     stopVoiceMeter();
     stopMicrophoneStream();
+    if (eventsChannelRef.current) {
+      eventsChannelRef.current.close();
+      eventsChannelRef.current = null;
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.pause();
+      remoteAudioRef.current.srcObject = null;
+      remoteAudioRef.current = null;
+    }
+    remoteStreamRef.current = null;
     setIsListening(false);
+    setMicMuted(false);
+    setVoiceLevel(0);
+    setIsMicActive(false);
     setIsCompanionSpeaking(false);
+  };
+
+  const startCompanionMeter = (stream: MediaStream) => {
+    closeCompanionMeter();
+
+    const AudioContextCtor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
+
+    const audioContext = new AudioContextCtor();
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 1024;
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+
+    companionAudioContextRef.current = audioContext;
+    companionAnalyserRef.current = analyser;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+
+    const tick = () => {
+      const meter = companionAnalyserRef.current;
+      if (!meter) return;
+
+      meter.getByteTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i += 1) {
+        const normalized = (data[i] - 128) / 128;
+        sum += normalized * normalized;
+      }
+      const rms = Math.sqrt(sum / data.length);
+      setIsCompanionSpeaking(rms > 0.03);
+      companionMeterFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    companionMeterFrameRef.current = window.requestAnimationFrame(tick);
   };
 
   const startVoiceMeter = (stream: MediaStream) => {
@@ -282,28 +349,17 @@ export const VirtualGirlfriendChatClient = ({
       const level = Math.min(1, rms * 8.2);
       setVoiceLevel(level);
 
-      if (!micMuted && voiceSession) {
+      if (!micMuted && voiceSession && peerConnectionRef.current) {
         setIsListening(true);
 
         if (level > 0.15) {
           userSpeakingFrames += 1;
           if (userSpeakingFrames > 2) {
-            clearCompanionPulse();
             setIsMicActive(true);
-            setIsCompanionSpeaking(false);
           }
         } else {
           userSpeakingFrames = 0;
           setIsMicActive(false);
-          if (!isCompanionSpeaking) {
-            clearCompanionPulse();
-            companionPulseTimeoutRef.current = window.setTimeout(() => {
-              setIsCompanionSpeaking(true);
-              companionPulseTimeoutRef.current = window.setTimeout(() => {
-                setIsCompanionSpeaking(false);
-              }, 1300);
-            }, 320);
-          }
         }
       } else {
         setIsListening(false);
@@ -330,10 +386,23 @@ export const VirtualGirlfriendChatClient = ({
   };
 
   const startVoiceSession = async () => {
-    if (!isPremium || voicePending) return;
+    if (!isPremium || voicePending || voiceStatus === 'connecting' || voiceStatus === 'reconnecting') return;
+    if (companionGenerationStatus !== 'ready') {
+      setError('Voice unlocks once this companion finishes generation.');
+      return;
+    }
     if (!companionId) {
       setError('No companion selected.');
       return;
+    }
+
+    voiceRunRef.current += 1;
+    const runId = voiceRunRef.current;
+    const isCurrentRun = () => voiceRunRef.current === runId;
+
+    if (voiceSession || peerConnectionRef.current || micStreamRef.current) {
+      teardownVoiceRealtimeUi();
+      setVoiceSession(null);
     }
 
     setVoicePending(true);
@@ -342,6 +411,7 @@ export const VirtualGirlfriendChatClient = ({
 
     const mic = await checkMicrophoneAccess();
     if (!mic.ok) {
+      if (!isCurrentRun()) return;
       setError(mic.message);
       setVoicePending(false);
       setVoiceStatus('disconnected');
@@ -357,9 +427,15 @@ export const VirtualGirlfriendChatClient = ({
       });
 
       if (!response.ok) {
+        if (!isCurrentRun()) {
+          mic.stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
         const body = (await response.json().catch(() => ({}))) as { error?: string; upgradePath?: string };
         if (response.status === 402) {
           setError(body.error ?? 'Voice is available on Premium.');
+        } else if (response.status === 409) {
+          setError(body.error ?? 'Voice unlocks once this companion finishes generation.');
         } else if (response.status === 400) {
           setError(body.error ?? 'No companion selected.');
         } else {
@@ -385,13 +461,146 @@ export const VirtualGirlfriendChatClient = ({
         };
       };
 
+      const session = body.session;
+      if (!session || typeof session.clientSecret !== 'string' || !session.clientSecret || typeof session.model !== 'string' || !session.model) {
+        throw new Error('Voice session bootstrap returned an invalid payload.');
+      }
+
+      const connectResponse = await fetch(`https://api.openai.com/v1/realtime?model=${encodeURIComponent(session.model)}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.clientSecret}`,
+          'Content-Type': 'application/sdp',
+        },
+        body: await (async () => {
+          const peerConnection = new RTCPeerConnection();
+          peerConnectionRef.current = peerConnection;
+
+          const remoteAudio = new Audio();
+          remoteAudio.autoplay = true;
+          remoteAudioRef.current = remoteAudio;
+
+          peerConnection.ontrack = (event) => {
+            const stream = event.streams[0];
+            if (!stream) return;
+            remoteStreamRef.current = stream;
+            remoteAudio.srcObject = stream;
+            void remoteAudio.play().catch(() => {
+              setError('Audio playback was blocked. Tap Start voice again to resume playback.');
+            });
+            startCompanionMeter(stream);
+          };
+
+          peerConnection.onconnectionstatechange = () => {
+            const state = peerConnection.connectionState;
+            if (state === 'connected') {
+              if (!isCurrentRun()) return;
+              setVoiceStatus('ready');
+              setError(null);
+              return;
+            }
+            if (state === 'connecting') {
+              if (!isCurrentRun()) return;
+              setVoiceStatus('connecting');
+              return;
+            }
+            if (state === 'disconnected') {
+              if (!isCurrentRun()) return;
+              setIsListening(false);
+              setIsMicActive(false);
+              setIsCompanionSpeaking(false);
+              setVoiceStatus('disconnected');
+              return;
+            }
+            if (state === 'failed') {
+              if (!isCurrentRun()) return;
+              setIsListening(false);
+              setIsMicActive(false);
+              setIsCompanionSpeaking(false);
+              setVoiceStatus('disconnected');
+              setError('Voice connection failed. Restart voice to continue.');
+              return;
+            }
+            if (state === 'closed') {
+              if (!isCurrentRun()) return;
+              setIsListening(false);
+              setIsMicActive(false);
+              setIsCompanionSpeaking(false);
+              setVoiceStatus('disconnected');
+            }
+          };
+
+          peerConnection.oniceconnectionstatechange = () => {
+            const state = peerConnection.iceConnectionState;
+            if (!isCurrentRun()) return;
+            if (state === 'checking') setVoiceStatus('connecting');
+            if (state === 'disconnected') {
+              setIsListening(false);
+              setIsMicActive(false);
+              setIsCompanionSpeaking(false);
+              setVoiceStatus('reconnecting');
+            }
+            if (state === 'failed') {
+              setIsListening(false);
+              setIsMicActive(false);
+              setIsCompanionSpeaking(false);
+              setVoiceStatus('disconnected');
+              setError('Voice network path failed. Restart voice to reconnect.');
+            }
+          };
+
+          const channel = peerConnection.createDataChannel('oai-events');
+          eventsChannelRef.current = channel;
+          channel.onmessage = (event) => {
+            try {
+              const payload = JSON.parse(event.data) as { type?: string };
+              if (payload.type === 'response.audio.done') {
+                setIsCompanionSpeaking(false);
+              }
+              if (payload.type === 'output_audio_buffer.started') {
+                setIsCompanionSpeaking(true);
+              }
+              if (payload.type === 'output_audio_buffer.stopped') {
+                setIsCompanionSpeaking(false);
+              }
+            } catch {
+              // Ignore non-JSON event payloads from transport.
+            }
+          };
+
+          mic.stream.getTracks().forEach((track) => {
+            peerConnection.addTrack(track, mic.stream);
+          });
+
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+          return offer.sdp ?? '';
+        })(),
+      });
+
+      if (!connectResponse.ok) {
+        throw new Error(`Realtime SDP exchange failed (${connectResponse.status}).`);
+      }
+
+      const answerSdp = await connectResponse.text();
+      if (!isCurrentRun()) {
+        mic.stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      const peerConnection = peerConnectionRef.current;
+      if (!peerConnection) {
+        throw new Error('Realtime peer connection was not initialized.');
+      }
+      await peerConnection.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
       micStreamRef.current = mic.stream;
       setMicMuted(false);
       startVoiceMeter(mic.stream);
-      setVoiceSession(body.session);
-      setVoiceStatus('ready');
+      setVoiceSession(session);
+      setVoiceStatus('connecting');
       setVoicePending(false);
     } catch {
+      if (!isCurrentRun()) return;
       setError('Unable to start voice session. Check your connection and try again.');
       setVoiceSession(null);
       setVoiceStatus('disconnected');
@@ -402,6 +611,7 @@ export const VirtualGirlfriendChatClient = ({
   };
 
   const endVoiceSession = () => {
+    voiceRunRef.current += 1;
     setVoiceSession(null);
     setVoiceStatus('idle');
     teardownVoiceRealtimeUi();
@@ -421,6 +631,7 @@ export const VirtualGirlfriendChatClient = ({
       setIsMicActive(false);
       setIsListening(false);
       setVoiceLevel(0);
+      setIsCompanionSpeaking(false);
     }
   };
 
@@ -431,8 +642,29 @@ export const VirtualGirlfriendChatClient = ({
     const expiresAtMs = new Date(voiceSession.expiresAt).getTime();
     const timeout = window.setTimeout(
       () => {
+        voiceRunRef.current += 1;
+        closeCompanionMeter();
+        stopVoiceMeter();
+        stopMicrophoneStream();
+        if (eventsChannelRef.current) {
+          eventsChannelRef.current.close();
+          eventsChannelRef.current = null;
+        }
+        if (peerConnectionRef.current) {
+          peerConnectionRef.current.close();
+          peerConnectionRef.current = null;
+        }
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.pause();
+          remoteAudioRef.current.srcObject = null;
+          remoteAudioRef.current = null;
+        }
+        remoteStreamRef.current = null;
+        setVoiceSession(null);
         setVoiceStatus('expired');
         setIsListening(false);
+        setIsMicActive(false);
+        setVoiceLevel(0);
         setIsCompanionSpeaking(false);
       },
       Math.max(0, expiresAtMs - Date.now()),
@@ -443,9 +675,23 @@ export const VirtualGirlfriendChatClient = ({
 
   useEffect(() => {
     return () => {
-      clearCompanionPulse();
+      closeCompanionMeter();
       stopVoiceMeter();
       stopMicrophoneStream();
+      if (eventsChannelRef.current) {
+        eventsChannelRef.current.close();
+        eventsChannelRef.current = null;
+      }
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.pause();
+        remoteAudioRef.current.srcObject = null;
+        remoteAudioRef.current = null;
+      }
+      remoteStreamRef.current = null;
       setIsListening(false);
       setIsCompanionSpeaking(false);
     };
@@ -459,13 +705,14 @@ export const VirtualGirlfriendChatClient = ({
   const voiceStatusText = useMemo(() => {
     if (!isPremium) return 'Voice is available on Premium.';
     if (!companionId) return 'No companion selected.';
+    if (companionGenerationStatus !== 'ready') return 'Voice unlocks after this companion finishes profile generation.';
     if (voiceStatus === 'connecting') return 'Connecting…';
     if (voiceStatus === 'reconnecting') return 'Reconnecting…';
     if (voiceStatus === 'disconnected') return 'Connection dropped. Restart voice to continue.';
     if (voiceSession && (isVoiceExpired || voiceStatus === 'expired')) return 'Session expired, refresh to continue.';
     if (voiceStatus === 'ready' && voiceSession) return 'Voice session ready.';
     return 'This initializes a companion-scoped realtime token with persona, style adaptation, and memory context.';
-  }, [companionId, isPremium, isVoiceExpired, voiceSession, voiceStatus]);
+  }, [companionGenerationStatus, companionId, isPremium, isVoiceExpired, voiceSession, voiceStatus]);
 
   const voiceStatusTone =
     voiceStatus === 'connecting' || voiceStatus === 'reconnecting'
@@ -552,7 +799,19 @@ export const VirtualGirlfriendChatClient = ({
           </div>
 
           <div className="chat-style-controls-grid">
-            <Button type="button" variant="secondary" disabled={!isPremium || voicePending || !companionId} onClick={startVoiceSession}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={
+                !isPremium ||
+                voicePending ||
+                voiceStatus === 'connecting' ||
+                voiceStatus === 'reconnecting' ||
+                !companionId ||
+                companionGenerationStatus !== 'ready'
+              }
+              onClick={startVoiceSession}
+            >
               {voicePending || voiceStatus === 'connecting' || voiceStatus === 'reconnecting'
                 ? voiceStatus === 'reconnecting'
                   ? 'Reconnecting…'
@@ -572,7 +831,12 @@ export const VirtualGirlfriendChatClient = ({
               </>
             ) : null}
             {(voiceStatus === 'disconnected' || isVoiceExpired || voiceStatus === 'expired') && isPremium ? (
-              <Button type="button" variant="secondary" disabled={voicePending || !companionId} onClick={startVoiceSession}>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={voicePending || voiceStatus === 'connecting' || voiceStatus === 'reconnecting' || !companionId || companionGenerationStatus !== 'ready'}
+                onClick={startVoiceSession}
+              >
                 Restart voice
               </Button>
             ) : null}

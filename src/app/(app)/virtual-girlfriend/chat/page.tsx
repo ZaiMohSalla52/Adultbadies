@@ -66,6 +66,7 @@ export default async function VirtualGirlfriendChatPage({
       usedToday={usedToday}
       initialStyleProfile={styleProfile}
       isPremium={entitlements.isPremium}
+      companionGenerationStatus={companion.generation_status}
     />
   );
 }
