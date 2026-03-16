@@ -3,8 +3,8 @@
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CompanionRosterMedia } from '@/components/virtual-girlfriend/companion-roster-media';
-import { Button } from '@/components/ui/button';
+import { ActiveCompanionPanel } from '@/components/virtual-girlfriend/active-companion-panel';
+import { CompanionLibraryCard } from '@/components/virtual-girlfriend/companion-library-card';
 import { Card } from '@/components/ui/card';
 import type { Entitlements } from '@/lib/subscriptions/types';
 import type {
@@ -17,64 +17,6 @@ type RosterItem = {
   companion: VirtualGirlfriendCompanionRecord;
   image: VirtualGirlfriendCompanionImageRecord | null;
   status: VirtualGirlfriendCompanionStatus;
-};
-
-const CompanionCard = ({
-  item,
-  isActive,
-  pending,
-  pendingId,
-  onSwitch,
-}: {
-  item: RosterItem;
-  isActive: boolean;
-  pending: boolean;
-  pendingId: string | null;
-  onSwitch: (companionId: string) => void;
-}) => {
-  const { companion, image, status } = item;
-  const statusLabel = isActive ? 'active' : status;
-
-  return (
-    <article className={`vg-roster-card ${isActive ? 'vg-roster-card-active' : ''}`}>
-      <CompanionRosterMedia name={companion.name} imageUrl={image?.delivery_url} isActive={isActive} status={status} />
-
-      <div className="vg-roster-copy">
-        <div className="vg-roster-meta-row">
-          <p className="my-0 text-xs text-muted">{companion.archetype ?? 'Virtual Companion'}</p>
-          <span className={`vg-status-pill vg-status-pill-${statusLabel}`}>{statusLabel}</span>
-        </div>
-        <h2 className="my-0">{companion.name}</h2>
-        <p className="my-0 text-sm text-muted">{companion.display_bio ?? companion.persona_profile.shortBio}</p>
-        <p className="my-0 text-xs text-muted">
-          {(companion.profile_tags ?? []).slice(0, 3).join(' • ') || companion.tone || 'Distinct chemistry'}
-        </p>
-        {status === 'generating' ? <p className="my-0 text-xs text-muted">Generating photos and finishing setup…</p> : null}
-        {status === 'failed' ? (
-          <p className="my-0 text-xs text-muted">Image generation failed earlier. Open profile and create another if needed.</p>
-        ) : null}
-      </div>
-
-      <div className="vg-roster-actions">
-        <Link href={`/virtual-girlfriend/chat?companionId=${companion.id}`} className="ui-button ui-button-primary">
-          Chat
-        </Link>
-        <div className="vg-roster-secondary-actions">
-          <Link href={`/virtual-girlfriend/profile?companionId=${companion.id}`} className="ui-button ui-button-ghost vg-secondary-action">
-            View profile
-          </Link>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => onSwitch(companion.id)}
-            disabled={pending && pendingId === companion.id}
-          >
-            {pending && pendingId === companion.id ? 'Switching…' : isActive ? 'Open active' : 'Make active'}
-          </Button>
-        </div>
-      </div>
-    </article>
-  );
 };
 
 export const VirtualGirlfriendRosterHub = ({
@@ -138,7 +80,14 @@ export const VirtualGirlfriendRosterHub = ({
             <h2 className="my-0 text-base font-semibold">Active companion</h2>
             <p className="my-0 text-xs text-muted">Your main relationship entry point. Continue the current storyline or switch when needed.</p>
           </div>
-          <CompanionCard item={activeItem} isActive pending={pending} pendingId={pendingId} onSwitch={onSwitch} />
+          <ActiveCompanionPanel
+            companion={activeItem.companion}
+            image={activeItem.image}
+            status={activeItem.status}
+            pending={pending}
+            pendingId={pendingId}
+            onSwitch={onSwitch}
+          />
         </section>
       ) : null}
 
@@ -150,10 +99,11 @@ export const VirtualGirlfriendRosterHub = ({
           </div>
           <div className="vg-roster-grid">
             {otherItems.map((item) => (
-              <CompanionCard
+              <CompanionLibraryCard
                 key={item.companion.id}
-                item={item}
-                isActive={false}
+                companion={item.companion}
+                image={item.image}
+                status={item.status}
                 pending={pending}
                 pendingId={pendingId}
                 onSwitch={onSwitch}
@@ -171,10 +121,11 @@ export const VirtualGirlfriendRosterHub = ({
           </div>
           <div className="vg-roster-grid">
             {pendingItems.map((item) => (
-              <CompanionCard
+              <CompanionLibraryCard
                 key={item.companion.id}
-                item={item}
-                isActive={false}
+                companion={item.companion}
+                image={item.image}
+                status={item.status}
                 pending={pending}
                 pendingId={pendingId}
                 onSwitch={onSwitch}
