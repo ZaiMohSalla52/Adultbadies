@@ -3,12 +3,12 @@ import { VirtualGirlfriendRosterHub } from '@/components/virtual-girlfriend/rost
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
-import type { VirtualGirlfriendCompanionStatus } from '@/lib/virtual-girlfriend/types';
 import {
   getActiveVirtualGirlfriend,
   getVirtualGirlfriendCompanionImages,
   listVirtualGirlfriendCompanions,
 } from '@/lib/virtual-girlfriend/data';
+import { resolveCompanionImageState } from '@/lib/virtual-girlfriend/generation-state';
 
 export default async function VirtualGirlfriendIndexPage() {
   const auth = await getAuthenticatedUser();
@@ -33,18 +33,7 @@ export default async function VirtualGirlfriendIndexPage() {
     uniqueCompanions.map(async (companion) => {
       const images = await getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user!.id, companion.id);
       const curated = curateVirtualGirlfriendImages(images);
-      const explicitStatus = companion.generation_status;
-      const hasImages = Boolean(curated.canonical || curated.gallery.length);
-      const ageMs = Date.now() - new Date(companion.updated_at).getTime();
-      const staleWithoutImages = ageMs > 2 * 60 * 1000;
-      const fallbackStatus: VirtualGirlfriendCompanionStatus = !companion.setup_completed
-        ? 'generating'
-        : hasImages
-          ? 'ready'
-          : staleWithoutImages
-            ? 'failed'
-            : 'generating';
-      const status: VirtualGirlfriendCompanionStatus = explicitStatus ?? fallbackStatus;
+      const status = resolveCompanionImageState({ companion, images, visualProfile: null });
       return { companion, image: curated.canonical, status };
     }),
   );

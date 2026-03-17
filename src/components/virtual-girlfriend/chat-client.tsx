@@ -12,6 +12,7 @@ import type {
   VirtualGirlfriendMessageAttachment,
   VirtualGirlfriendStyleControlPreset,
   VirtualGirlfriendUserStyleProfileRecord,
+  VirtualGirlfriendChatImageOutcome,
   VirtualGirlfriendGenerationStatus,
 } from '@/lib/virtual-girlfriend/types';
 
@@ -161,7 +162,12 @@ export const VirtualGirlfriendChatClient = ({
             | { type: 'chunk'; chunk: string }
             | {
                 type: 'done';
-                payload: { content: string; contentType: 'text' | 'image' | 'mixed'; attachments: VirtualGirlfriendMessageAttachment[] };
+                payload: {
+                  content: string;
+                  contentType: 'text' | 'image' | 'mixed';
+                  attachments: VirtualGirlfriendMessageAttachment[];
+                  imageGeneration?: { requested: boolean; outcome: VirtualGirlfriendChatImageOutcome; reason: string | null };
+                };
               };
 
           if (event.type === 'chunk') {
@@ -178,6 +184,13 @@ export const VirtualGirlfriendChatClient = ({
           }
 
           if (event.type === 'done') {
+            if (
+              event.payload.imageGeneration?.requested
+              && (event.payload.imageGeneration.outcome === 'failed_generation' || event.payload.imageGeneration.outcome === 'skipped_prerequisites')
+            ) {
+              setError('Photo request received, but we could not attach an image this turn. Try again in a moment.');
+            }
+
             setMessages((prev) =>
               prev.map((message) =>
                 message.id === assistantTempId

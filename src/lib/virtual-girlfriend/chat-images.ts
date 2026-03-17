@@ -4,6 +4,7 @@ import { uploadToCloudinary } from '@/lib/storage/cloudinary';
 import { uploadToR2 } from '@/lib/storage/r2';
 import { insertCompanionImages } from '@/lib/virtual-girlfriend/data';
 import type {
+  VirtualGirlfriendChatImageOutcome,
   VirtualGirlfriendCompanionImageRecord,
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendImageCategory,
@@ -156,57 +157,69 @@ export const resolveVirtualGirlfriendChatImage = async (input: {
   existingImages: VirtualGirlfriendCompanionImageRecord[];
   visualProfile: VirtualGirlfriendVisualProfileRecord | null;
   allowFreshGeneration: boolean;
-}): Promise<VirtualGirlfriendMessageAttachment | null> => {
+}): Promise<{
+  outcome: VirtualGirlfriendChatImageOutcome;
+  attachment: VirtualGirlfriendMessageAttachment | null;
+  reason?: string;
+}> => {
   const reusable = pickReusableImage(input.category, input.existingImages);
   if (reusable) {
     return {
-      kind: 'image',
-      category: input.category,
-      imageId: reusable.id,
-      imageUrl: reusable.delivery_url,
-      width: reusable.width,
-      height: reusable.height,
-      source: 'gallery-reuse',
-      promptHash: reusable.prompt_hash,
+      outcome: 'reused_existing',
+      attachment: {
+        kind: 'image',
+        category: input.category,
+        imageId: reusable.id,
+        imageUrl: reusable.delivery_url,
+        width: reusable.width,
+        height: reusable.height,
+        source: 'gallery-reuse',
+        promptHash: reusable.prompt_hash,
+      },
     };
   }
 
   if (!input.allowFreshGeneration || !input.visualProfile) {
-    return null;
+    return {
+      outcome: 'skipped_prerequisites',
+      attachment: null,
+      reason: !input.allowFreshGeneration ? 'fresh_generation_not_allowed' : 'visual_profile_missing',
+    };
   }
 
-  const canonical = resolveCanonicalReferenceImage(input.visualProfile, input.existingImages);
-  const canonicalReference = await downloadCanonicalReferenceBytes(canonical);
+  try {
+    const canonical = resolveCanonicalReferenceImage(input.visualProfile, input.existingImages);
+    const canonicalReference = await downloadCanonicalReferenceBytes(canonical);
 
-  const prompt = buildChatImagePrompt({
-    companion: input.companion,
-    visualProfile: input.visualProfile,
-    category: input.category,
-  });
+    const prompt = buildChatImagePrompt({
+      companion: input.companion,
+      visualProfile: input.visualProfile,
+      category: input.category,
+    });
 
-  const generated = await generateGalleryImageFromReferenceWithIdeogram({
-    prompt,
-    referenceImageBytes: canonicalReference.bytes,
-    referenceMimeType: canonicalReference.mimeType,
-  });
-  const promptHash = hash(`${input.visualProfile.prompt_hash}:${input.category}:${prompt}`);
+    const generated = await generateGalleryImageFromReferenceWithIdeogram({
+      prompt,
+      referenceImageBytes: canonicalReference.bytes,
+      referenceMimeType: canonicalReference.mimeType,
+    });
+    const promptHash = hash(`${input.visualProfile.prompt_hash}:${input.category}:${prompt}`);
 
-  const key = `virtual-girlfriend-images/${input.userId}/${input.companion.id}/${input.visualProfile.style_version}/chat-${input.category}-${Date.now()}.png`;
-  const r2 = await uploadToR2({
-    key,
-    body: generated.bytes,
-    contentType: generated.mimeType,
-  });
+    const key = `virtual-girlfriend-images/${input.userId}/${input.companion.id}/${input.visualProfile.style_version}/chat-${input.category}-${Date.now()}.png`;
+    const r2 = await uploadToR2({
+      key,
+      body: generated.bytes,
+      contentType: generated.mimeType,
+    });
 
-  const cloudinary = await uploadToCloudinary({
-    bytes: generated.bytes,
-    mimeType: generated.mimeType,
-    folderPath: `${input.userId}/${input.companion.id}`,
-    publicId: `${input.visualProfile.style_version}-chat-${input.category}-${Date.now()}`,
-  });
+    const cloudinary = await uploadToCloudinary({
+      bytes: generated.bytes,
+      mimeType: generated.mimeType,
+      folderPath: `${input.userId}/${input.companion.id}`,
+      publicId: `${input.visualProfile.style_version}-chat-${input.category}-${Date.now()}`,
+    });
 
-  const [inserted] = await insertCompanionImages(input.token, [
-    {
+    const [inserted] = await insertCompanionImages(input.token, [
+      {
       user_id: input.userId,
       companion_id: input.companion.id,
       visual_profile_id: input.visualProfile.id,
@@ -251,17 +264,29 @@ export const resolveVirtualGirlfriendChatImage = async (input: {
         providerJobId: generated.jobId,
       },
       quality_score: 0.92,
-    },
-  ]);
+      },
+    ]);
 
-  return {
-    kind: 'image',
-    category: input.category,
-    imageId: inserted.id,
-    imageUrl: inserted.delivery_url,
-    width: inserted.width,
-    height: inserted.height,
-    source: 'fresh-generation',
-    promptHash,
-  };
+    return {
+      outcome: 'generated_new',
+      attachment: {
+        kind: 'image',
+        category: input.category,
+        imageId: inserted.id,
+        imageUrl: inserted.delivery_url,
+        width: inserted.width,
+        height: inserted.height,
+        source: 'fresh-generation',
+        promptHash,
+      },
+    };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown_image_generation_error';
+    const prerequisiteError = /Canonical reference image is missing|could not be found|delivery URL is missing/i.test(reason);
+    return {
+      outcome: prerequisiteError ? 'skipped_prerequisites' : 'failed_generation',
+      attachment: null,
+      reason,
+    };
+  }
 };
