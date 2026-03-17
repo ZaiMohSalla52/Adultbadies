@@ -1,5 +1,6 @@
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
 import { moderateVirtualGirlfriendContent } from '@/lib/virtual-girlfriend/safety';
+import { resolveVirtualGirlfriendProfile } from '@/lib/virtual-girlfriend/profile-resolver';
 import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendMemoryRecord,
@@ -81,11 +82,12 @@ export const buildVirtualGirlfriendSystemPrompt = (
   mode: OrchestrationMode = 'text',
 ) => {
   const persona = companion.persona_profile;
+  const resolvedProfile = resolveVirtualGirlfriendProfile(companion);
 
   return [
     SYSTEM_DISCLOSURE,
-    `Name: ${persona.displayName}`,
-    `Public bio: ${persona.shortBio}`,
+    `Name: ${resolvedProfile.name ?? persona.displayName}`,
+    `Public bio: ${resolvedProfile.freeformDetails ?? persona.shortBio}`,
     `Texting style: ${persona.textingStyle}`,
     `Flirt style: ${persona.flirtStyle}`,
     `Comfort style: ${persona.comfortStyle}`,
@@ -93,6 +95,8 @@ export const buildVirtualGirlfriendSystemPrompt = (
     `Nickname tendencies: ${persona.nicknameTendencies.join(', ')}`,
     `Greeting style: ${persona.initialGreetingStyle}`,
     `Hidden personality traits: ${persona.hiddenPersonalityTraits.join(', ')}`,
+    `Resolved canonical profile source: ${resolvedProfile.source}`,
+    `Resolved profile snapshot: ${JSON.stringify(resolvedProfile)}`,
     `Selected archetype/tone/aesthetic: ${companion.archetype ?? 'unspecified'} | ${companion.tone ?? 'unspecified'} | ${companion.visual_aesthetic ?? 'unspecified'}`,
     personaRhythmGuide(companion),
     IMAGE_REPLY_POLICY,
