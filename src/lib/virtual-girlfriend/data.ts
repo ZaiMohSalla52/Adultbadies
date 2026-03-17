@@ -634,6 +634,21 @@ export const getLatestVisualProfileForCompanion = async (
   return rows[0] ?? null;
 };
 
+export const getVisualProfileById = async (
+  token: string,
+  visualProfileId: string,
+): Promise<VirtualGirlfriendVisualProfileRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
+    searchParams: new URLSearchParams({
+      select: visualProfileSelect,
+      id: `eq.${visualProfileId}`,
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
+};
+
 
 export const getVirtualGirlfriendUserStyleProfile = async (
   token: string,
@@ -863,6 +878,21 @@ export const listPendingCanonicalReviewVisualProfiles = async (
       canonical_review_status: 'eq.pending',
       order: 'created_at.desc',
       limit: '50',
+    }),
+  });
+};
+
+export const listCanonicalReviewVisualProfilesByStatus = async (
+  token: string,
+  status: 'pending' | 'approved' | 'rejected',
+  limit = 50,
+): Promise<VirtualGirlfriendVisualProfileRecord[]> => {
+  return supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
+    searchParams: new URLSearchParams({
+      select: visualProfileSelect,
+      canonical_review_status: `eq.${status}`,
+      order: 'updated_at.desc',
+      limit: String(limit),
     }),
   });
 };
