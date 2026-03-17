@@ -14,8 +14,10 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 import {
   createVisualProfile,
+  getVirtualGirlfriendCompanionById,
   insertCompanionImages,
   listVirtualGirlfriendCompanions,
+  setCanonicalReferenceImageId,
   setCanonicalReferenceImageForVisualProfile,
 } from '@/lib/virtual-girlfriend/data';
 
@@ -288,6 +290,16 @@ export class VirtualGirlfriendImagePackError extends Error {
   }
 }
 
+export class VirtualGirlfriendCanonicalRegenerateError extends Error {
+  canonicalImageId: string | null;
+
+  constructor(message: string, canonicalImageId: string | null = null, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'VirtualGirlfriendCanonicalRegenerateError';
+    this.canonicalImageId = canonicalImageId;
+  }
+}
+
 const buildImageRecord = (input: {
   userId: string;
   companionId: string;
@@ -382,6 +394,142 @@ const downloadCanonicalReferenceBytes = async (canonicalDeliveryUrl: string) => 
     bytes: Buffer.from(arrayBuffer),
     mimeType: response.headers.get('content-type') ?? 'image/png',
   };
+};
+
+export const regenerateCanonicalForVisualProfile = async (input: {
+  token: string;
+  visualProfile: {
+    id: string;
+    user_id: string;
+    companion_id: string;
+    prompt_hash: string;
+    identity_pack: VirtualGirlfriendVisualIdentityPack;
+    canonical_reference_image_id: string | null;
+    canonical_reference_metadata: Record<string, unknown>;
+    canonical_review_status: 'pending' | 'approved' | 'rejected';
+    reviewed_by: string | null;
+    reviewed_at: string | null;
+    review_notes: string | null;
+  };
+  requestedBy: string;
+  regenerateGallery: boolean;
+}) => {
+  const companion = await getVirtualGirlfriendCompanionById(
+    input.token,
+    input.visualProfile.user_id,
+    input.visualProfile.companion_id,
+  );
+
+  if (!companion) {
+    throw new VirtualGirlfriendCanonicalRegenerateError('Companion was not found for canonical regeneration.');
+  }
+
+  const captures = buildCapturePlan(companion);
+  const canonicalCapture = captures.find((capture) => capture.kind === 'canonical');
+  const galleryCaptures = captures.filter((capture) => capture.kind === 'gallery');
+
+  if (!canonicalCapture) {
+    throw new VirtualGirlfriendCanonicalRegenerateError('Canonical capture plan is missing.');
+  }
+
+  const canonicalPrompt = buildImagePrompt({
+    companion,
+    identityPack: input.visualProfile.identity_pack,
+    capture: canonicalCapture,
+  });
+
+  const canonicalPromptHash = sha(
+    `${input.visualProfile.prompt_hash}:regen:${Date.now()}:${canonicalCapture.kind}:${canonicalCapture.variantIndex}:${canonicalPrompt}`,
+  );
+
+  const canonicalGenerated = await generateCanonicalImageWithIdeogram(canonicalPrompt);
+  const canonicalRow = await buildImageRecord({
+    userId: input.visualProfile.user_id,
+    companionId: input.visualProfile.companion_id,
+    visualProfileId: input.visualProfile.id,
+    capture: canonicalCapture,
+    generated: canonicalGenerated,
+    promptHash: canonicalPromptHash,
+    identityPack: input.visualProfile.identity_pack,
+  });
+
+  const [canonicalImage] = await insertCompanionImages(input.token, [canonicalRow]);
+  if (!canonicalImage) {
+    throw new VirtualGirlfriendCanonicalRegenerateError('Canonical image persistence failed.');
+  }
+
+  const metadata = {
+    ...(input.visualProfile.canonical_reference_metadata ?? {}),
+    lastRegeneratedAt: new Date().toISOString(),
+    regeneratedBy: input.requestedBy,
+    previousCanonicalReferenceImageId: input.visualProfile.canonical_reference_image_id,
+    previousReview: {
+      status: input.visualProfile.canonical_review_status,
+      reviewedBy: input.visualProfile.reviewed_by,
+      reviewedAt: input.visualProfile.reviewed_at,
+      reviewNotes: input.visualProfile.review_notes,
+    },
+  };
+
+  await setCanonicalReferenceImageForVisualProfile(input.token, {
+    userId: input.visualProfile.user_id,
+    visualProfileId: input.visualProfile.id,
+    canonicalReferenceImageId: canonicalImage.id,
+    canonicalReferenceMetadata: metadata,
+    canonicalReviewStatus: 'pending',
+  });
+
+  await setCanonicalReferenceImageId(
+    input.token,
+    input.visualProfile.user_id,
+    input.visualProfile.companion_id,
+    canonicalImage.id,
+  );
+
+  if (!input.regenerateGallery) {
+    return { canonicalImage, galleryImages: [] as VirtualGirlfriendCompanionImageRecord[] };
+  }
+
+  try {
+    const canonicalReference = await downloadCanonicalReferenceBytes(canonicalImage.delivery_url);
+    const galleryRows: Array<Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>> = [];
+
+    for (const capture of galleryCaptures) {
+      const prompt = buildImagePrompt({
+        companion,
+        identityPack: input.visualProfile.identity_pack,
+        capture,
+      });
+      const promptHash = sha(`${input.visualProfile.prompt_hash}:regen:${capture.kind}:${capture.variantIndex}:${prompt}`);
+      const generated = await generateGalleryImageFromReferenceWithIdeogram({
+        prompt,
+        referenceImageBytes: canonicalReference.bytes,
+        referenceMimeType: canonicalReference.mimeType,
+      });
+
+      galleryRows.push(
+        await buildImageRecord({
+          userId: input.visualProfile.user_id,
+          companionId: input.visualProfile.companion_id,
+          visualProfileId: input.visualProfile.id,
+          capture,
+          generated,
+          promptHash,
+          identityPack: input.visualProfile.identity_pack,
+          referenceImageId: canonicalImage.id,
+        }),
+      );
+    }
+
+    const galleryImages = galleryRows.length ? await insertCompanionImages(input.token, galleryRows) : [];
+    return { canonicalImage, galleryImages };
+  } catch (error) {
+    throw new VirtualGirlfriendCanonicalRegenerateError(
+      'Canonical regenerated, but gallery refresh from new canonical failed.',
+      canonicalImage.id,
+      { cause: error },
+    );
+  }
 };
 
 export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
