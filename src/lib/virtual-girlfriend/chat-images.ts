@@ -110,14 +110,14 @@ const buildChatImagePrompt = (input: {
 };
 
 const resolveCanonicalReferenceImage = (
-  companion: VirtualGirlfriendCompanionRecord,
+  visualProfile: VirtualGirlfriendVisualProfileRecord,
   images: VirtualGirlfriendCompanionImageRecord[],
 ): VirtualGirlfriendCompanionImageRecord => {
-  if (!companion.canonical_reference_image_id) {
+  if (!visualProfile.canonical_reference_image_id) {
     throw new Error('Canonical reference image is missing for this companion.');
   }
 
-  const canonical = images.find((image) => image.id === companion.canonical_reference_image_id);
+  const canonical = images.find((image) => image.id === visualProfile.canonical_reference_image_id);
   if (!canonical) {
     throw new Error('Canonical reference image record could not be found.');
   }
@@ -169,7 +169,7 @@ export const resolveVirtualGirlfriendChatImage = async (input: {
     return null;
   }
 
-  const canonical = resolveCanonicalReferenceImage(input.companion, input.existingImages);
+  const canonical = resolveCanonicalReferenceImage(input.visualProfile, input.existingImages);
   const canonicalReference = await downloadCanonicalReferenceBytes(canonical);
 
   const prompt = buildChatImagePrompt({
