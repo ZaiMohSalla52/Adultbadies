@@ -36,6 +36,7 @@ export const VirtualGirlfriendRosterHub = ({
   const activeItem = uniqueItems.find((item) => item.companion.id === activeCompanionId) ?? uniqueItems[0] ?? null;
   const otherItems = uniqueItems.filter((item) => item.companion.id !== activeItem?.companion.id && item.status !== 'generating');
   const pendingItems = uniqueItems.filter((item) => item.status === 'generating' && item.companion.id !== activeItem?.companion.id);
+  const readyCount = uniqueItems.filter((item) => item.status === 'ready').length;
 
   const onSwitch = (companionId: string) => {
     if (pending || companionId === activeCompanionId) {
@@ -67,6 +68,11 @@ export const VirtualGirlfriendRosterHub = ({
         <p className="chat-label">Virtual Girlfriend</p>
         <h1 className="my-0">Your companion library</h1>
         <p className="my-0 text-muted">Browse distinct profiles, jump straight into chat, and switch active companions anytime.</p>
+        <div className="vg-hub-stats-row">
+          <span>{uniqueItems.length} total</span>
+          <span>{readyCount} ready</span>
+          <span>{pendingItems.length} generating</span>
+        </div>
         <p className="my-0 text-xs text-muted">
           {entitlements.isPremium
             ? 'Premium membership is active. Companion limits may expand over time.'
@@ -78,7 +84,7 @@ export const VirtualGirlfriendRosterHub = ({
         <section className="vg-hub-section vg-hub-section-active">
           <div className="vg-section-heading">
             <h2 className="my-0 text-base font-semibold">Active companion</h2>
-            <p className="my-0 text-xs text-muted">Your main relationship entry point. Continue the current storyline or switch when needed.</p>
+            <p className="my-0 text-xs text-muted">Your primary relationship thread with direct entry to profile, chat, and voice.</p>
           </div>
           <ActiveCompanionPanel
             companion={activeItem.companion}
@@ -93,9 +99,14 @@ export const VirtualGirlfriendRosterHub = ({
 
       {otherItems.length ? (
         <section className="vg-hub-section">
-          <div className="vg-section-heading">
-            <h2 className="my-0 text-base font-semibold">Other companions</h2>
-            <p className="my-0 text-xs text-muted">Every ready companion in your library, each with direct chat and profile actions.</p>
+          <div className="vg-section-heading vg-section-heading-spread">
+            <div className="vg-section-heading-copy">
+              <h2 className="my-0 text-base font-semibold">Companion library</h2>
+              <p className="my-0 text-xs text-muted">Ready companions you can chat with immediately.</p>
+            </div>
+            <Link href="/virtual-girlfriend/setup?new=1" className="ui-button ui-button-ghost vg-create-inline">
+              Create another
+            </Link>
           </div>
           <div className="vg-roster-grid">
             {otherItems.map((item) => (

@@ -35,7 +35,7 @@ export const VirtualGirlfriendProfileView = ({
 
   return (
     <div className="app-page-stack vg-premium-profile">
-      <section className="vg-hero-card">
+      <section className="vg-hero-card vg-identity-surface">
         {canonical ? (
           <ProfileMediaFrame className="vg-hero-image-wrap">
             <Avatar name={companion.name} imageUrl={canonical.delivery_url} kind="ai" size="hero" variant="rounded" ring className="vg-hero-avatar" />
@@ -47,6 +47,7 @@ export const VirtualGirlfriendProfileView = ({
         <div className="vg-hero-copy">
           <h1 className="my-0 vg-hero-name">{companion.name}</h1>
           <p className="my-0 text-muted vg-hero-bio">{companion.display_bio ?? companion.persona_profile.shortBio}</p>
+          <p className="my-0 text-xs text-muted">Canonical portrait + gallery continuity are now identity-locked.</p>
           <p className="my-0 vg-disclosure-row text-muted text-xs">
             <span>{profileDisclosure}</span>
             {photoDisclosure ? <span>{photoDisclosure}</span> : null}

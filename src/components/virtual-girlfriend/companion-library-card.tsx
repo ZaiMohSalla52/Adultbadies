@@ -51,14 +51,14 @@ export const CompanionLibraryCard = ({
 
       <div className="vg-library-actions">
         <Link href={`/virtual-girlfriend/chat?companionId=${companion.id}`} className="ui-button ui-button-primary">
-          Chat
+          Chat now
         </Link>
         <div className="vg-roster-secondary-actions">
           <Link href={`/virtual-girlfriend/profile?companionId=${companion.id}`} className="ui-button ui-button-ghost vg-secondary-action">
-            View profile
+            Profile
           </Link>
           <Button type="button" variant="secondary" onClick={() => onSwitch(companion.id)} disabled={pending && pendingId === companion.id}>
-            {pending && pendingId === companion.id ? 'Switching…' : isActive ? 'Open active' : 'Make active'}
+            {pending && pendingId === companion.id ? 'Switching…' : isActive ? 'Open active' : 'Set active'}
           </Button>
         </div>
       </div>

@@ -53,23 +53,23 @@ export const ActiveCompanionPanel = ({
         <div className="vg-active-details">
           <p className="my-0 text-xs text-muted">{fallbackVibe}</p>
           {status === 'generating' ? (
-            <p className="my-0 text-xs text-muted">Generating photos and finishing setup…</p>
+            <p className="my-0 text-xs text-muted">Finalizing her locked portrait and gallery continuity…</p>
           ) : null}
           {status === 'failed' ? (
-            <p className="my-0 text-xs text-muted">Image generation failed earlier. Open profile and create another if needed.</p>
+            <p className="my-0 text-xs text-muted">A generation step failed. You can still chat and review profile details.</p>
           ) : null}
         </div>
 
         <div className="vg-active-actions">
           <Link href={`/virtual-girlfriend/chat?companionId=${companion.id}`} className="ui-button ui-button-primary">
-            Chat with {companion.name}
+            Continue chat
           </Link>
           <div className="vg-active-secondary-actions">
             <Link href={`/virtual-girlfriend/profile?companionId=${companion.id}`} className="ui-button ui-button-ghost vg-secondary-action">
               View profile
             </Link>
             <Button type="button" variant="secondary" onClick={() => onSwitch(companion.id)} disabled={pending && pendingId === companion.id}>
-              {pending && pendingId === companion.id ? 'Switching…' : 'Open active'}
+              {pending && pendingId === companion.id ? 'Opening…' : 'Open active'}
             </Button>
           </div>
         </div>
