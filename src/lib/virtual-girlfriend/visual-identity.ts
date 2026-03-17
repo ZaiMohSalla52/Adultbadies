@@ -12,7 +12,7 @@ import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendVisualIdentityPack,
 } from '@/lib/virtual-girlfriend/types';
-import { createVisualProfile, insertCompanionImages, setCanonicalReferenceImageForVisualProfile } from '@/lib/virtual-girlfriend/data';
+import { createVisualProfile, insertCompanionImages } from '@/lib/virtual-girlfriend/data';
 
 const STYLE_VERSION = 'vg-image-v3';
 const IDEOGRAM_PROVIDER = 'ideogram';
