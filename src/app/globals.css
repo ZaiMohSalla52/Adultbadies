@@ -2174,38 +2174,54 @@ a {
 }
 
 .vg-generation-state {
-  border-radius: 20px;
+  border-radius: 24px;
   border: 1px solid rgba(236, 72, 153, 0.45);
   background:
     radial-gradient(circle at 12% 12%, rgba(236, 72, 153, 0.3), transparent 44%),
     linear-gradient(165deg, rgba(20, 26, 45, 0.98), rgba(8, 12, 26, 0.95));
-  padding: 1rem;
+  padding: 1.2rem;
   display: grid;
-  gap: 0.65rem;
+  justify-items: center;
+  text-align: center;
+  gap: 0.9rem;
 }
 
 .vg-generation-orb {
-  width: 32px;
-  height: 32px;
+  width: 96px;
+  height: 96px;
   border-radius: 999px;
-  border: 2px solid rgba(244, 114, 182, 0.5);
+  border: 3px solid rgba(244, 114, 182, 0.5);
   border-top-color: #fdf2f8;
   animation: spin 900ms linear infinite;
 }
 
-.vg-generation-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
+.vg-generation-summary-card {
+  width: min(100%, 620px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
 }
 
-.vg-generation-summary span {
-  border-radius: 999px;
+.vg-generation-summary-item {
+  min-height: 78px;
+  border-radius: 18px;
   border: 1px solid rgba(148, 163, 194, 0.32);
-  padding: 0.2rem 0.5rem;
-  font-size: 0.73rem;
-  color: #e2e8f0;
   background: rgba(15, 23, 42, 0.75);
+  padding: 0.65rem 0.8rem;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+}
+
+.vg-generation-summary-item span {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.vg-generation-summary-item strong {
+  color: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .vg-review-sheet {
@@ -2234,14 +2250,14 @@ a {
 }
 
 .vg-stage-card {
-  width: min(100%, 760px);
+  width: min(100%, 920px);
   margin: 0 auto;
   display: grid;
   gap: 1rem;
-  border-radius: 24px;
+  border-radius: 28px;
   border: 1px solid rgba(148, 163, 184, 0.25);
   background: linear-gradient(180deg, rgba(12, 18, 34, 0.98), rgba(6, 10, 22, 0.98));
-  padding: 1rem;
+  padding: 32px;
 }
 
 .vg-stage-topbar {
@@ -2249,10 +2265,11 @@ a {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.75rem;
+  min-height: 52px;
 }
 
 .vg-stage-progress-track {
-  height: 8px;
+  height: 10px;
   border-radius: 999px;
   background: rgba(100, 116, 139, 0.35);
   overflow: hidden;
@@ -2271,8 +2288,8 @@ a {
 }
 
 .vg-step-title {
-  margin: 0;
-  font-size: 1.6rem;
+  margin: 24px 0 0;
+  font-size: 1.9rem;
   line-height: 1.2;
   color: #f8fafc;
 }
@@ -2280,30 +2297,127 @@ a {
 .vg-hero-grid,
 .vg-option-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  justify-content: center;
 }
 
-.vg-hero-choice,
+.vg-hero-grid {
+  grid-template-columns: repeat(2, 220px);
+  gap: 28px;
+}
+
+.vg-option-grid {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 20px;
+}
+
 .vg-image-choice-card {
   display: grid;
   gap: 0.5rem;
+  justify-items: center;
   border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 16px;
+  border-radius: 18px;
   background: rgba(15, 23, 42, 0.75);
   padding: 0.55rem;
   color: #f8fafc;
-  text-align: left;
+  text-align: center;
 }
 
-.vg-hero-choice img,
 .vg-image-choice-card img,
 .vg-picked-portrait {
   width: 100%;
-  aspect-ratio: 3 / 4;
   object-fit: cover;
-  border-radius: 12px;
   border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.vg-sex-choice-card {
+  width: 220px;
+  border-radius: 22px;
+}
+
+.vg-sex-choice-card img {
+  width: 220px;
+  height: 270px;
+  border-radius: 22px;
+}
+
+.vg-sex-choice-card span {
+  margin-top: 14px;
+}
+
+.vg-origin-grid {
+  grid-template-columns: repeat(auto-fit, 118px);
+  gap: 20px;
+}
+
+.vg-origin-choice-card {
+  width: 118px;
+  border-radius: 20px;
+}
+
+.vg-origin-choice-card img {
+  width: 118px;
+  height: 118px;
+  border-radius: 20px;
+}
+
+.vg-origin-choice-card span {
+  font-size: 0.86rem;
+}
+
+.vg-hair-grid {
+  grid-template-columns: repeat(auto-fit, 110px);
+  gap: 20px;
+}
+
+.vg-hair-choice-card {
+  width: 110px;
+  padding: 0.4rem;
+  gap: 0.6rem;
+  border-radius: 18px;
+}
+
+.vg-hair-texture {
+  width: 110px;
+  height: 110px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background-size: 180% 180%;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.vg-body-grid {
+  grid-template-columns: repeat(auto-fit, 126px);
+  gap: 24px;
+}
+
+.vg-body-choice-card {
+  width: 126px;
+  border-radius: 20px;
+  padding: 0.35rem;
+}
+
+.vg-body-choice-image {
+  width: 126px;
+  height: 126px;
+  border-radius: 20px;
+  object-position: center 45%;
+}
+
+.vg-age-grid {
+  grid-template-columns: repeat(auto-fit, 110px);
+  gap: 20px;
+}
+
+.vg-age-choice-card {
+  width: 110px;
+  border-radius: 20px;
+}
+
+.vg-age-choice-card img {
+  width: 110px;
+  height: 110px;
+  border-radius: 20px;
 }
 
 .vg-chip-grid {
@@ -2340,6 +2454,48 @@ a {
   padding: 0.55rem;
 }
 
+.vg-portrait-grid {
+  grid-template-columns: repeat(auto-fit, 280px);
+  gap: 20px;
+}
+
+.vg-portrait-choice-card {
+  width: 280px;
+  border-radius: 24px;
+}
+
+.vg-portrait-choice-card img {
+  width: 280px;
+  height: 360px;
+  border-radius: 24px;
+}
+
+.vg-portrait-loading-state {
+  min-height: 380px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.65rem;
+}
+
+.vg-portrait-loading-orb {
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  border: 3px solid rgba(244, 114, 182, 0.42);
+  border-top-color: rgba(253, 242, 248, 1);
+  animation: spin 900ms linear infinite;
+}
+
+.vg-occupation-input {
+  margin-top: 28px;
+  width: 100%;
+  max-width: 560px;
+  height: 64px;
+  border-radius: 20px;
+  font-size: 1.05rem;
+}
+
 .vg-review-pills {
   display: flex;
   flex-wrap: wrap;
@@ -2358,33 +2514,125 @@ a {
   display: grid;
 }
 
-@media (min-width: 720px) {
+@media (max-width: 1023px) {
   .vg-stage-card {
-    padding: 1.3rem;
+    max-width: 760px;
+    padding: 24px;
   }
 
-  .vg-step-panel {
-    min-height: 410px;
+  .vg-portrait-grid {
+    grid-template-columns: repeat(auto-fit, 240px);
+  }
+
+  .vg-portrait-choice-card,
+  .vg-portrait-choice-card img {
+    width: 240px;
+  }
+
+  .vg-portrait-choice-card img {
+    height: 320px;
+  }
+}
+
+@media (max-width: 719px) {
+  .vg-stage-card {
+    width: calc(100vw - 24px);
+    max-width: none;
+    padding: 20px;
+    border-radius: 24px;
   }
 
   .vg-step-title {
-    font-size: 2rem;
+    font-size: 1.55rem;
   }
-}
 
-.vg-hair-choice-card {
-  padding: 0.5rem;
-  gap: 0.6rem;
-}
+  .vg-hero-grid {
+    grid-template-columns: repeat(2, 150px);
+    gap: 18px;
+  }
 
-.vg-hair-texture {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background-size: 180% 180%;
-  background-position: center;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  .vg-sex-choice-card,
+  .vg-sex-choice-card img {
+    width: 150px;
+  }
+
+  .vg-sex-choice-card img {
+    height: 184px;
+  }
+
+  .vg-origin-grid {
+    grid-template-columns: repeat(auto-fit, 92px);
+  }
+
+  .vg-origin-choice-card,
+  .vg-origin-choice-card img {
+    width: 92px;
+  }
+
+  .vg-origin-choice-card img {
+    height: 92px;
+  }
+
+  .vg-hair-grid {
+    grid-template-columns: repeat(auto-fit, 84px);
+  }
+
+  .vg-hair-choice-card,
+  .vg-hair-texture {
+    width: 84px;
+  }
+
+  .vg-hair-texture {
+    height: 84px;
+  }
+
+  .vg-body-grid {
+    grid-template-columns: repeat(auto-fit, 96px);
+  }
+
+  .vg-body-choice-card,
+  .vg-body-choice-image {
+    width: 96px;
+  }
+
+  .vg-body-choice-image {
+    height: 96px;
+  }
+
+  .vg-age-grid {
+    grid-template-columns: repeat(auto-fit, 84px);
+  }
+
+  .vg-age-choice-card,
+  .vg-age-choice-card img {
+    width: 84px;
+  }
+
+  .vg-age-choice-card img {
+    height: 84px;
+  }
+
+  .vg-portrait-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vg-portrait-choice-card,
+  .vg-portrait-choice-card img {
+    width: 100%;
+  }
+
+  .vg-portrait-choice-card img {
+    height: min(300px, 62vw);
+  }
+
+  .vg-occupation-input {
+    max-width: none;
+    height: 56px;
+  }
+
+  .vg-generation-summary-card {
+    grid-template-columns: 1fr;
+  }
 }
 
 .hair-jet-black { background-image: repeating-linear-gradient(105deg, #08090d 0 12px, #1a1d25 12px 24px, #0f1218 24px 36px); }
@@ -2411,11 +2659,3 @@ a {
   box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9);
 }
 
-.vg-body-choice-card {
-  padding: 0.45rem;
-}
-
-.vg-body-choice-image {
-  aspect-ratio: 2 / 3;
-  object-position: center 28%;
-}

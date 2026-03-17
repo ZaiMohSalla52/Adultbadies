@@ -151,11 +151,11 @@ const ageOptions: VisualOption[] = [
 const personalityOptions = ['Warm romantic', 'Playful tease', 'Confident', 'Intellectual', 'Calm sweetheart'];
 const sexualityOptions = ['Straight', 'Bisexual', 'Pansexual', 'Fluid'];
 
-const optionCard = (option: VisualOption, selected: boolean, onSelect: () => void) => (
+const optionCard = (option: VisualOption, selected: boolean, onSelect: () => void, variantClassName = '') => (
   <button
     key={option.label}
     type="button"
-    className={`vg-image-choice-card ${option.cardClassName ?? ''} ${selected ? 'is-selected' : ''}`}
+    className={`vg-image-choice-card ${variantClassName} ${option.cardClassName ?? ''} ${selected ? 'is-selected' : ''}`}
     onClick={onSelect}
   >
     <img src={option.image} alt={option.label} loading="lazy" className={option.imageClassName} />
@@ -317,6 +317,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const isSubmitting = generationStarted || pending;
+  const portraitContinueDisabled = step === 'portrait' && (!state.selectedPortraitId || portraitsLoading);
+
+  const generationSummary = [
+    { label: 'Name', value: state.name },
+    { label: 'Origin', value: state.origin },
+    { label: 'Hair', value: state.hairColor },
+    { label: 'Body', value: state.figure },
+    { label: 'Age', value: state.age },
+    { label: 'Occupation', value: state.occupation },
+  ].filter((item) => item.value);
 
   return (
     <div className="app-page-stack">
@@ -334,16 +344,24 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
         {isSubmitting ? (
           <div className="vg-generation-state" role="status" aria-live="polite">
-            <img src={state.selectedPortraitImage} alt="Chosen portrait" className="vg-picked-portrait" />
-            <h2 className="my-0">Generating {state.name}&rsquo;s final identity</h2>
-            <p className="my-0 text-sm text-muted">Applying your selected face seed to lock identity continuity and final profile generation.</p>
+            <div className="vg-generation-orb" aria-hidden="true" />
+            <h2 className="my-0">Creating {state.name} …</h2>
+            <p className="my-0 text-sm text-muted">Building her profile, photos, and memory setup</p>
+            <div className="vg-generation-summary-card">
+              {generationSummary.map((item) => (
+                <div key={item.label} className="vg-generation-summary-item">
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <>
             {step === 'sex' ? (
               <section className="vg-step-panel">
                 <h1 className="vg-step-title">Choose a sex</h1>
-                <div className="vg-hero-grid">{sexOptions.map((option) => optionCard(option, state.sex === option.label, () => setField('sex', option.label)))}</div>
+                <div className="vg-hero-grid">{sexOptions.map((option) => optionCard(option, state.sex === option.label, () => setField('sex', option.label), 'vg-sex-choice-card'))}</div>
               </section>
             ) : null}
 
@@ -357,28 +375,28 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             {step === 'origin' ? (
               <section className="vg-step-panel">
                 <h1 className="vg-step-title">Choose origin</h1>
-                <div className="vg-option-grid">{originOptions.map((option) => optionCard(option, state.origin === option.label, () => setField('origin', option.label)))}</div>
+                <div className="vg-option-grid vg-origin-grid">{originOptions.map((option) => optionCard(option, state.origin === option.label, () => setField('origin', option.label), 'vg-origin-choice-card'))}</div>
               </section>
             ) : null}
 
             {step === 'hair' ? (
               <section className="vg-step-panel">
                 <h1 className="vg-step-title">Choose hair color</h1>
-                <div className="vg-option-grid">{hairOptions.map((option) => hairOptionCard(option, state.hairColor === option.label, () => setField('hairColor', option.label)))}</div>
+                <div className="vg-option-grid vg-hair-grid">{hairOptions.map((option) => hairOptionCard(option, state.hairColor === option.label, () => setField('hairColor', option.label)))}</div>
               </section>
             ) : null}
 
             {step === 'body' ? (
               <section className="vg-step-panel">
                 <h1 className="vg-step-title">Choose figure</h1>
-                <div className="vg-option-grid">{bodyOptions.map((option) => optionCard(option, state.figure === option.label, () => setField('figure', option.label)))}</div>
+                <div className="vg-option-grid vg-body-grid">{bodyOptions.map((option) => optionCard(option, state.figure === option.label, () => setField('figure', option.label), 'vg-body-choice-card'))}</div>
               </section>
             ) : null}
 
             {step === 'age' ? (
               <section className="vg-step-panel">
                 <h1 className="vg-step-title">Choose age</h1>
-                <div className="vg-option-grid">{ageOptions.map((option) => optionCard(option, state.age === option.label, () => setField('age', option.label)))}</div>
+                <div className="vg-option-grid vg-age-grid">{ageOptions.map((option) => optionCard(option, state.age === option.label, () => setField('age', option.label), 'vg-age-choice-card'))}</div>
               </section>
             ) : null}
 
@@ -386,14 +404,18 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
               <section className="vg-step-panel">
                 <h1 className="vg-step-title">Pick face identity</h1>
                 {portraitsLoading ? (
-                  <p className="text-sm text-muted">Generating portraits…</p>
+                  <div className="vg-portrait-loading-state" role="status" aria-live="polite">
+                    <div className="vg-portrait-loading-orb" aria-hidden="true" />
+                    <p className="my-0 text-sm">Generating portraits…</p>
+                    <p className="my-0 text-xs text-muted">Building face candidates from your selections</p>
+                  </div>
                 ) : (
-                  <div className="vg-option-grid">
+                  <div className="vg-option-grid vg-portrait-grid">
                     {portraitCandidates.map((candidate) => (
                       <button
                         key={candidate.id}
                         type="button"
-                        className={`vg-image-choice-card ${state.selectedPortraitId === candidate.id ? 'is-selected' : ''}`}
+                        className={`vg-image-choice-card vg-portrait-choice-card ${state.selectedPortraitId === candidate.id ? 'is-selected' : ''}`}
                         onClick={() => {
                           setField('selectedPortraitId', candidate.id);
                           setField('selectedPortraitPrompt', candidate.prompt);
@@ -413,6 +435,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
               <section className="vg-step-panel">
                 <h1 className="vg-step-title">Choose occupation</h1>
                 <Input
+                  className="vg-occupation-input"
                   name="occupation"
                   placeholder="Occupation"
                   maxLength={80}
@@ -532,7 +555,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             <div className="vg-step-actions">
               {step !== 'review' ? (
-                <Button type="button" onClick={goNext}>Continue</Button>
+                <Button type="button" onClick={goNext} disabled={portraitContinueDisabled}>Continue</Button>
               ) : (
                 <Button type="button" onClick={submit} disabled={isSubmitting}>Generate Companion</Button>
               )}
