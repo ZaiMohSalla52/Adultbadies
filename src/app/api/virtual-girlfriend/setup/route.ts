@@ -14,7 +14,11 @@ import {
 } from '@/lib/virtual-girlfriend/visual-identity';
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
 import { generateVirtualGirlfriendPersona, resolvePersonaSemanticInput } from '@/lib/virtual-girlfriend/persona';
-import type { VirtualGirlfriendSetupPayload, VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
+import type {
+  VirtualGirlfriendSetupPayload,
+  VirtualGirlfriendSetupResult,
+  VirtualGirlfriendStructuredProfile,
+} from '@/lib/virtual-girlfriend/types';
 
 const CONFLICT_FIELD_LABELS: Record<string, string> = {
   selectedPortraitPrompt: 'portrait style',
@@ -108,11 +112,16 @@ export async function POST(request: NextRequest) {
   const baseName = String(body.name ?? '').trim();
 
   if (!baseName) {
-    return NextResponse.json({ error: 'Please enter a companion name.' }, { status: 400 });
+    return NextResponse.json({ state: 'blocked_pre_gen', message: 'Please enter a companion name.' } satisfies VirtualGirlfriendSetupResult, {
+      status: 400,
+    });
   }
 
   if (!body.archetype || !body.tone || !body.affectionStyle || !body.visualAesthetic || !body.selectedPortraitImage || !body.selectedPortraitPrompt) {
-    return NextResponse.json({ error: 'Please complete all setup selections before generating.' }, { status: 400 });
+    return NextResponse.json(
+      { state: 'blocked_pre_gen', message: 'Please complete all setup selections before generating.' } satisfies VirtualGirlfriendSetupResult,
+      { status: 400 },
+    );
   }
 
   const setupPayload: VirtualGirlfriendSetupPayload = { ...body, name: baseName };
@@ -165,13 +174,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: `Generation did not start. This profile is too close to ${conflict.companionName}. Change some traits and try again.`,
+        state: 'blocked_pre_gen',
+        message: `Generation did not start. This profile is too close to ${conflict.companionName}. Change some traits and try again.`,
         conflict: {
           ...conflict,
           conflictAreas,
           topFieldLabels,
         },
-      },
+      } satisfies VirtualGirlfriendSetupResult,
       { status: 409 },
     );
   }
@@ -230,23 +240,40 @@ export async function POST(request: NextRequest) {
     await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
     console.info('[virtual-girlfriend][setup] provider success + persistence complete', { userId: auth.user.id, companionId: companion.id });
 
-    return NextResponse.json({ ok: true, companionId: companion.id, conversationId: conversation.id, imageStatus: 'ready' });
+    return NextResponse.json({
+      state: 'ready',
+      companionId: companion.id,
+      conversationId: conversation.id,
+      message: 'Companion created with locked portrait and gallery continuity.',
+    } satisfies VirtualGirlfriendSetupResult);
   } catch (error) {
     console.error('[virtual-girlfriend][setup] provider failure', error);
 
     if (error instanceof VirtualGirlfriendImagePackError && error.canonicalImageId) {
       await setCanonicalReferenceImageId(auth.accessToken, auth.user.id, companion.id, error.canonicalImageId);
+      await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
+      console.info('[virtual-girlfriend][setup] canonical persisted but gallery generation failed', {
+        userId: auth.user.id,
+        companionId: companion.id,
+        canonicalImageId: error.canonicalImageId,
+      });
+
+      return NextResponse.json({
+        state: 'partial_success',
+        companionId: companion.id,
+        conversationId: conversation.id,
+        warning: 'Her locked portrait is ready, but gallery expansion failed this pass. You can continue now and retry gallery moments later.',
+      } satisfies VirtualGirlfriendSetupResult, { status: 207 });
     }
 
     await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'failed');
     console.info('[virtual-girlfriend][setup] persistence complete with failed image status', { userId: auth.user.id, companionId: companion.id });
 
     return NextResponse.json({
-      ok: true,
+      state: 'failed',
       companionId: companion.id,
       conversationId: conversation.id,
-      imageStatus: 'failed',
-      warning: 'Profile created, but image generation failed. You can still open and use this companion.',
-    });
+      message: 'Profile was created, but we could not complete image generation. Open the profile to retry from a stable state.',
+    } satisfies VirtualGirlfriendSetupResult, { status: 502 });
   }
 }

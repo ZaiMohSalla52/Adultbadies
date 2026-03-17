@@ -34,9 +34,13 @@ export const VirtualGirlfriendRosterHub = ({
 
   const uniqueItems = useMemo(() => Array.from(new Map(items.map((item) => [item.companion.id, item])).values()), [items]);
   const activeItem = uniqueItems.find((item) => item.companion.id === activeCompanionId) ?? uniqueItems[0] ?? null;
-  const otherItems = uniqueItems.filter((item) => item.companion.id !== activeItem?.companion.id && item.status !== 'generating');
-  const pendingItems = uniqueItems.filter((item) => item.status === 'generating' && item.companion.id !== activeItem?.companion.id);
-  const readyCount = uniqueItems.filter((item) => item.status === 'ready').length;
+  const otherItems = uniqueItems.filter(
+    (item) => item.companion.id !== activeItem?.companion.id && item.status !== 'generating' && item.status !== 'review_pending',
+  );
+  const pendingItems = uniqueItems.filter(
+    (item) => (item.status === 'generating' || item.status === 'review_pending') && item.companion.id !== activeItem?.companion.id,
+  );
+  const readyCount = uniqueItems.filter((item) => item.status === 'ready' || item.status === 'partial_success').length;
 
   const onSwitch = (companionId: string) => {
     if (pending || companionId === activeCompanionId) {
