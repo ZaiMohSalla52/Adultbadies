@@ -16,6 +16,29 @@ import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfri
 import { generateVirtualGirlfriendPersona, resolvePersonaSemanticInput } from '@/lib/virtual-girlfriend/persona';
 import type { VirtualGirlfriendSetupPayload, VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
 
+
+const CONFLICT_FIELD_LABELS: Record<string, string> = {
+  selectedPortraitPrompt: 'portrait style',
+  selectedPortraitImageKey: 'portrait choice',
+  hairColor: 'hair color',
+  figure: 'body type',
+  sex: 'sex',
+  origin: 'origin',
+  ethnicity: 'ethnicity',
+  ageBand: 'age',
+  occupation: 'occupation',
+  personality: 'personality',
+  sexuality: 'sexuality',
+  archetype: 'archetype',
+  tone: 'tone',
+  affectionStyle: 'relationship vibe',
+  visualAesthetic: 'visual aesthetic',
+  preferenceHints: 'preference hints',
+  freeformDetails: 'details',
+  likes: 'likes',
+  habits: 'habits',
+};
+
 const toOptionalString = (value: unknown) => {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -151,10 +174,17 @@ export async function POST(request: NextRequest) {
   }
 
   if (conflict) {
+    const conflictAreas = Array.from(new Set(conflict.topFields.map((field) => field.category)));
+    const topFieldLabels = conflict.topFields.map((field) => CONFLICT_FIELD_LABELS[field.field] ?? field.field);
+
     return NextResponse.json(
       {
-        error: `This companion is too similar to ${conflict.companionName}. Please adjust name/profile details and try again.`,
-        conflict,
+        error: `Too close to ${conflict.companionName}. Try changing name, appearance, personality, or relationship vibe.`,
+        conflict: {
+          ...conflict,
+          conflictAreas,
+          topFieldLabels,
+        },
       },
       { status: 409 },
     );
