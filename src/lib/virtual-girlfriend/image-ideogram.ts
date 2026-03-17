@@ -106,6 +106,24 @@ export const generateCanonicalImageWithIdeogram = async (prompt: string): Promis
   return extractGeneratedImage(response, IDEOGRAM_GENERATE_ENDPOINT);
 };
 
+export const generatePortraitPreviewImageWithIdeogram = async (prompt: string): Promise<IdeogramGeneratedImage> => {
+  const response = await fetchIdeogram(
+    IDEOGRAM_GENERATE_ENDPOINT,
+    {
+      prompt,
+      aspect_ratio: '3x4',
+      model: IDEOGRAM_MODEL,
+      num_images: 1,
+      magic_prompt_option: 'OFF',
+      style_type: 'AUTO',
+      rendering_speed: 'DEFAULT',
+    },
+    'Ideogram portrait preview generation failed',
+  );
+
+  return extractGeneratedImage(response, IDEOGRAM_GENERATE_ENDPOINT);
+};
+
 export const generateCanonicalImageFromReferenceWithIdeogram = async (input: {
   prompt: string;
   referenceImageBytes: Buffer;
@@ -156,4 +174,3 @@ export const generateGalleryImageFromReferenceWithIdeogram = async (input: {
 
   return extractGeneratedImage(response, IDEOGRAM_REFERENCE_ENDPOINT);
 };
-
