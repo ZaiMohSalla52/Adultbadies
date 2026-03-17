@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { generateImageWithOpenAI } from '@/lib/virtual-girlfriend/image-openai';
+import { generateGalleryImageFromReferenceWithIdeogram } from '@/lib/virtual-girlfriend/image-ideogram';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
 import { uploadToR2 } from '@/lib/storage/r2';
 import { insertCompanionImages } from '@/lib/virtual-girlfriend/data';
@@ -106,6 +106,39 @@ const buildChatImagePrompt = (input: {
   ].join(' ');
 };
 
+const resolveCanonicalReferenceImage = (
+  companion: VirtualGirlfriendCompanionRecord,
+  images: VirtualGirlfriendCompanionImageRecord[],
+): VirtualGirlfriendCompanionImageRecord => {
+  if (!companion.canonical_reference_image_id) {
+    throw new Error('Canonical reference image is missing for this companion.');
+  }
+
+  const canonical = images.find((image) => image.id === companion.canonical_reference_image_id);
+  if (!canonical) {
+    throw new Error('Canonical reference image record could not be found.');
+  }
+
+  if (!canonical.delivery_url) {
+    throw new Error('Canonical reference image delivery URL is missing.');
+  }
+
+  return canonical;
+};
+
+const downloadCanonicalReferenceBytes = async (canonical: VirtualGirlfriendCompanionImageRecord) => {
+  const response = await fetch(canonical.delivery_url);
+  if (!response.ok) {
+    throw new Error(`Canonical reference image download failed (${response.status}).`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  return {
+    bytes: Buffer.from(arrayBuffer),
+    mimeType: response.headers.get('content-type') ?? canonical.origin_mime_type ?? 'image/png',
+  };
+};
+
 export const resolveVirtualGirlfriendChatImage = async (input: {
   token: string;
   userId: string;
@@ -133,13 +166,20 @@ export const resolveVirtualGirlfriendChatImage = async (input: {
     return null;
   }
 
+  const canonical = resolveCanonicalReferenceImage(input.companion, input.existingImages);
+  const canonicalReference = await downloadCanonicalReferenceBytes(canonical);
+
   const prompt = buildChatImagePrompt({
     companion: input.companion,
     visualProfile: input.visualProfile,
     category: input.category,
   });
 
-  const generated = await generateImageWithOpenAI(prompt);
+  const generated = await generateGalleryImageFromReferenceWithIdeogram({
+    prompt,
+    referenceImageBytes: canonicalReference.bytes,
+    referenceMimeType: canonicalReference.mimeType,
+  });
   const promptHash = hash(`${input.visualProfile.prompt_hash}:${input.category}:${prompt}`);
 
   const key = `virtual-girlfriend-images/${input.userId}/${input.companion.id}/${input.visualProfile.style_version}/chat-${input.category}-${Date.now()}.png`;
@@ -170,23 +210,33 @@ export const resolveVirtualGirlfriendChatImage = async (input: {
       delivery_provider: cloudinary.provider,
       delivery_public_id: cloudinary.publicId,
       delivery_url: cloudinary.deliveryUrl,
-      width: cloudinary.width,
-      height: cloudinary.height,
+      width: cloudinary.width ?? generated.width,
+      height: cloudinary.height ?? generated.height,
       prompt_hash: promptHash,
       style_version: input.visualProfile.style_version,
       seed_metadata: {},
       lineage_metadata: {
+        reference_image_id: canonical.id,
+        generation_mode: 'chat_from_canonical',
+        provider: generated.provider,
+        providerModel: generated.model,
+        providerEndpoint: generated.endpoint,
+        providerRequestId: generated.requestId,
+        providerJobId: generated.jobId,
         revisedPrompt: generated.revisedPrompt ?? null,
         chatCategory: input.category,
         source: 'chat-phase5',
       },
       moderation_status: 'pending',
-      moderation: { provider: 'openai-image-default', phase: 'stage9-phase5' },
+      moderation: { provider: 'ideogram-v3', phase: 'stage9-phase5' },
       provenance: {
-        generatedBy: 'openai:gpt-image-1',
+        generatedBy: `${generated.provider}:${generated.model}`,
         generatedAt: new Date().toISOString(),
         originalStorage: 'cloudflare_r2',
         delivery: 'cloudinary',
+        providerEndpoint: generated.endpoint,
+        providerRequestId: generated.requestId,
+        providerJobId: generated.jobId,
       },
       quality_score: 0.92,
     },
