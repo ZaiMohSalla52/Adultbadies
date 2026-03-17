@@ -157,35 +157,3 @@ export const generateGalleryImageFromReferenceWithIdeogram = async (input: {
   return extractGeneratedImage(response, IDEOGRAM_REFERENCE_ENDPOINT);
 };
 
-
-export const generateImageWithIdeogram = async (input: {
-  prompt: string;
-  referenceImageUrl?: string;
-  mode?: 'canonical' | 'gallery_from_canonical' | 'chat_from_canonical' | 'legacy_independent';
-}) => {
-  const shouldUseReference =
-    (input.mode === 'gallery_from_canonical' || input.mode === 'chat_from_canonical') && Boolean(input.referenceImageUrl);
-
-  const generated = shouldUseReference
-    ? await (async () => {
-        const referenceResponse = await fetch(input.referenceImageUrl as string);
-        if (!referenceResponse.ok) {
-          throw new Error(`Ideogram reference image download failed (${referenceResponse.status}).`);
-        }
-
-        const referenceArrayBuffer = await referenceResponse.arrayBuffer();
-        return generateGalleryImageFromReferenceWithIdeogram({
-          prompt: input.prompt,
-          referenceImageBytes: Buffer.from(referenceArrayBuffer),
-          referenceMimeType: referenceResponse.headers.get('content-type') ?? 'image/png',
-        });
-      })()
-    : await generateCanonicalImageWithIdeogram(input.prompt);
-
-  return {
-    ...generated,
-    providerModel: generated.model,
-    providerRequestId: generated.requestId,
-    providerJobId: generated.jobId,
-  };
-};
