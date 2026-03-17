@@ -20,6 +20,8 @@ type NormalizedProfile = {
   visualAesthetic: string;
   preferenceHints: string;
   freeformDetails: string;
+  selectedPortraitPrompt: string;
+  selectedPortraitImageKey: string;
   ageBand: string;
   likes: string[];
   habits: string[];
@@ -31,6 +33,8 @@ export type DistinctnessConflict = {
   nameSimilarity: number;
   profileSimilarity: number;
   reasons: string[];
+  topFields: Array<{ field: string; score: number; category: 'name' | 'appearance' | 'vibe' | 'profile' }>;
+  guidance: string[];
 };
 
 const normalizeText = (value: unknown) =>
@@ -63,6 +67,27 @@ const stringSimilarity = (left: string, right: string) => {
 const toStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
   return value.map((item) => normalizeText(item)).filter(Boolean);
+};
+
+const LOW_SIGNAL_VALUES = new Set([
+  'random',
+  'any',
+  'none',
+  'n a',
+  'na',
+  'unknown',
+  'unspecified',
+  'default',
+  'medium',
+]);
+
+const isInformativeValue = (value: string) => Boolean(value) && !LOW_SIGNAL_VALUES.has(value);
+
+const normalizePortraitImageKey = (value: unknown) => {
+  const normalized = normalizeText(value);
+  if (!normalized) return '';
+  const chunks = normalized.split('/').filter(Boolean);
+  return chunks.slice(-2).join('/');
 };
 
 const parseAgeBand = (value: unknown) => {
@@ -112,6 +137,8 @@ const toNormalizedProfile = (profile: Record<string, unknown>): NormalizedProfil
     visualAesthetic: normalizeText(profile.visualAesthetic),
     preferenceHints: normalizeText(profile.preferenceHints),
     freeformDetails: normalizeText(profile.freeformDetails),
+    selectedPortraitPrompt: normalizeText(profile.selectedPortraitPrompt),
+    selectedPortraitImageKey: normalizePortraitImageKey(profile.selectedPortraitImage),
     ageBand: parseAgeBand(profile.age),
     likes: toStringArray(profile.likes),
     habits: toStringArray(profile.habits),
@@ -150,68 +177,88 @@ type WeightedComparableField =
   | 'archetype'
   | 'tone'
   | 'affectionStyle'
-  | 'visualAesthetic';
+  | 'visualAesthetic'
+  | 'selectedPortraitPrompt'
+  | 'selectedPortraitImageKey';
 
 const weightedStructuredSimilarity = (candidate: NormalizedProfile, existing: NormalizedProfile) => {
-  const fieldWeights: Array<{ key: WeightedComparableField; weight: number }> = [
-    { key: 'sex', weight: 0.7 },
-    { key: 'origin', weight: 1 },
-    { key: 'ethnicity', weight: 1 },
-    { key: 'ageBand', weight: 1 },
-    { key: 'hairColor', weight: 1 },
-    { key: 'figure', weight: 0.9 },
-    { key: 'chestSize', weight: 0.7 },
-    { key: 'occupation', weight: 1.1 },
-    { key: 'personality', weight: 1.1 },
-    { key: 'sexuality', weight: 1 },
-    { key: 'archetype', weight: 1.2 },
-    { key: 'tone', weight: 1 },
-    { key: 'affectionStyle', weight: 1 },
-    { key: 'visualAesthetic', weight: 1 },
+  const fieldWeights: Array<{ key: WeightedComparableField; weight: number; category: 'appearance' | 'vibe' | 'profile'; highSignal?: boolean }> = [
+    { key: 'sex', weight: 0.35, category: 'appearance' },
+    { key: 'origin', weight: 0.5, category: 'appearance' },
+    { key: 'ethnicity', weight: 0.35, category: 'appearance' },
+    { key: 'ageBand', weight: 0.45, category: 'appearance' },
+    { key: 'hairColor', weight: 0.7, category: 'appearance' },
+    { key: 'figure', weight: 0.7, category: 'appearance' },
+    { key: 'chestSize', weight: 0.25, category: 'appearance' },
+    { key: 'selectedPortraitPrompt', weight: 1.25, category: 'appearance', highSignal: true },
+    { key: 'selectedPortraitImageKey', weight: 1.1, category: 'appearance', highSignal: true },
+    { key: 'occupation', weight: 1.2, category: 'profile', highSignal: true },
+    { key: 'personality', weight: 1.25, category: 'profile', highSignal: true },
+    { key: 'sexuality', weight: 0.95, category: 'profile', highSignal: true },
+    { key: 'archetype', weight: 1.1, category: 'vibe', highSignal: true },
+    { key: 'tone', weight: 0.9, category: 'vibe', highSignal: true },
+    { key: 'affectionStyle', weight: 0.9, category: 'vibe', highSignal: true },
+    { key: 'visualAesthetic', weight: 0.95, category: 'vibe', highSignal: true },
   ];
 
   let totalWeight = 0;
   let overlapWeight = 0;
-  let matchedFields = 0;
+  let highSignalMatchWeight = 0;
+  const contributors: Array<{ field: string; score: number; category: 'appearance' | 'vibe' | 'profile' }> = [];
 
   for (const entry of fieldWeights) {
     const left = candidate[entry.key];
     const right = existing[entry.key];
-    if (!left || !right) continue;
+    if (!isInformativeValue(left) || !isInformativeValue(right)) continue;
     totalWeight += entry.weight;
 
-    if (left === right || stringSimilarity(left, right) >= 0.92) {
-      overlapWeight += entry.weight;
-      matchedFields += 1;
+    const fieldSimilarity = left === right ? 1 : stringSimilarity(left, right);
+    const contribution = fieldSimilarity * entry.weight;
+    overlapWeight += contribution;
+    if (entry.highSignal && fieldSimilarity >= 0.86) {
+      highSignalMatchWeight += entry.weight;
+    }
+    if (contribution > 0) {
+      contributors.push({ field: entry.key, score: fieldSimilarity, category: entry.category });
     }
   }
 
-  if (candidate.preferenceHints && existing.preferenceHints) {
+  if (isInformativeValue(candidate.preferenceHints) && isInformativeValue(existing.preferenceHints)) {
     const score = stringSimilarity(candidate.preferenceHints, existing.preferenceHints);
-    totalWeight += 1;
-    overlapWeight += Math.min(1, score * 1.2);
+    totalWeight += 0.85;
+    overlapWeight += Math.min(0.85, score * 0.85);
+    if (score > 0) contributors.push({ field: 'preferenceHints', score, category: 'vibe' });
   }
 
-  if (candidate.freeformDetails && existing.freeformDetails) {
+  if (isInformativeValue(candidate.freeformDetails) && isInformativeValue(existing.freeformDetails)) {
     const score = tokenJaccard(tokenize(candidate.freeformDetails), tokenize(existing.freeformDetails));
-    totalWeight += 1.4;
-    overlapWeight += Math.min(1.4, score * 1.6);
+    totalWeight += 1.1;
+    overlapWeight += Math.min(1.1, score * 1.1);
+    if (score > 0) contributors.push({ field: 'freeformDetails', score, category: 'profile' });
   }
 
   const likesScore = tokenJaccard(candidate.likes, existing.likes);
   const habitsScore = tokenJaccard(candidate.habits, existing.habits);
   if (candidate.likes.length && existing.likes.length) {
-    totalWeight += 0.8;
-    overlapWeight += likesScore * 0.8;
+    totalWeight += 0.6;
+    overlapWeight += likesScore * 0.6;
+    if (likesScore > 0) contributors.push({ field: 'likes', score: likesScore, category: 'profile' });
   }
 
   if (candidate.habits.length && existing.habits.length) {
-    totalWeight += 0.8;
-    overlapWeight += habitsScore * 0.8;
+    totalWeight += 0.6;
+    overlapWeight += habitsScore * 0.6;
+    if (habitsScore > 0) contributors.push({ field: 'habits', score: habitsScore, category: 'profile' });
   }
 
   const score = totalWeight > 0 ? overlapWeight / totalWeight : 0;
-  return { score, matchedFields };
+  return {
+    score,
+    highSignalMatchWeight,
+    topFields: contributors
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5),
+  };
 };
 
 const nameSimilarityScore = (candidate: NormalizedProfile, existing: NormalizedProfile) => {
@@ -224,6 +271,23 @@ const nameSimilarityScore = (candidate: NormalizedProfile, existing: NormalizedP
 
   if (sameSurname && first >= 0.72) return Math.max(full, 0.9);
   return full;
+};
+
+const toConflictGuidance = (reasons: string[], topFields: DistinctnessConflict['topFields']) => {
+  const guidance = new Set<string>();
+  if (reasons.includes('exact_name_match') || reasons.includes('near_duplicate_name')) {
+    guidance.add('Try a more distinct name.');
+  }
+  if (topFields.some((field) => field.category === 'appearance')) {
+    guidance.add('Try changing appearance choices or pick a different portrait.');
+  }
+  if (topFields.some((field) => field.category === 'vibe')) {
+    guidance.add('Try changing relationship vibe, tone, or aesthetic.');
+  }
+  if (topFields.some((field) => field.category === 'profile')) {
+    guidance.add('Try changing personality, occupation, or profile details.');
+  }
+  return [...guidance];
 };
 
 export const findDistinctnessConflict = (input: {
@@ -253,7 +317,11 @@ export const findDistinctnessConflict = (input: {
       reasons.push('surname_family_pattern_risk');
     }
 
-    if (structured.score >= 0.82 || (structured.score >= 0.74 && structured.matchedFields >= 6)) {
+    if (
+      structured.score >= 0.9 ||
+      (structured.score >= 0.84 && structured.highSignalMatchWeight >= 4.1) ||
+      (nameSimilarity >= 0.92 && structured.score >= 0.72)
+    ) {
       reasons.push('structured_profile_overlap');
     }
 
@@ -266,6 +334,16 @@ export const findDistinctnessConflict = (input: {
       nameSimilarity,
       profileSimilarity: structured.score,
       reasons,
+      topFields: structured.topFields.map((field) => ({
+        field: field.field,
+        score: Number(field.score.toFixed(3)),
+        category: field.category,
+      })),
+      guidance: toConflictGuidance(reasons, structured.topFields.map((field) => ({
+        field: field.field,
+        score: Number(field.score.toFixed(3)),
+        category: field.category,
+      }))),
     };
 
     if (!topConflict || conflict.profileSimilarity + conflict.nameSimilarity > topConflict.profileSimilarity + topConflict.nameSimilarity) {

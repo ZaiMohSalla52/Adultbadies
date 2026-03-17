@@ -30,6 +30,13 @@ type BuilderStep =
 
 type PortraitCandidate = { id: string; imageDataUrl: string; prompt: string; label: string };
 
+type SetupConflict = {
+  companionName?: string;
+  guidance?: string[];
+  topFieldLabels?: string[];
+  conflictAreas?: string[];
+};
+
 type VisualOption = { label: string; image: string; cardClassName?: string; imageClassName?: string };
 type HairOption = { label: string; swatch: string; textureClassName: string };
 
@@ -175,6 +182,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [conflictHelp, setConflictHelp] = useState<SetupConflict | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [state, setState] = useState<CreatorState>(initialState);
   const [generationStarted, setGenerationStarted] = useState(false);
@@ -205,6 +213,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     if (portraitCandidates.length > 0) return;
     setPortraitsLoading(true);
     setError(null);
+    setConflictHelp(null);
 
     try {
       const response = await fetch('/api/virtual-girlfriend/portrait-candidates', {
@@ -238,6 +247,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
     const next = Math.min(STEPS.length - 1, stepIndex + 1);
     setError(null);
+    setConflictHelp(null);
     setStepIndex(next);
 
     if (STEPS[next] === 'portrait') {
@@ -253,6 +263,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
     setGenerationStarted(true);
     setError(null);
+    setConflictHelp(null);
 
     startTransition(async () => {
       try {
@@ -285,9 +296,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           }),
         });
 
-        const body = (await response.json()) as { error?: string; companionId?: string };
+        const body = (await response.json()) as { error?: string; companionId?: string; conflict?: SetupConflict };
         if (!response.ok) {
           setError(body.error ?? 'Unable to create your Virtual Girlfriend.');
+          setConflictHelp(response.status === 409 ? body.conflict ?? null : null);
           setGenerationStarted(false);
           setStepIndex(STEPS.length - 1);
           return;
@@ -298,6 +310,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         router.refresh();
       } catch {
         setError('Unable to start generation right now. Please try again.');
+        setConflictHelp(null);
         setGenerationStarted(false);
       }
     });
@@ -500,6 +513,22 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             ) : null}
 
             {error ? <p className="onboarding-error my-0">{error}</p> : null}
+            {conflictHelp ? (
+              <div className="rounded-xl border border-rose-300/50 bg-rose-500/10 p-3 text-sm text-rose-100">
+                <p className="my-0 font-semibold">Too close to {conflictHelp.companionName ?? 'an existing companion'}.</p>
+                {conflictHelp.topFieldLabels?.length ? (
+                  <p className="my-2">Most overlapping areas: {conflictHelp.topFieldLabels.slice(0, 3).join(', ')}.</p>
+                ) : null}
+                <ul className="mb-0 mt-2 list-disc space-y-1 pl-5">
+                  {(conflictHelp.guidance?.length
+                    ? conflictHelp.guidance
+                    : ['Try changing appearance, personality, or relationship vibe.']
+                  ).map((tip) => (
+                    <li key={tip}>{tip}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             <div className="vg-step-actions">
               {step !== 'review' ? (
