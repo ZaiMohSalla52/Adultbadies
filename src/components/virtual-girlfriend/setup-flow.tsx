@@ -55,7 +55,6 @@ type CreatorState = {
   affectionStyle: string;
   visualAesthetic: string;
   freeformDetails: string;
-  selectedPortraitId: string;
   selectedPortraitPrompt: string;
   selectedPortraitImage: string;
 };
@@ -91,7 +90,6 @@ const initialState: CreatorState = {
   affectionStyle: VIRTUAL_GIRLFRIEND_AFFECTION_STYLES[0],
   visualAesthetic: VIRTUAL_GIRLFRIEND_VISUAL_AESTHETICS[0],
   freeformDetails: '',
-  selectedPortraitId: '',
   selectedPortraitPrompt: '',
   selectedPortraitImage: '',
 };
@@ -206,7 +204,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     if (step === 'hair' && !state.hairColor) return 'Choose hair color.';
     if (step === 'body' && !state.figure) return 'Choose body type.';
     if (step === 'age' && !state.age) return 'Choose age.';
-    if (step === 'portrait' && !state.selectedPortraitId) return 'Pick one portrait to continue.';
+    if (step === 'portrait' && !state.selectedPortraitImage) return 'Pick one portrait to continue.';
     if (step === 'occupation' && !state.occupation.trim()) return 'Occupation is required.';
     if (step === 'personality' && !state.personality) return 'Choose personality.';
     if (step === 'sexuality' && !state.sexuality) return 'Choose sexuality.';
@@ -260,7 +258,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const submit = () => {
-    if (!state.name.trim() || !state.selectedPortraitId) {
+    if (!state.name.trim() || !state.selectedPortraitImage || !state.selectedPortraitPrompt) {
       setError('Complete required steps before generating.');
       return;
     }
@@ -280,16 +278,12 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             sex: state.sex,
             age: state.age,
             origin: state.origin,
-            ethnicity: state.origin,
             hairColor: state.hairColor,
             figure: state.figure,
-            chestSize: 'Medium',
             occupation: state.occupation,
             personality: state.personality,
             sexuality: state.sexuality,
             freeformDetails: state.freeformDetails,
-            likes: [],
-            habits: [],
             preferenceHints: state.freeformDetails,
             archetype: state.archetype,
             tone: state.tone,
@@ -302,8 +296,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
         const body = (await response.json()) as { error?: string; companionId?: string; conflict?: SetupConflict };
         if (!response.ok) {
-          setError(body.error ?? 'Unable to create your Virtual Girlfriend.');
-          setConflictHelp(response.status === 409 ? body.conflict ?? null : null);
+          if (response.status === 409) {
+            setError(body.error ?? 'Generation did not start because this setup is too similar to an existing companion.');
+            setConflictHelp(body.conflict ?? null);
+          } else if (response.status === 400) {
+            setError(body.error ?? 'Please complete the setup fields and try again.');
+            setConflictHelp(null);
+          } else {
+            setError(body.error ?? 'Server error while creating your companion setup.');
+            setConflictHelp(null);
+          }
           setGenerationStarted(false);
           setStepIndex(STEPS.length - 1);
           return;
@@ -313,7 +315,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         router.push(destination);
         router.refresh();
       } catch {
-        setError('Unable to start generation right now. Please try again.');
+        setError('Unable to submit setup right now. Generation has not started yet. Please try again.');
         setConflictHelp(null);
         setGenerationStarted(false);
       }
@@ -321,7 +323,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const isSubmitting = generationStarted || pending;
-  const portraitContinueDisabled = step === 'portrait' && (!state.selectedPortraitId || portraitsLoading);
+  const portraitContinueDisabled = step === 'portrait' && (!state.selectedPortraitImage || portraitsLoading);
 
   const generationSummary = [
     { label: 'Name', value: state.name },
@@ -364,7 +366,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           <div className="vg-generation-state" role="status" aria-live="polite">
             <div className="vg-generation-orb" aria-hidden="true" />
             <h2 className="my-0">Creating {state.name} …</h2>
-            <p className="my-0 text-sm text-muted">Building her profile, photos, and memory setup</p>
+            <p className="my-0 text-sm text-muted">Building profile, photos, and memory setup</p>
             <div className="vg-generation-summary-card">
               {generationSummary.map((item) => (
                 <div key={item.label} className="vg-generation-summary-item">
@@ -427,7 +429,6 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                         type="button"
                         className={`vg-option-card vg-option-card--portrait ${state.selectedPortraitId === candidate.id ? 'is-selected' : ''}`}
                         onClick={() => {
-                          setField('selectedPortraitId', candidate.id);
                           setField('selectedPortraitPrompt', candidate.prompt);
                           setField('selectedPortraitImage', candidate.imageDataUrl);
                         }}
