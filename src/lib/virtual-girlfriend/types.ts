@@ -55,6 +55,19 @@ export type VirtualGirlfriendGenerationStatus = 'generating' | 'ready' | 'failed
 export type VirtualGirlfriendStructuredProfile = {
   schemaVersion: 1;
   name: string;
+  sex?: string | null;
+  age?: number | null;
+  origin?: string | null;
+  ethnicity?: string | null;
+  hairColor?: string | null;
+  figure?: string | null;
+  chestSize?: string | null;
+  occupation?: string | null;
+  personality?: string | null;
+  sexuality?: string | null;
+  freeformDetails?: string | null;
+  likes?: string[] | null;
+  habits?: string[] | null;
   archetype: string;
   tone: string;
   affectionStyle: string;
@@ -369,6 +382,19 @@ export type VirtualGirlfriendProactiveEventRecord = {
 
 export type VirtualGirlfriendSetupPayload = {
   name: string;
+  sex?: string;
+  age?: string | number;
+  origin?: string;
+  ethnicity?: string;
+  hairColor?: string;
+  figure?: string;
+  chestSize?: string;
+  occupation?: string;
+  personality?: string;
+  sexuality?: string;
+  freeformDetails?: string;
+  likes?: string[];
+  habits?: string[];
   archetype: string;
   tone: string;
   affectionStyle: string;
