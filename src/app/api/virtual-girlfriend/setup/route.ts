@@ -2,46 +2,91 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import {
   getOrCreateVirtualGirlfriendConversation,
+  listVirtualGirlfriends,
   setCanonicalReferenceImageId,
   setVirtualGirlfriendGenerationStatus,
   upsertVirtualGirlfriend,
 } from '@/lib/virtual-girlfriend/data';
+import { findDistinctnessConflict } from '@/lib/virtual-girlfriend/distinctness';
 import {
   generateAndPersistVirtualGirlfriendImagePack,
   VirtualGirlfriendImagePackError,
 } from '@/lib/virtual-girlfriend/visual-identity';
+import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
 import { generateVirtualGirlfriendPersona, resolvePersonaSemanticInput } from '@/lib/virtual-girlfriend/persona';
 import type { VirtualGirlfriendSetupPayload, VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
 
-const normalizeText = (value: unknown) => {
+const toOptionalString = (value: unknown) => {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
 };
 
-const normalizeArray = (value: unknown): string[] | null => {
+const toOptionalStringArray = (value: unknown) => {
   if (!Array.isArray(value)) return null;
-
   const normalized = value
     .map((item) => (typeof item === 'string' ? item.trim() : ''))
-    .filter((item): item is string => Boolean(item));
-
+    .filter(Boolean);
   return normalized.length ? normalized : null;
 };
 
-const normalizeAge = (value: unknown): number | null => {
-  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-    return Math.trunc(value);
-  }
+const buildStructuredProfile = (body: Record<string, unknown>, name: string): VirtualGirlfriendStructuredProfile => ({
+  schemaVersion: 1,
+  name,
+  sex: toOptionalString(body.sex),
+  age: typeof body.age === 'number' || typeof body.age === 'string' ? body.age : null,
+  origin: toOptionalString(body.origin),
+  ethnicity: toOptionalString(body.ethnicity),
+  hairColor: toOptionalString(body.hairColor),
+  figure: toOptionalString(body.figure),
+  chestSize: toOptionalString(body.chestSize),
+  occupation: toOptionalString(body.occupation),
+  personality: toOptionalString(body.personality),
+  sexuality: toOptionalString(body.sexuality),
+  freeformDetails: toOptionalString(body.freeformDetails),
+  likes: toOptionalStringArray(body.likes),
+  habits: toOptionalStringArray(body.habits),
+  archetype: String(body.archetype ?? '').trim(),
+  tone: String(body.tone ?? '').trim(),
+  affectionStyle: String(body.affectionStyle ?? '').trim(),
+  visualAesthetic: String(body.visualAesthetic ?? '').trim(),
+  preferenceHints: toOptionalString(body.preferenceHints),
+});
 
-  if (typeof value === 'string') {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return parsed;
-    }
-  }
+const generateDistinctNameSuggestion = async (input: {
+  proposedName: string;
+  profile: VirtualGirlfriendStructuredProfile;
+  existingNames: string[];
+  conflictReasons: string[];
+}) => {
+  const prompt = `Return strict JSON with a better distinct companion name.
+{
+  "name": string
+}
 
-  return null;
+Rules:
+- Keep it feminine and natural.
+- 1-2 words, max 24 chars.
+- Must be meaningfully distinct from: ${input.existingNames.join(', ') || 'none'}.
+- Avoid same surname/family variants.
+- Preserve profile vibe: archetype=${input.profile.archetype}, tone=${input.profile.tone}, visual=${input.profile.visualAesthetic}.
+- Prior conflict reasons: ${input.conflictReasons.join(', ') || 'none'}.
+- Current blocked name: ${input.proposedName}.
+- Output JSON only.`;
+
+  try {
+    const response = await callOpenAIResponses({
+      model: 'gpt-5-mini',
+      input: [{ role: 'user', content: prompt }],
+      reasoning: { effort: 'medium' },
+    });
+
+    const parsed = JSON.parse(extractResponsesText(response)) as { name?: string };
+    const suggestion = String(parsed.name ?? '').trim();
+    return suggestion || null;
+  } catch {
+    return null;
+  }
 };
 
 export async function POST(request: NextRequest) {
@@ -50,9 +95,9 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json()) as VirtualGirlfriendSetupPayload & { companionId?: string; createNew?: boolean };
 
-  const name = String(body.name ?? '').trim();
+  const baseName = String(body.name ?? '').trim();
 
-  if (!name) {
+  if (!baseName) {
     return NextResponse.json({ error: 'Please enter a companion name.' }, { status: 400 });
   }
 
@@ -62,41 +107,89 @@ export async function POST(request: NextRequest) {
 
   const setupPayload: VirtualGirlfriendSetupPayload = {
     ...body,
-    name,
+    name: baseName,
   };
 
-  const preferenceHints = normalizeText(body.preferenceHints ?? body.freeformDetails);
-  const selectedPortraitPrompt = normalizeText(body.selectedPortraitPrompt);
-  const selectedPortraitImage = normalizeText(body.selectedPortraitImage);
+  const companions = await listVirtualGirlfriends(auth.accessToken, auth.user.id);
+  const maxDistinctnessAttempts = Boolean(body.createNew) ? 3 : 1;
 
-  const structuredProfile = {
-    schemaVersion: 1,
-    name,
-    sex: normalizeText(body.sex),
-    age: normalizeAge(body.age),
-    origin: normalizeText(body.origin),
-    ethnicity: normalizeText(body.ethnicity),
-    hairColor: normalizeText(body.hairColor),
-    figure: normalizeText(body.figure),
-    chestSize: normalizeText(body.chestSize),
-    occupation: normalizeText(body.occupation),
-    personality: normalizeText(body.personality),
-    sexuality: normalizeText(body.sexuality),
-    freeformDetails: normalizeText(body.freeformDetails),
-    likes: normalizeArray(body.likes),
-    habits: normalizeArray(body.habits),
-    archetype: body.archetype,
-    tone: body.tone,
-    affectionStyle: body.affectionStyle,
-    visualAesthetic: body.visualAesthetic,
-    preferenceHints,
-    selectedPortraitPrompt,
-    selectedPortraitImage,
-  } satisfies VirtualGirlfriendStructuredProfile;
+  let chosenName = baseName;
+
+  const buildStructuredProfile = (resolvedName: string): VirtualGirlfriendStructuredProfile => {
+    const preferenceHints = normalizeText(body.preferenceHints ?? body.freeformDetails);
+    const selectedPortraitPrompt = normalizeText(body.selectedPortraitPrompt);
+    const selectedPortraitImage = normalizeText(body.selectedPortraitImage);
+
+    return {
+      schemaVersion: 1,
+      name: resolvedName,
+      sex: normalizeText(body.sex),
+      age: normalizeAge(body.age),
+      origin: normalizeText(body.origin),
+      ethnicity: normalizeText(body.ethnicity),
+      hairColor: normalizeText(body.hairColor),
+      figure: normalizeText(body.figure),
+      chestSize: normalizeText(body.chestSize),
+      occupation: normalizeText(body.occupation),
+      personality: normalizeText(body.personality),
+      sexuality: normalizeText(body.sexuality),
+      freeformDetails: normalizeText(body.freeformDetails),
+      likes: normalizeArray(body.likes),
+      habits: normalizeArray(body.habits),
+      archetype: body.archetype,
+      tone: body.tone,
+      affectionStyle: body.affectionStyle,
+      visualAesthetic: body.visualAesthetic,
+      preferenceHints,
+      selectedPortraitPrompt,
+      selectedPortraitImage,
+    };
+  };
+
+  let structuredProfile = buildStructuredProfile(chosenName);
+  const preferenceHints = structuredProfile.preferenceHints;
+
+  let conflict = findDistinctnessConflict({
+    candidateProfile: structuredProfile,
+    existingCompanions: companions,
+    excludeCompanionId: body.companionId?.trim() || undefined,
+  });
+
+  for (let attempt = 1; conflict && attempt < maxDistinctnessAttempts; attempt += 1) {
+    const suggestion = await generateDistinctNameSuggestion({
+      proposedName: chosenName,
+      profile: structuredProfile,
+      existingNames: companions.map((companion) => companion.name),
+      conflictReasons: conflict.reasons,
+    });
+
+    if (!suggestion || suggestion.toLowerCase() === chosenName.toLowerCase()) {
+      break;
+    }
+
+    chosenName = suggestion;
+    structuredProfile = buildStructuredProfile(chosenName);
+
+    conflict = findDistinctnessConflict({
+      candidateProfile: structuredProfile,
+      existingCompanions: companions,
+      excludeCompanionId: body.companionId?.trim() || undefined,
+    });
+  }
+
+  if (conflict) {
+    return NextResponse.json(
+      {
+        error: `This companion is too similar to ${conflict.companionName}. Please adjust name/profile details and try again.`,
+        conflict,
+      },
+      { status: 409 },
+    );
+  }
 
   const personaInput = resolvePersonaSemanticInput({
     structuredProfile,
-    fallback: setupPayload,
+    fallback: { ...setupPayload, name: chosenName },
   });
 
   const persona = await generateVirtualGirlfriendPersona(personaInput);
@@ -105,7 +198,7 @@ export async function POST(request: NextRequest) {
     userId: auth.user.id,
     companionId: body.companionId?.trim() || undefined,
     createNew: Boolean(body.createNew),
-    name,
+    name: chosenName,
     bio: persona.shortBio,
     personaProfile: persona,
     archetype: body.archetype,
