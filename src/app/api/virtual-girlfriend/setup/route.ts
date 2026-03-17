@@ -50,7 +50,9 @@ const buildStructuredProfile = (body: Record<string, unknown>, name: string): Vi
   tone: String(body.tone ?? '').trim(),
   affectionStyle: String(body.affectionStyle ?? '').trim(),
   visualAesthetic: String(body.visualAesthetic ?? '').trim(),
-  preferenceHints: toOptionalString(body.preferenceHints),
+  preferenceHints: toOptionalString(body.preferenceHints ?? body.freeformDetails),
+  selectedPortraitPrompt: toOptionalString(body.selectedPortraitPrompt),
+  selectedPortraitImage: toOptionalString(body.selectedPortraitImage),
 });
 
 const generateDistinctNameSuggestion = async (input: {
@@ -115,39 +117,10 @@ export async function POST(request: NextRequest) {
 
   let chosenName = baseName;
 
-  const buildStructuredProfile = (resolvedName: string): VirtualGirlfriendStructuredProfile => {
-    const preferenceHints = normalizeText(body.preferenceHints ?? body.freeformDetails);
-    const selectedPortraitPrompt = normalizeText(body.selectedPortraitPrompt);
-    const selectedPortraitImage = normalizeText(body.selectedPortraitImage);
-
-    return {
-      schemaVersion: 1,
-      name: resolvedName,
-      sex: normalizeText(body.sex),
-      age: normalizeAge(body.age),
-      origin: normalizeText(body.origin),
-      ethnicity: normalizeText(body.ethnicity),
-      hairColor: normalizeText(body.hairColor),
-      figure: normalizeText(body.figure),
-      chestSize: normalizeText(body.chestSize),
-      occupation: normalizeText(body.occupation),
-      personality: normalizeText(body.personality),
-      sexuality: normalizeText(body.sexuality),
-      freeformDetails: normalizeText(body.freeformDetails),
-      likes: normalizeArray(body.likes),
-      habits: normalizeArray(body.habits),
-      archetype: body.archetype,
-      tone: body.tone,
-      affectionStyle: body.affectionStyle,
-      visualAesthetic: body.visualAesthetic,
-      preferenceHints,
-      selectedPortraitPrompt,
-      selectedPortraitImage,
-    };
-  };
-
-  let structuredProfile = buildStructuredProfile(chosenName);
+  let structuredProfile = buildStructuredProfile(body, chosenName);
   const preferenceHints = structuredProfile.preferenceHints;
+  const selectedPortraitPrompt = structuredProfile.selectedPortraitPrompt;
+  const selectedPortraitImage = structuredProfile.selectedPortraitImage;
 
   let conflict = findDistinctnessConflict({
     candidateProfile: structuredProfile,
@@ -168,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
 
     chosenName = suggestion;
-    structuredProfile = buildStructuredProfile(chosenName);
+    structuredProfile = buildStructuredProfile(body, chosenName);
 
     conflict = findDistinctnessConflict({
       candidateProfile: structuredProfile,
