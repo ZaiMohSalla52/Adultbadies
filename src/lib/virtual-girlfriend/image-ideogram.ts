@@ -106,6 +106,32 @@ export const generateCanonicalImageWithIdeogram = async (prompt: string): Promis
   return extractGeneratedImage(response, IDEOGRAM_GENERATE_ENDPOINT);
 };
 
+export const generateCanonicalImageFromReferenceWithIdeogram = async (input: {
+  prompt: string;
+  referenceImageBytes: Buffer;
+  referenceMimeType: string;
+  imageWeight?: number;
+}): Promise<IdeogramGeneratedImage> => {
+  const response = await fetchIdeogram(
+    IDEOGRAM_REFERENCE_ENDPOINT,
+    {
+      prompt: input.prompt,
+      model: IDEOGRAM_MODEL,
+      num_images: 1,
+      aspect_ratio: '1x1',
+      magic_prompt_option: 'AUTO',
+      style_type: 'AUTO',
+      rendering_speed: 'DEFAULT',
+      image_data: input.referenceImageBytes.toString('base64'),
+      image_mime_type: input.referenceMimeType,
+      image_weight: input.imageWeight ?? 92,
+    },
+    'Ideogram canonical generation with selected portrait reference failed',
+  );
+
+  return extractGeneratedImage(response, IDEOGRAM_REFERENCE_ENDPOINT);
+};
+
 export const generateGalleryImageFromReferenceWithIdeogram = async (input: {
   prompt: string;
   referenceImageBytes: Buffer;

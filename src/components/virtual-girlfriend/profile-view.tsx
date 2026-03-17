@@ -20,7 +20,9 @@ export const VirtualGirlfriendProfileView = ({
   images: VirtualGirlfriendCompanionImageRecord[];
   status: VirtualGirlfriendCompanionStatus;
 }) => {
-  const curated = curateVirtualGirlfriendImages(images);
+  const curated = curateVirtualGirlfriendImages(images, {
+    lockedCanonicalImageId: visualProfile?.canonical_reference_image_id ?? null,
+  });
   const canonical = curated.canonical;
   const gallery = curated.gallery;
   const profileDisclosure = companion.disclosure_label;

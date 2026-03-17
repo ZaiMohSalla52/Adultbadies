@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
 import {
+  generateCanonicalImageFromReferenceWithIdeogram,
   generateCanonicalImageWithIdeogram,
   generateGalleryImageFromReferenceWithIdeogram,
 } from '@/lib/virtual-girlfriend/image-ideogram';
@@ -269,37 +270,57 @@ const buildCapturePlan = (companion: VirtualGirlfriendCompanionRecord): CaptureP
     {
       kind: 'canonical',
       variantIndex: 0,
-      label: 'signature portrait',
-      framing: 'tight chest-up portrait, eye-level camera, strong face-first composition',
-      environment: 'clean but scene-real background tied to selected aesthetic without clutter',
-      mood: 'inviting chemistry with premium realism',
-      wardrobe: 'signature look that defines her identity',
-      expression: 'confident and warm eye contact',
-      glamourLevel: 'balanced premium styling',
+      label: 'editorial signature portrait',
+      framing: 'tight chest-up portrait, subtle lens compression, eye-level camera, face-dominant composition',
+      environment: 'premium interior corner with depth and bokeh, elegant but not busy',
+      mood: 'refined magnetic chemistry with confident premium presence',
+      wardrobe: 'intentional hero styling with elevated textures, flattering neckline, tasteful statement accessory',
+      expression: 'steady eye contact, poised micro-smile, confident warmth',
+      glamourLevel: 'premium editorial polish with believable realism',
     },
     {
       kind: 'gallery',
       variantIndex: 1,
-      label: 'lifestyle moment',
-      framing: 'waist-up candid framing with visible activity and environment context',
-      environment: 'lived-in daytime setting that feels personal and active',
-      mood: 'candid and relaxed daily-life warmth',
-      wardrobe: 'casual everyday outfit with movement-friendly styling',
-      expression: 'easy natural smile while interacting with an object or activity',
-      glamourLevel: 'low glamour casual realism',
+      label: 'street-style daytime candid',
+      framing: 'waist-up editorial candid with slight motion and clear separation from background',
+      environment: 'daylight city sidewalk, upscale cafe exterior, or architectural street backdrop',
+      mood: 'fresh spontaneous confidence with lifestyle energy',
+      wardrobe: 'fashion-forward daytime look, layered smart-casual styling, clean accessories',
+      expression: 'natural candid smile with in-the-moment interaction',
+      glamourLevel: 'daytime polished-casual fashion',
     },
     {
       kind: 'gallery',
       variantIndex: 2,
-      label: `date-night vibe — ${personaSpecificLifestyle.label}`,
-      framing: 'half-body cinematic framing with intentional depth and clear subject separation',
+      label: `golden-hour date-night editorial — ${personaSpecificLifestyle.label}`,
+      framing: 'half-body cinematic framing, intentional depth, flattering perspective, editorial composition',
       environment: personaSpecificLifestyle.environment,
       mood: personaSpecificLifestyle.mood,
-      wardrobe: personaSpecificLifestyle.wardrobe,
+      wardrobe: `${personaSpecificLifestyle.wardrobe}; elevated fit, styling coherence, premium finishing details`,
       expression: personaSpecificLifestyle.expression,
       glamourLevel: personaSpecificLifestyle.glamourLevel,
     },
   ];
+};
+
+const buildStructuredAppearanceContext = (companion: VirtualGirlfriendCompanionRecord) => {
+  const structured = companion.structured_profile;
+  if (!structured) return '';
+
+  const cues = [
+    structured.sex ? `sex: ${structured.sex}` : null,
+    structured.age ? `age: ${structured.age}` : null,
+    structured.origin ? `origin: ${structured.origin}` : null,
+    structured.ethnicity ? `ethnicity: ${structured.ethnicity}` : null,
+    structured.hairColor ? `hair: ${structured.hairColor}` : null,
+    structured.figure ? `figure: ${structured.figure}` : null,
+    structured.occupation ? `occupation vibe: ${structured.occupation}` : null,
+    structured.personality ? `personality styling signal: ${structured.personality}` : null,
+    structured.visualAesthetic ? `visual aesthetic: ${structured.visualAesthetic}` : null,
+    structured.preferenceHints ? `user preference hints: ${structured.preferenceHints}` : null,
+  ].filter(Boolean);
+
+  return cues.length ? `Structured profile anchors: ${cues.join('; ')}.` : '';
 };
 
 const buildImagePrompt = (input: {
@@ -307,11 +328,15 @@ const buildImagePrompt = (input: {
   identityPack: VirtualGirlfriendVisualIdentityPack;
   capture: CapturePlan;
 }) => {
+  const structuredAppearanceContext = buildStructuredAppearanceContext(input.companion);
+
   return [
     `Create a premium ${input.capture.label} image of the same single AI-generated woman identity named ${input.companion.name}.`,
     `Identity anchors: ${input.identityPack.continuityAnchors.join(', ')}.`,
     `Core look: ${input.identityPack.coreLookDescriptors.join(', ')}.`,
+    structuredAppearanceContext,
     `Identity invariants: age band ${input.identityPack.identityInvariants.ageBand}; face ${input.identityPack.identityInvariants.faceShape}; eyes ${input.identityPack.identityInvariants.eyeShapeColor}; brows ${input.identityPack.identityInvariants.browCharacter}; nose ${input.identityPack.identityInvariants.noseProfile}; lips ${input.identityPack.identityInvariants.lipShape}; skin tone ${input.identityPack.identityInvariants.skinToneBand}; hair ${input.identityPack.identityInvariants.hairSignature}; body presentation ${input.identityPack.identityInvariants.bodyPresentation}; signature motif ${input.identityPack.identityInvariants.signatureAccessoryOrMotif}.`,
+    `Wardrobe direction system-wide: ${input.identityPack.wardrobeDirection}.`,
     `Camera/composition preferences: ${input.identityPack.cameraCompositionPreferences.join(', ')}.`,
     `Framing: ${input.capture.framing}.`,
     `Background/environment: ${input.capture.environment}.`,
@@ -325,11 +350,27 @@ const buildImagePrompt = (input: {
     'Each slot must look like a different moment from her life, not alternate crops of the same scene.',
     'Do not repeat framing, camera angle, background, expression, or props from other slots.',
     'Must be meaningfully distinct from other variants in scene, framing, and styling while preserving the same identity.',
-    'Keep dating-app appropriate, emotionally warm, and believable.',
+    'Keep dating-app appropriate, emotionally warm, and believable premium quality.',
     'Show exactly one adult woman, no extra people, no text overlays, no logos.',
+    'Avoid bland basics, avoid same outfit energy across slots, avoid generic mall-catalog styling.',
     `Avoid: ${input.identityPack.negativeConstraints.join(', ')}.`,
     `Negative overlap cues: ${input.identityPack.negativeOverlapCues.join(', ')}.`,
   ].join(' ');
+};
+
+const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string } | null => {
+  const trimmed = dataUrl.trim();
+  const matched = trimmed.match(/^data:(.+?);base64,(.+)$/);
+  if (!matched) return null;
+
+  try {
+    return {
+      mimeType: matched[1] ?? 'image/png',
+      bytes: Buffer.from(matched[2] ?? '', 'base64'),
+    };
+  } catch {
+    return null;
+  }
 };
 
 const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
@@ -464,6 +505,7 @@ export const regenerateCanonicalForVisualProfile = async (input: {
     reviewed_by: string | null;
     reviewed_at: string | null;
     review_notes: string | null;
+    source_setup?: Record<string, unknown>;
   };
   requestedBy: string;
   regenerateGallery: boolean;
@@ -496,7 +538,20 @@ export const regenerateCanonicalForVisualProfile = async (input: {
     `${input.visualProfile.prompt_hash}:regen:${Date.now()}:${canonicalCapture.kind}:${canonicalCapture.variantIndex}:${canonicalPrompt}`,
   );
 
-  const canonicalGenerated = await generateCanonicalImageWithIdeogram(canonicalPrompt);
+  const portraitReferenceDataUrl =
+    typeof input.visualProfile.source_setup?.selectedPortraitImage === 'string'
+      ? input.visualProfile.source_setup.selectedPortraitImage
+      : null;
+  const portraitReference = portraitReferenceDataUrl ? parseDataUrlImage(portraitReferenceDataUrl) : null;
+
+  const canonicalGenerated = portraitReference
+    ? await generateCanonicalImageFromReferenceWithIdeogram({
+        prompt: canonicalPrompt,
+        referenceImageBytes: portraitReference.bytes,
+        referenceMimeType: portraitReference.mimeType,
+        imageWeight: 90,
+      })
+    : await generateCanonicalImageWithIdeogram(canonicalPrompt);
   const canonicalRow = await buildImageRecord({
     userId: input.visualProfile.user_id,
     companionId: input.visualProfile.companion_id,
@@ -655,7 +710,18 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
   });
   const canonicalPromptHash = sha(`${promptBaseHash}:${canonicalCapture.kind}:${canonicalCapture.variantIndex}:${canonicalPrompt}`);
 
-  const canonicalGenerated = await generateCanonicalImageWithIdeogram(canonicalPrompt);
+  const selectedPortraitReference = semanticSetup.selectedPortraitImage
+    ? parseDataUrlImage(semanticSetup.selectedPortraitImage)
+    : null;
+
+  const canonicalGenerated = selectedPortraitReference
+    ? await generateCanonicalImageFromReferenceWithIdeogram({
+        prompt: canonicalPrompt,
+        referenceImageBytes: selectedPortraitReference.bytes,
+        referenceMimeType: selectedPortraitReference.mimeType,
+        imageWeight: 93,
+      })
+    : await generateCanonicalImageWithIdeogram(canonicalPrompt);
   const canonicalRow = await buildImageRecord({
     userId: input.userId,
     companionId: input.companion.id,
