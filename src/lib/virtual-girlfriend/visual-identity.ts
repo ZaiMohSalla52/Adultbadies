@@ -1,6 +1,9 @@
 import crypto from 'node:crypto';
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
-import { generateVirtualGirlfriendImage } from '@/lib/virtual-girlfriend/image-provider';
+import {
+  generateCanonicalImageWithIdeogram,
+  generateGalleryImageFromReferenceWithIdeogram,
+} from '@/lib/virtual-girlfriend/image-ideogram';
 import { uploadToR2 } from '@/lib/storage/r2';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
 import type {
@@ -12,6 +15,7 @@ import type {
 import { createVisualProfile, insertCompanionImages, setCanonicalReferenceImageForVisualProfile } from '@/lib/virtual-girlfriend/data';
 
 const STYLE_VERSION = 'vg-image-v3';
+const IDEOGRAM_PROVIDER = 'ideogram';
 
 type BuildIdentityInput = {
   archetype: string;
@@ -213,6 +217,112 @@ const buildImagePrompt = (input: {
 
 const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
+export class VirtualGirlfriendImagePackError extends Error {
+  canonicalImageId: string | null;
+
+  constructor(message: string, canonicalImageId: string | null = null, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'VirtualGirlfriendImagePackError';
+    this.canonicalImageId = canonicalImageId;
+  }
+}
+
+const buildImageRecord = (input: {
+  userId: string;
+  companionId: string;
+  visualProfileId: string;
+  capture: CapturePlan;
+  generated: {
+    bytes: Buffer;
+    mimeType: string;
+    width: number | null;
+    height: number | null;
+    revisedPrompt: string | null;
+    provider: 'ideogram';
+    model: string;
+    endpoint: string;
+    requestId: string | null;
+    jobId: string | null;
+  };
+  promptHash: string;
+  identityPack: VirtualGirlfriendVisualIdentityPack;
+  referenceImageId?: string;
+}): Promise<Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>> => {
+  const key = `virtual-girlfriend-images/${input.userId}/${input.companionId}/${STYLE_VERSION}/${input.capture.kind}-${input.capture.variantIndex}-${Date.now()}.png`;
+
+  return uploadToR2({
+    key,
+    body: input.generated.bytes,
+    contentType: input.generated.mimeType,
+  }).then(async (r2) => {
+    const cloudinary = await uploadToCloudinary({
+      bytes: input.generated.bytes,
+      mimeType: input.generated.mimeType,
+      folderPath: `${input.userId}/${input.companionId}`,
+      publicId: `${STYLE_VERSION}-${input.capture.kind}-${input.capture.variantIndex}`,
+    });
+
+    return {
+      user_id: input.userId,
+      companion_id: input.companionId,
+      visual_profile_id: input.visualProfileId,
+      image_kind: input.capture.kind,
+      variant_index: input.capture.variantIndex,
+      origin_storage_provider: r2.provider,
+      origin_storage_key: r2.key,
+      origin_mime_type: input.generated.mimeType,
+      origin_byte_size: input.generated.bytes.byteLength,
+      delivery_provider: cloudinary.provider,
+      delivery_public_id: cloudinary.publicId,
+      delivery_url: cloudinary.deliveryUrl,
+      width: cloudinary.width ?? input.generated.width,
+      height: cloudinary.height ?? input.generated.height,
+      prompt_hash: input.promptHash,
+      style_version: STYLE_VERSION,
+      seed_metadata: {},
+      lineage_metadata: {
+        generation_mode: input.capture.kind === 'canonical' ? 'canonical' : 'gallery_from_canonical',
+        reference_image_id: input.referenceImageId ?? null,
+        provider: input.generated.provider,
+        providerModel: input.generated.model,
+        providerEndpoint: input.generated.endpoint,
+        providerRequestId: input.generated.requestId,
+        providerJobId: input.generated.jobId,
+        revisedPrompt: input.generated.revisedPrompt ?? null,
+        continuityAnchors: input.identityPack.continuityAnchors,
+        captureLabel: input.capture.label,
+        captureMood: input.capture.mood,
+        captureEnvironment: input.capture.environment,
+      },
+      moderation_status: 'pending',
+      moderation: { provider: 'ideogram-v3' },
+      provenance: {
+        generatedBy: `${IDEOGRAM_PROVIDER}:V_3`,
+        originalStorage: 'cloudflare_r2',
+        delivery: 'cloudinary',
+        generatedAt: new Date().toISOString(),
+        providerEndpoint: input.generated.endpoint,
+        providerRequestId: input.generated.requestId,
+        providerJobId: input.generated.jobId,
+      },
+      quality_score: 0.92,
+    };
+  });
+};
+
+const downloadCanonicalReferenceBytes = async (canonicalDeliveryUrl: string) => {
+  const response = await fetch(canonicalDeliveryUrl);
+  if (!response.ok) {
+    throw new Error(`Canonical reference download failed (${response.status}).`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  return {
+    bytes: Buffer.from(arrayBuffer),
+    mimeType: response.headers.get('content-type') ?? 'image/png',
+  };
+};
+
 export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
   token: string;
   userId: string;
@@ -233,82 +343,11 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
 
   const promptBaseHash = sha(JSON.stringify(identityPack));
   const captures = buildCapturePlan(input.companion);
+  const canonicalCapture = captures.find((capture) => capture.kind === 'canonical');
+  const galleryCaptures = captures.filter((capture) => capture.kind === 'gallery');
 
-  const prepared = [] as Array<{
-    row: Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>;
-  }>;
-
-  for (const capture of captures) {
-    const prompt = buildImagePrompt({
-      companion: input.companion,
-      identityPack,
-      capture,
-    });
-
-    const promptHash = sha(`${promptBaseHash}:${capture.kind}:${capture.variantIndex}:${prompt}`);
-    const generated = await generateVirtualGirlfriendImage({
-      prompt,
-      mode: capture.kind === 'canonical' ? 'canonical' : 'legacy_independent',
-      provider: 'openai',
-    });
-
-    const key = `virtual-girlfriend-images/${input.userId}/${input.companion.id}/${STYLE_VERSION}/${capture.kind}-${capture.variantIndex}-${Date.now()}.png`;
-    const r2 = await uploadToR2({
-      key,
-      body: generated.bytes,
-      contentType: generated.mimeType,
-    });
-
-    const cloudinary = await uploadToCloudinary({
-      bytes: generated.bytes,
-      mimeType: generated.mimeType,
-      folderPath: `${input.userId}/${input.companion.id}`,
-      publicId: `${STYLE_VERSION}-${capture.kind}-${capture.variantIndex}`,
-    });
-
-    prepared.push({
-      row: {
-        user_id: input.userId,
-        companion_id: input.companion.id,
-        visual_profile_id: '',
-        image_kind: capture.kind,
-        variant_index: capture.variantIndex,
-        origin_storage_provider: r2.provider,
-        origin_storage_key: r2.key,
-        origin_mime_type: generated.mimeType,
-        origin_byte_size: generated.bytes.byteLength,
-        delivery_provider: cloudinary.provider,
-        delivery_public_id: cloudinary.publicId,
-        delivery_url: cloudinary.deliveryUrl,
-        width: cloudinary.width,
-        height: cloudinary.height,
-        prompt_hash: promptHash,
-        style_version: STYLE_VERSION,
-        seed_metadata: {},
-        lineage_metadata: {
-          revisedPrompt: generated.revisedPrompt ?? null,
-          continuityAnchors: identityPack.continuityAnchors,
-          captureLabel: capture.label,
-          captureMood: capture.mood,
-          captureEnvironment: capture.environment,
-          reference_image_id: null,
-          generation_mode: capture.kind === 'canonical' ? 'canonical' : 'legacy_independent',
-          provider: generated.provider,
-          provider_model: generated.providerModel,
-          provider_request_id: generated.providerRequestId,
-          provider_job_id: generated.providerJobId,
-        },
-        moderation_status: 'pending',
-        moderation: { provider: 'openai-image-default' },
-        provenance: {
-          generatedBy: `${generated.provider}:${generated.providerModel}`,
-          originalStorage: 'cloudflare_r2',
-          delivery: 'cloudinary',
-          generatedAt: new Date().toISOString(),
-        },
-        quality_score: 0.92,
-      },
-    });
+  if (!canonicalCapture) {
+    throw new VirtualGirlfriendImagePackError('Canonical capture plan is missing.');
   }
 
   const visualProfile = await createVisualProfile(input.token, {
@@ -323,21 +362,66 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     provenance: { generatedBy: 'openai:gpt-5-mini', phase: 'stage9-phase3-refinement' },
   });
 
-  const imageRows = prepared.map((entry) => ({ ...entry.row, visual_profile_id: visualProfile.id }));
-  const images = await insertCompanionImages(input.token, imageRows);
+  const canonicalPrompt = buildImagePrompt({
+    companion: input.companion,
+    identityPack,
+    capture: canonicalCapture,
+  });
+  const canonicalPromptHash = sha(`${promptBaseHash}:${canonicalCapture.kind}:${canonicalCapture.variantIndex}:${canonicalPrompt}`);
 
-  const canonical = images.find((image) => image.image_kind === 'canonical') ?? null;
-  const updatedVisualProfile = canonical
-    ? await setCanonicalReferenceImageForVisualProfile(input.token, {
-        userId: input.userId,
-        visualProfileId: visualProfile.id,
-        canonicalReferenceImageId: canonical.id,
-        canonicalReferenceMetadata: {
-          source: 'initial_pack',
-          styleVersion: STYLE_VERSION,
-        },
-      })
-    : visualProfile;
+  const canonicalGenerated = await generateCanonicalImageWithIdeogram(canonicalPrompt);
+  const canonicalRow = await buildImageRecord({
+    userId: input.userId,
+    companionId: input.companion.id,
+    visualProfileId: visualProfile.id,
+    capture: canonicalCapture,
+    generated: canonicalGenerated,
+    promptHash: canonicalPromptHash,
+    identityPack,
+  });
 
-  return { visualProfile: updatedVisualProfile ?? visualProfile, images };
+  const [canonicalImage] = await insertCompanionImages(input.token, [canonicalRow]);
+  if (!canonicalImage) {
+    throw new VirtualGirlfriendImagePackError('Canonical image persistence failed.');
+  }
+
+  try {
+    const canonicalReference = await downloadCanonicalReferenceBytes(canonicalImage.delivery_url);
+    const galleryRows: Array<Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>> = [];
+
+    for (const capture of galleryCaptures) {
+      const prompt = buildImagePrompt({
+        companion: input.companion,
+        identityPack,
+        capture,
+      });
+      const promptHash = sha(`${promptBaseHash}:${capture.kind}:${capture.variantIndex}:${prompt}`);
+      const generated = await generateGalleryImageFromReferenceWithIdeogram({
+        prompt,
+        referenceImageBytes: canonicalReference.bytes,
+        referenceMimeType: canonicalReference.mimeType,
+      });
+
+      galleryRows.push(
+        await buildImageRecord({
+          userId: input.userId,
+          companionId: input.companion.id,
+          visualProfileId: visualProfile.id,
+          capture,
+          generated,
+          promptHash,
+          identityPack,
+          referenceImageId: canonicalImage.id,
+        }),
+      );
+    }
+
+    const galleryImages = galleryRows.length ? await insertCompanionImages(input.token, galleryRows) : [];
+
+    return { visualProfile, images: [canonicalImage, ...galleryImages], canonicalImage };
+  } catch (error) {
+    throw new VirtualGirlfriendImagePackError('Gallery generation from canonical reference failed.', canonicalImage.id, {
+      cause: error,
+    });
+  }
 };
