@@ -1,7 +1,6 @@
 import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendResolvedProfile,
-  VirtualGirlfriendStructuredProfile,
 } from '@/lib/virtual-girlfriend/types';
 
 const toNonEmptyString = (value: unknown): string | null => {
@@ -31,11 +30,11 @@ const toNullableAge = (value: unknown): number | null => {
   return null;
 };
 
-const normalizeStructuredProfile = (value: unknown): VirtualGirlfriendStructuredProfile | null => {
+const normalizeStructuredProfile = (value: unknown): Omit<VirtualGirlfriendResolvedProfile, 'source'> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
 
   const raw = value as Record<string, unknown>;
-  const normalized: VirtualGirlfriendStructuredProfile = {
+  const normalized: Omit<VirtualGirlfriendResolvedProfile, 'source'> = {
     name: toNonEmptyString(raw.name),
     sex: toNonEmptyString(raw.sex),
     origin: toNonEmptyString(raw.origin),
@@ -60,7 +59,7 @@ const normalizeStructuredProfile = (value: unknown): VirtualGirlfriendStructured
   return hasAnyData ? normalized : null;
 };
 
-const deriveLegacyProfile = (companion: VirtualGirlfriendCompanionRecord): VirtualGirlfriendStructuredProfile => {
+const deriveLegacyProfile = (companion: VirtualGirlfriendCompanionRecord): Omit<VirtualGirlfriendResolvedProfile, 'source'> => {
   const persona = companion.persona_profile;
   const tags = companion.profile_tags ?? [];
 
@@ -97,7 +96,16 @@ const deriveLegacyProfile = (companion: VirtualGirlfriendCompanionRecord): Virtu
 
   return {
     name: toNonEmptyString(companion.name) ?? toNonEmptyString(persona.displayName),
+    sex: null,
+    origin: null,
+    ethnicity: null,
+    hairColor: null,
+    figure: null,
+    age: null,
+    chestSize: null,
+    occupation: null,
     personality: toNonEmptyString(personality.join(', ')),
+    sexuality: null,
     freeformDetails: toNonEmptyString(freeformDetails),
     likes: likes.length ? likes : null,
     habits: habits.length ? habits : null,
