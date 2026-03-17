@@ -52,6 +52,16 @@ export type PersonaProfile = {
 
 export type VirtualGirlfriendGenerationStatus = 'generating' | 'ready' | 'failed';
 
+export type VirtualGirlfriendStructuredProfile = {
+  schemaVersion: 1;
+  name: string;
+  archetype: string;
+  tone: string;
+  affectionStyle: string;
+  visualAesthetic: string;
+  preferenceHints: string | null;
+};
+
 
 export const VIRTUAL_GIRLFRIEND_CANONICAL_REVIEW_STATUSES = ['pending', 'approved', 'rejected'] as const;
 
@@ -63,6 +73,7 @@ export type VirtualGirlfriendCompanionRecord = {
   name: string;
   display_bio: string | null;
   persona_profile: PersonaProfile;
+  structured_profile: VirtualGirlfriendStructuredProfile | null;
   archetype: string | null;
   tone: string | null;
   affection_style: string | null;
@@ -339,7 +350,7 @@ export type VirtualGirlfriendProactiveEventRecord = {
 };
 
 export type VirtualGirlfriendSetupPayload = {
-  name?: string;
+  name: string;
   archetype: string;
   tone: string;
   affectionStyle: string;

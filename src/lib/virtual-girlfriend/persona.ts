@@ -1,5 +1,43 @@
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
-import type { PersonaProfile, VirtualGirlfriendSetupPayload } from '@/lib/virtual-girlfriend/types';
+import type { PersonaProfile, VirtualGirlfriendSetupPayload, VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
+
+const hasSemanticValue = (value: string | null | undefined) => Boolean(value && value.trim());
+
+export const resolvePersonaSemanticInput = (input: {
+  structuredProfile?: VirtualGirlfriendStructuredProfile | null;
+  fallback: VirtualGirlfriendSetupPayload;
+}): VirtualGirlfriendSetupPayload => {
+  const { structuredProfile, fallback } = input;
+
+  if (
+    structuredProfile
+    && hasSemanticValue(structuredProfile.name)
+    && hasSemanticValue(structuredProfile.archetype)
+    && hasSemanticValue(structuredProfile.tone)
+    && hasSemanticValue(structuredProfile.affectionStyle)
+    && hasSemanticValue(structuredProfile.visualAesthetic)
+  ) {
+    return {
+      name: structuredProfile.name.trim(),
+      archetype: structuredProfile.archetype.trim(),
+      tone: structuredProfile.tone.trim(),
+      affectionStyle: structuredProfile.affectionStyle.trim(),
+      visualAesthetic: structuredProfile.visualAesthetic.trim(),
+      preferenceHints: structuredProfile.preferenceHints?.trim() || undefined,
+      createNew: fallback.createNew,
+    };
+  }
+
+  return {
+    ...fallback,
+    name: fallback.name.trim(),
+    archetype: fallback.archetype.trim(),
+    tone: fallback.tone.trim(),
+    affectionStyle: fallback.affectionStyle.trim(),
+    visualAesthetic: fallback.visualAesthetic.trim(),
+    preferenceHints: fallback.preferenceHints?.trim() || undefined,
+  };
+};
 
 type PreferenceStyleGuide = {
   visualAnchors: string[];
@@ -67,7 +105,7 @@ const preferenceStyleGuide = (input: VirtualGirlfriendSetupPayload): PreferenceS
 };
 
 const fallbackPersona = (input: VirtualGirlfriendSetupPayload): PersonaProfile => {
-  const displayName = input.name?.trim() || 'Nova';
+  const displayName = input.name.trim();
   const guide = preferenceStyleGuide(input);
 
   return {
@@ -95,7 +133,7 @@ export const generateVirtualGirlfriendPersona = async (input: VirtualGirlfriendS
 
   const prompt = `Create a premium virtual girlfriend persona as strict JSON. It must feel specific to the selected preference and not generic.
 Use these setup directives:
-- Name preference: ${input.name?.trim() || 'auto-generate a fitting feminine name'}
+- Name: ${input.name.trim()}
 - Archetype: ${input.archetype}
 - Tone: ${input.tone}
 - Affection/flirt direction: ${input.affectionStyle}

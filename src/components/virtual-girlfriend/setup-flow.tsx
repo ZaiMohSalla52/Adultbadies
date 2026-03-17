@@ -88,7 +88,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           ) : null}
 
           <fieldset disabled={isSubmitting} className={isSubmitting ? 'space-y-4 opacity-60' : 'space-y-4'}>
-            <Input name="name" placeholder="Name (optional, auto-generated if blank)" maxLength={40} />
+            <Input name="name" placeholder="Companion name" maxLength={40} required />
 
             <Select name="archetype" required defaultValue="">
               <option value="" disabled>Select personality archetype</option>
