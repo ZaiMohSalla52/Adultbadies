@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import {
   getOrCreateVirtualGirlfriendConversation,
+  setCanonicalReferenceImageId,
   setVirtualGirlfriendGenerationStatus,
   upsertVirtualGirlfriend,
 } from '@/lib/virtual-girlfriend/data';
-import { generateAndPersistVirtualGirlfriendImagePack } from '@/lib/virtual-girlfriend/visual-identity';
+import {
+  generateAndPersistVirtualGirlfriendImagePack,
+  VirtualGirlfriendImagePackError,
+} from '@/lib/virtual-girlfriend/visual-identity';
 import { generateVirtualGirlfriendPersona } from '@/lib/virtual-girlfriend/persona';
 import type { VirtualGirlfriendSetupPayload } from '@/lib/virtual-girlfriend/types';
 
@@ -39,7 +43,7 @@ export async function POST(request: NextRequest) {
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
 
   try {
-    await generateAndPersistVirtualGirlfriendImagePack({
+    const generatedPack = await generateAndPersistVirtualGirlfriendImagePack({
       token: auth.accessToken,
       userId: auth.user.id,
       companion,
@@ -52,10 +56,19 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    if (generatedPack.canonicalImage) {
+      await setCanonicalReferenceImageId(auth.accessToken, auth.user.id, companion.id, generatedPack.canonicalImage.id);
+    }
+
     await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
     return NextResponse.json({ ok: true, companionId: companion.id, conversationId: conversation.id, imageStatus: 'ready' });
   } catch (error) {
     console.error('[virtual-girlfriend] setup image generation failed', error);
+
+    if (error instanceof VirtualGirlfriendImagePackError && error.canonicalImageId) {
+      await setCanonicalReferenceImageId(auth.accessToken, auth.user.id, companion.id, error.canonicalImageId);
+    }
+
     await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'failed');
     return NextResponse.json({
       ok: true,

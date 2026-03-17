@@ -66,6 +66,7 @@ export type VirtualGirlfriendCompanionRecord = {
   profile_tags: string[] | null;
   setup_completed: boolean;
   generation_status: VirtualGirlfriendGenerationStatus;
+  canonical_reference_image_id: string | null;
   disclosure_label: string;
   is_active: boolean;
   created_at: string;
