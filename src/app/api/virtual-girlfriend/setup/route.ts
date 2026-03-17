@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
 
   let chosenName = baseName;
   let structuredProfile = buildStructuredProfile(body as unknown as Record<string, unknown>, chosenName);
+  const preferenceHints = structuredProfile.preferenceHints;
   let conflict = findDistinctnessConflict({
     candidateProfile: structuredProfile,
     existingCompanions: companions,
