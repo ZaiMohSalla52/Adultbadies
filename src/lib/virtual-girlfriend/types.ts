@@ -52,6 +52,11 @@ export type PersonaProfile = {
 
 export type VirtualGirlfriendGenerationStatus = 'generating' | 'ready' | 'failed';
 
+
+export const VIRTUAL_GIRLFRIEND_CANONICAL_REVIEW_STATUSES = ['pending', 'approved', 'rejected'] as const;
+
+export type VirtualGirlfriendCanonicalReviewStatus = (typeof VIRTUAL_GIRLFRIEND_CANONICAL_REVIEW_STATUSES)[number];
+
 export type VirtualGirlfriendCompanionRecord = {
   id: string;
   user_id: string;
@@ -93,6 +98,10 @@ export type VirtualGirlfriendVisualProfileRecord = {
   identity_pack: VirtualGirlfriendVisualIdentityPack;
   canonical_reference_image_id: string | null;
   canonical_reference_metadata: Record<string, unknown>;
+  canonical_review_status: VirtualGirlfriendCanonicalReviewStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
   continuity_notes: string | null;
   moderation_status: string;
   provenance: Record<string, unknown>;
