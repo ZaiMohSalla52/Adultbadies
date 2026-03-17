@@ -62,6 +62,20 @@ export type VirtualGirlfriendStructuredProfile = {
   preferenceHints: string | null;
 };
 
+export type VirtualGirlfriendResolvedProfile = {
+  source: 'structured_profile' | 'legacy_derived';
+  name: string | null;
+  archetype: string | null;
+  tone: string | null;
+  affectionStyle: string | null;
+  visualAesthetic: string | null;
+  preferenceHints: string | null;
+  personality: string | null;
+  freeformDetails: string | null;
+  likes: string[] | null;
+  habits: string[] | null;
+};
+
 
 export const VIRTUAL_GIRLFRIEND_CANONICAL_REVIEW_STATUSES = ['pending', 'approved', 'rejected'] as const;
 

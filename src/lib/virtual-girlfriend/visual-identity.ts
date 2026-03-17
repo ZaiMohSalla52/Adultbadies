@@ -10,6 +10,7 @@ import type {
   PersonaProfile,
   VirtualGirlfriendCompanionImageRecord,
   VirtualGirlfriendCompanionRecord,
+  VirtualGirlfriendSetupPayload,
   VirtualGirlfriendVisualIdentityPack,
 } from '@/lib/virtual-girlfriend/types';
 import {
@@ -33,6 +34,48 @@ type BuildIdentityInput = {
   companionName: string;
   persona: PersonaProfile;
   existingCompanionSignatures?: string[];
+};
+
+const hasSemanticValue = (value: string | null | undefined) => Boolean(value && value.trim());
+
+const resolveVisualIdentitySemanticInput = (input: {
+  companion: VirtualGirlfriendCompanionRecord;
+  fallback: {
+    archetype: string;
+    tone: string;
+    affectionStyle: string;
+    visualAesthetic: string;
+    preferenceHints?: string;
+  };
+}): VirtualGirlfriendSetupPayload => {
+  const structuredProfile = input.companion.structured_profile;
+
+  if (
+    structuredProfile
+    && hasSemanticValue(structuredProfile.name)
+    && hasSemanticValue(structuredProfile.archetype)
+    && hasSemanticValue(structuredProfile.tone)
+    && hasSemanticValue(structuredProfile.affectionStyle)
+    && hasSemanticValue(structuredProfile.visualAesthetic)
+  ) {
+    return {
+      name: structuredProfile.name.trim(),
+      archetype: structuredProfile.archetype.trim(),
+      tone: structuredProfile.tone.trim(),
+      affectionStyle: structuredProfile.affectionStyle.trim(),
+      visualAesthetic: structuredProfile.visualAesthetic.trim(),
+      preferenceHints: structuredProfile.preferenceHints?.trim() || undefined,
+    };
+  }
+
+  return {
+    name: input.companion.name,
+    archetype: input.fallback.archetype.trim(),
+    tone: input.fallback.tone.trim(),
+    affectionStyle: input.fallback.affectionStyle.trim(),
+    visualAesthetic: input.fallback.visualAesthetic.trim(),
+    preferenceHints: input.fallback.preferenceHints?.trim() || undefined,
+  };
 };
 
 type CapturePlan = {
@@ -544,6 +587,11 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     preferenceHints?: string;
   };
 }) => {
+  const semanticSetup = resolveVisualIdentitySemanticInput({
+    companion: input.companion,
+    fallback: input.setup,
+  });
+
   const allCompanions = await listVirtualGirlfriendCompanions(input.token, input.userId);
   const siblingCompanionSignatures = allCompanions
     .filter((companion) => companion.id !== input.companion.id)
@@ -554,8 +602,12 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     });
 
   const identityPack = await buildVisualIdentityPack({
-    ...input.setup,
-    companionName: input.companion.name,
+    archetype: semanticSetup.archetype,
+    tone: semanticSetup.tone,
+    affectionStyle: semanticSetup.affectionStyle,
+    visualAesthetic: semanticSetup.visualAesthetic,
+    preferenceHints: semanticSetup.preferenceHints,
+    companionName: semanticSetup.name,
     persona: input.companion.persona_profile,
     existingCompanionSignatures: siblingCompanionSignatures,
   });
@@ -574,7 +626,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     companionId: input.companion.id,
     styleVersion: STYLE_VERSION,
     promptHash: promptBaseHash,
-    sourceSetup: input.setup,
+    sourceSetup: semanticSetup,
     identityPack,
     continuityNotes: 'Identity continuity anchored by profile pack with varied scene plans for non-duplicate gallery outcomes.',
     moderationStatus: 'pending',

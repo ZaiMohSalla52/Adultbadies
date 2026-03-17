@@ -16,51 +16,32 @@ const toStringArray = (value: unknown): string[] | null => {
   return normalized.length ? normalized : null;
 };
 
-const toNullableAge = (value: unknown): number | null => {
-  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-    return Math.trunc(value);
-  }
-
-  if (typeof value === 'string') {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return parsed;
-    }
-  }
-
-  return null;
-};
-
 const normalizeStructuredProfile = (value: unknown): VirtualGirlfriendStructuredProfile | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
 
   const raw = value as Record<string, unknown>;
-  const normalized: VirtualGirlfriendStructuredProfile = {
-    name: toNonEmptyString(raw.name),
-    sex: toNonEmptyString(raw.sex),
-    origin: toNonEmptyString(raw.origin),
-    ethnicity: toNonEmptyString(raw.ethnicity),
-    hairColor: toNonEmptyString(raw.hairColor),
-    figure: toNonEmptyString(raw.figure),
-    age: toNullableAge(raw.age),
-    chestSize: toNonEmptyString(raw.chestSize),
-    occupation: toNonEmptyString(raw.occupation),
-    personality: toNonEmptyString(raw.personality),
-    sexuality: toNonEmptyString(raw.sexuality),
-    freeformDetails: toNonEmptyString(raw.freeformDetails),
-    likes: toStringArray(raw.likes),
-    habits: toStringArray(raw.habits),
+  const name = toNonEmptyString(raw.name);
+  const archetype = toNonEmptyString(raw.archetype);
+  const tone = toNonEmptyString(raw.tone);
+  const affectionStyle = toNonEmptyString(raw.affectionStyle);
+  const visualAesthetic = toNonEmptyString(raw.visualAesthetic);
+
+  if (!name || !archetype || !tone || !affectionStyle || !visualAesthetic) {
+    return null;
+  }
+
+  return {
+    schemaVersion: 1,
+    name,
+    archetype,
+    tone,
+    affectionStyle,
+    visualAesthetic,
+    preferenceHints: toNonEmptyString(raw.preferenceHints),
   };
-
-  const hasAnyData = Object.values(normalized).some((field) => {
-    if (Array.isArray(field)) return field.length > 0;
-    return field !== null && field !== undefined;
-  });
-
-  return hasAnyData ? normalized : null;
 };
 
-const deriveLegacyProfile = (companion: VirtualGirlfriendCompanionRecord): VirtualGirlfriendStructuredProfile => {
+const deriveLegacyProfile = (companion: VirtualGirlfriendCompanionRecord): VirtualGirlfriendResolvedProfile => {
   const persona = companion.persona_profile;
   const tags = companion.profile_tags ?? [];
 
@@ -96,7 +77,13 @@ const deriveLegacyProfile = (companion: VirtualGirlfriendCompanionRecord): Virtu
   );
 
   return {
+    source: 'legacy_derived',
     name: toNonEmptyString(companion.name) ?? toNonEmptyString(persona.displayName),
+    archetype: toNonEmptyString(companion.archetype),
+    tone: toNonEmptyString(companion.tone),
+    affectionStyle: toNonEmptyString(companion.affection_style),
+    visualAesthetic: toNonEmptyString(companion.visual_aesthetic),
+    preferenceHints: toNonEmptyString(companion.preference_hints),
     personality: toNonEmptyString(personality.join(', ')),
     freeformDetails: toNonEmptyString(freeformDetails),
     likes: likes.length ? likes : null,
@@ -110,13 +97,19 @@ export const resolveVirtualGirlfriendProfile = (
   const structuredProfile = normalizeStructuredProfile(companion.structured_profile);
   if (structuredProfile) {
     return {
-      ...structuredProfile,
       source: 'structured_profile',
+      name: structuredProfile.name,
+      archetype: structuredProfile.archetype,
+      tone: structuredProfile.tone,
+      affectionStyle: structuredProfile.affectionStyle,
+      visualAesthetic: structuredProfile.visualAesthetic,
+      preferenceHints: structuredProfile.preferenceHints,
+      personality: null,
+      freeformDetails: toNonEmptyString(companion.display_bio) ?? toNonEmptyString(companion.persona_profile.shortBio),
+      likes: toStringArray(companion.profile_tags),
+      habits: null,
     };
   }
 
-  return {
-    ...deriveLegacyProfile(companion),
-    source: 'legacy_derived',
-  };
+  return deriveLegacyProfile(companion);
 };
