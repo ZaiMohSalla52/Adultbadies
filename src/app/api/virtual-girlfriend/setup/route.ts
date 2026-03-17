@@ -13,6 +13,37 @@ import {
 import { generateVirtualGirlfriendPersona, resolvePersonaSemanticInput } from '@/lib/virtual-girlfriend/persona';
 import type { VirtualGirlfriendSetupPayload, VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
 
+const normalizeText = (value: unknown) => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
+const normalizeArray = (value: unknown): string[] | null => {
+  if (!Array.isArray(value)) return null;
+
+  const normalized = value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item): item is string => Boolean(item));
+
+  return normalized.length ? normalized : null;
+};
+
+const normalizeAge = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return Math.trunc(value);
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
@@ -34,14 +65,29 @@ export async function POST(request: NextRequest) {
     name,
   };
 
+  const preferenceHints = normalizeText(body.preferenceHints ?? body.freeformDetails);
+
   const structuredProfile = {
     schemaVersion: 1,
     name,
+    sex: normalizeText(body.sex),
+    age: normalizeAge(body.age),
+    origin: normalizeText(body.origin),
+    ethnicity: normalizeText(body.ethnicity),
+    hairColor: normalizeText(body.hairColor),
+    figure: normalizeText(body.figure),
+    chestSize: normalizeText(body.chestSize),
+    occupation: normalizeText(body.occupation),
+    personality: normalizeText(body.personality),
+    sexuality: normalizeText(body.sexuality),
+    freeformDetails: normalizeText(body.freeformDetails),
+    likes: normalizeArray(body.likes),
+    habits: normalizeArray(body.habits),
     archetype: body.archetype,
     tone: body.tone,
     affectionStyle: body.affectionStyle,
     visualAesthetic: body.visualAesthetic,
-    preferenceHints: body.preferenceHints?.trim() || null,
+    preferenceHints,
   } satisfies VirtualGirlfriendStructuredProfile;
 
   const personaInput = resolvePersonaSemanticInput({
@@ -62,7 +108,7 @@ export async function POST(request: NextRequest) {
     tone: body.tone,
     affectionStyle: body.affectionStyle,
     visualAesthetic: body.visualAesthetic,
-    preferenceHints: body.preferenceHints,
+    preferenceHints: preferenceHints ?? undefined,
     profileTags: persona.vibeTags,
     structuredProfile,
   });
@@ -79,7 +125,7 @@ export async function POST(request: NextRequest) {
         tone: body.tone,
         affectionStyle: body.affectionStyle,
         visualAesthetic: body.visualAesthetic,
-        preferenceHints: body.preferenceHints,
+        preferenceHints: preferenceHints ?? undefined,
       },
     });
 
