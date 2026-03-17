@@ -56,7 +56,7 @@ export type VirtualGirlfriendStructuredProfile = {
   schemaVersion: 1;
   name: string;
   sex?: string | null;
-  age?: number | null;
+  age?: string | number | null;
   origin?: string | null;
   ethnicity?: string | null;
   hairColor?: string | null;
