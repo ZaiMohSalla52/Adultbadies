@@ -1,6 +1,7 @@
 import { supabaseRest } from '@/lib/supabase/rest';
 import type {
   PersonaProfile,
+  VirtualGirlfriendStructuredProfile,
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendConversationRecord,
   VirtualGirlfriendMemoryCandidate,
@@ -168,6 +169,7 @@ export const upsertVirtualGirlfriend = async (
     preferenceHints?: string;
     profileTags?: string[];
     setActive?: boolean;
+    structuredProfile: VirtualGirlfriendStructuredProfile;
   },
 ): Promise<VirtualGirlfriendCompanionRecord> => {
   const targetCompanion = input.createNew
@@ -184,6 +186,7 @@ export const upsertVirtualGirlfriend = async (
         name: input.name,
         display_bio: input.bio,
         persona_profile: input.personaProfile,
+        structured_profile: input.structuredProfile,
         archetype: input.archetype,
         tone: input.tone,
         affection_style: input.affectionStyle,
@@ -220,6 +223,7 @@ export const upsertVirtualGirlfriend = async (
       persona_prompt: 'Stage 9 Virtual Girlfriend structured persona',
       display_bio: input.bio,
       persona_profile: input.personaProfile,
+      structured_profile: input.structuredProfile,
       archetype: input.archetype,
       tone: input.tone,
       affection_style: input.affectionStyle,

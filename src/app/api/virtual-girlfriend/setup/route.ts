@@ -10,8 +10,8 @@ import {
   generateAndPersistVirtualGirlfriendImagePack,
   VirtualGirlfriendImagePackError,
 } from '@/lib/virtual-girlfriend/visual-identity';
-import { generateVirtualGirlfriendPersona } from '@/lib/virtual-girlfriend/persona';
-import type { VirtualGirlfriendSetupPayload } from '@/lib/virtual-girlfriend/types';
+import { generateVirtualGirlfriendPersona, resolvePersonaSemanticInput } from '@/lib/virtual-girlfriend/persona';
+import type { VirtualGirlfriendSetupPayload, VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
@@ -19,17 +19,43 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json()) as VirtualGirlfriendSetupPayload & { companionId?: string; createNew?: boolean };
 
+  const name = String(body.name ?? '').trim();
+
+  if (!name) {
+    return NextResponse.json({ error: 'Please enter a companion name.' }, { status: 400 });
+  }
+
   if (!body.archetype || !body.tone || !body.affectionStyle || !body.visualAesthetic) {
     return NextResponse.json({ error: 'Please complete all setup selections.' }, { status: 400 });
   }
 
-  const persona = await generateVirtualGirlfriendPersona(body);
+  const setupPayload: VirtualGirlfriendSetupPayload = {
+    ...body,
+    name,
+  };
+
+  const structuredProfile = {
+    schemaVersion: 1,
+    name,
+    archetype: body.archetype,
+    tone: body.tone,
+    affectionStyle: body.affectionStyle,
+    visualAesthetic: body.visualAesthetic,
+    preferenceHints: body.preferenceHints?.trim() || null,
+  } satisfies VirtualGirlfriendStructuredProfile;
+
+  const personaInput = resolvePersonaSemanticInput({
+    structuredProfile,
+    fallback: setupPayload,
+  });
+
+  const persona = await generateVirtualGirlfriendPersona(personaInput);
 
   const companion = await upsertVirtualGirlfriend(auth.accessToken, {
     userId: auth.user.id,
     companionId: body.companionId?.trim() || undefined,
     createNew: Boolean(body.createNew),
-    name: persona.displayName,
+    name,
     bio: persona.shortBio,
     personaProfile: persona,
     archetype: body.archetype,
@@ -38,6 +64,7 @@ export async function POST(request: NextRequest) {
     visualAesthetic: body.visualAesthetic,
     preferenceHints: body.preferenceHints,
     profileTags: persona.vibeTags,
+    structuredProfile,
   });
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
