@@ -18,7 +18,7 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 
 const companionSelect =
-  'id,user_id,name,display_bio,persona_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,generation_status,disclosure_label,is_active,created_at,updated_at';
+  'id,user_id,name,display_bio,persona_profile,structured_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,generation_status,disclosure_label,is_active,created_at,updated_at';
 
 
 const visualProfileSelect =

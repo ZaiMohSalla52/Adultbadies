@@ -8,6 +8,7 @@ import {
   getVirtualGirlfriendCompanionImages,
   listVirtualGirlfriends,
 } from '@/lib/virtual-girlfriend/data';
+import { resolveVirtualGirlfriendProfile } from '@/lib/virtual-girlfriend/profile-resolver';
 
 export async function GET(request: Request) {
   const auth = await requireAuth();
@@ -28,5 +29,7 @@ export async function GET(request: Request) {
   const visualProfile = await getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id);
   const images = await getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id);
 
-  return NextResponse.json({ companion, companions, conversationId: conversation.id, visualProfile, images });
+  const resolvedProfile = resolveVirtualGirlfriendProfile(companion);
+
+  return NextResponse.json({ companion, resolvedProfile, companions, conversationId: conversation.id, visualProfile, images });
 }
