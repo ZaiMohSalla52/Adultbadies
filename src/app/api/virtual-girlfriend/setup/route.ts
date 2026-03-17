@@ -114,8 +114,41 @@ export async function POST(request: NextRequest) {
   const maxDistinctnessAttempts = Boolean(body.createNew) ? 3 : 1;
 
   let chosenName = baseName;
-  let structuredProfile = buildStructuredProfile(body as unknown as Record<string, unknown>, chosenName);
+
+  const buildStructuredProfile = (resolvedName: string): VirtualGirlfriendStructuredProfile => {
+    const preferenceHints = normalizeText(body.preferenceHints ?? body.freeformDetails);
+    const selectedPortraitPrompt = normalizeText(body.selectedPortraitPrompt);
+    const selectedPortraitImage = normalizeText(body.selectedPortraitImage);
+
+    return {
+      schemaVersion: 1,
+      name: resolvedName,
+      sex: normalizeText(body.sex),
+      age: normalizeAge(body.age),
+      origin: normalizeText(body.origin),
+      ethnicity: normalizeText(body.ethnicity),
+      hairColor: normalizeText(body.hairColor),
+      figure: normalizeText(body.figure),
+      chestSize: normalizeText(body.chestSize),
+      occupation: normalizeText(body.occupation),
+      personality: normalizeText(body.personality),
+      sexuality: normalizeText(body.sexuality),
+      freeformDetails: normalizeText(body.freeformDetails),
+      likes: normalizeArray(body.likes),
+      habits: normalizeArray(body.habits),
+      archetype: body.archetype,
+      tone: body.tone,
+      affectionStyle: body.affectionStyle,
+      visualAesthetic: body.visualAesthetic,
+      preferenceHints,
+      selectedPortraitPrompt,
+      selectedPortraitImage,
+    };
+  };
+
+  let structuredProfile = buildStructuredProfile(chosenName);
   const preferenceHints = structuredProfile.preferenceHints;
+
   let conflict = findDistinctnessConflict({
     candidateProfile: structuredProfile,
     existingCompanions: companions,
@@ -135,7 +168,7 @@ export async function POST(request: NextRequest) {
     }
 
     chosenName = suggestion;
-    structuredProfile = buildStructuredProfile(body as unknown as Record<string, unknown>, chosenName);
+    structuredProfile = buildStructuredProfile(chosenName);
 
     conflict = findDistinctnessConflict({
       candidateProfile: structuredProfile,
@@ -190,6 +223,8 @@ export async function POST(request: NextRequest) {
         affectionStyle: body.affectionStyle,
         visualAesthetic: body.visualAesthetic,
         preferenceHints: preferenceHints ?? undefined,
+        selectedPortraitPrompt: selectedPortraitPrompt ?? undefined,
+        selectedPortraitImage: selectedPortraitImage ?? undefined,
       },
     });
 
