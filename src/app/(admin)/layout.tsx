@@ -1,9 +1,9 @@
 import type { PropsWithChildren } from 'react';
 import { SectionShell } from '@/components/layout/section-shell';
-import { requireAuthenticatedUser } from '@/lib/auth/server';
+import { requireAdminReviewer } from '@/lib/auth/admin';
 
 export default async function AdminLayout({ children }: PropsWithChildren) {
-  await requireAuthenticatedUser();
+  await requireAdminReviewer();
 
   return (
     <SectionShell>

@@ -22,7 +22,7 @@ const companionSelect =
 
 
 const visualProfileSelect =
-  'id,user_id,companion_id,profile_version,style_version,prompt_hash,source_setup,identity_pack,canonical_reference_image_id,canonical_reference_metadata,continuity_notes,moderation_status,provenance,created_at,updated_at';
+  'id,user_id,companion_id,profile_version,style_version,prompt_hash,source_setup,identity_pack,canonical_reference_image_id,canonical_reference_metadata,canonical_review_status,reviewed_by,reviewed_at,review_notes,continuity_notes,moderation_status,provenance,created_at,updated_at';
 
 const companionImageSelect =
   'id,user_id,companion_id,visual_profile_id,image_kind,variant_index,origin_storage_provider,origin_storage_key,origin_mime_type,origin_byte_size,delivery_provider,delivery_public_id,delivery_url,width,height,prompt_hash,style_version,seed_metadata,lineage_metadata,moderation_status,moderation,provenance,quality_score,created_at';
@@ -494,6 +494,10 @@ export const createVisualProfile = async (
     canonicalReferenceMetadata?: Record<string, unknown>;
     continuityNotes?: string;
     moderationStatus?: string;
+    canonicalReviewStatus?: 'pending' | 'approved' | 'rejected';
+    reviewedBy?: string | null;
+    reviewedAt?: string | null;
+    reviewNotes?: string | null;
     provenance?: Record<string, unknown>;
   },
 ): Promise<VirtualGirlfriendVisualProfileRecord> => {
@@ -511,6 +515,10 @@ export const createVisualProfile = async (
       canonical_reference_metadata: input.canonicalReferenceMetadata ?? {},
       continuity_notes: input.continuityNotes ?? null,
       moderation_status: input.moderationStatus ?? 'pending',
+      canonical_review_status: input.canonicalReviewStatus ?? 'pending',
+      reviewed_by: input.reviewedBy ?? null,
+      reviewed_at: input.reviewedAt ?? null,
+      review_notes: input.reviewNotes ?? null,
       provenance: input.provenance ?? {},
     },
     prefer: 'return=representation',
@@ -553,6 +561,7 @@ export const setCanonicalReferenceImageForVisualProfile = async (
     visualProfileId: string;
     canonicalReferenceImageId: string;
     canonicalReferenceMetadata?: Record<string, unknown>;
+    canonicalReviewStatus?: 'pending' | 'approved' | 'rejected';
   },
 ) => {
   const rows = await supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
@@ -561,6 +570,10 @@ export const setCanonicalReferenceImageForVisualProfile = async (
     body: {
       canonical_reference_image_id: input.canonicalReferenceImageId,
       canonical_reference_metadata: input.canonicalReferenceMetadata ?? {},
+      canonical_review_status: input.canonicalReviewStatus ?? 'pending',
+      reviewed_by: null,
+      reviewed_at: null,
+      review_notes: null,
     },
     prefer: 'return=representation',
   });
@@ -824,4 +837,42 @@ export const insertVirtualGirlfriendMessageReturningId = async (
   });
 
   return rows[0]!;
+};
+
+
+export const listPendingCanonicalReviewVisualProfiles = async (
+  token: string,
+): Promise<VirtualGirlfriendVisualProfileRecord[]> => {
+  return supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
+    searchParams: new URLSearchParams({
+      select: visualProfileSelect,
+      canonical_review_status: 'eq.pending',
+      order: 'created_at.desc',
+      limit: '50',
+    }),
+  });
+};
+
+export const setCanonicalReviewDecisionForVisualProfile = async (
+  token: string,
+  input: {
+    visualProfileId: string;
+    decision: 'approved' | 'rejected';
+    reviewedBy: string;
+    reviewNotes?: string;
+  },
+): Promise<VirtualGirlfriendVisualProfileRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ id: `eq.${input.visualProfileId}` }),
+    body: {
+      canonical_review_status: input.decision,
+      reviewed_by: input.reviewedBy,
+      reviewed_at: new Date().toISOString(),
+      review_notes: input.reviewNotes?.trim() ? input.reviewNotes.trim() : null,
+    },
+    prefer: 'return=representation',
+  });
+
+  return rows[0] ?? null;
 };

@@ -94,6 +94,8 @@ const buildChatImagePrompt = (input: {
     'Make it look like a believable dating-app or private chat photo: natural lighting, candid framing, real-world texture.',
     `Continuity anchors: ${identityPack.continuityAnchors.join(', ')}.`,
     `Core look descriptors: ${identityPack.coreLookDescriptors.join(', ')}.`,
+    `Identity invariants: age band ${identityPack.identityInvariants.ageBand}; face ${identityPack.identityInvariants.faceShape}; eyes ${identityPack.identityInvariants.eyeShapeColor}; brows ${identityPack.identityInvariants.browCharacter}; nose ${identityPack.identityInvariants.noseProfile}; lips ${identityPack.identityInvariants.lipShape}; skin tone ${identityPack.identityInvariants.skinToneBand}; hair ${identityPack.identityInvariants.hairSignature}; body presentation ${identityPack.identityInvariants.bodyPresentation}; signature motif ${identityPack.identityInvariants.signatureAccessoryOrMotif}.`,
+    `Camera/composition preferences: ${identityPack.cameraCompositionPreferences.join(', ')}.`,
     `Framing: ${identityPack.portraitFramingStyle}.`,
     `Wardrobe direction: ${identityPack.wardrobeDirection}.`,
     `Lighting direction: ${identityPack.lightingMoodDirection}.`,
@@ -103,6 +105,7 @@ const buildChatImagePrompt = (input: {
     'Ensure this image is not a near-duplicate of previous gallery images; vary scene, angle, and outfit while preserving identity.',
     'No explicit nudity, no lingerie closeups, no transparent clothing, no suggestive sexual framing.',
     `Avoid: ${identityPack.negativeConstraints.join(', ')}.`,
+    `Negative overlap cues: ${identityPack.negativeOverlapCues.join(', ')}.`,
   ].join(' ');
 };
 
