@@ -55,6 +55,19 @@ export type VirtualGirlfriendGenerationStatus = 'generating' | 'ready' | 'failed
 export type VirtualGirlfriendStructuredProfile = {
   schemaVersion: 1;
   name: string;
+  sex?: string | null;
+  age?: string | number | null;
+  origin?: string | null;
+  ethnicity?: string | null;
+  hairColor?: string | null;
+  figure?: string | null;
+  chestSize?: string | null;
+  occupation?: string | null;
+  personality?: string | null;
+  sexuality?: string | null;
+  freeformDetails?: string | null;
+  likes?: string[] | null;
+  habits?: string[] | null;
   archetype: string;
   tone: string;
   affectionStyle: string;
