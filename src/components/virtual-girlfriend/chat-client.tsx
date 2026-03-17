@@ -733,18 +733,18 @@ export const VirtualGirlfriendChatClient = ({
 
   return (
     <div className="chat-screen">
-      <header className="chat-conversation-header chat-conversation-header-refined">
+      <header className="chat-conversation-header chat-conversation-header-refined vg-chat-identity-header">
         <div className="chat-title-wrap">
           <Avatar name={companionName} imageUrl={companionAvatarUrl} kind="ai" size="lg" ring isActive />
           <div>
             <h1 className="my-0 chat-title">{companionName}</h1>
-            <p className="my-0 text-xs text-muted">{disclosureLabel}</p>
+            <p className="my-0 text-xs text-muted">{disclosureLabel} • Identity-locked portrait</p>
           </div>
         </div>
         <p className="my-0 text-xs text-muted chat-usage-pill">{helperText}</p>
       </header>
 
-      <section className="chat-style-controls">
+      <section className="chat-style-controls vg-chat-module">
         <details>
           <summary className="chat-style-summary">Tone preferences</summary>
           <div className="chat-style-controls-grid">
@@ -769,7 +769,7 @@ export const VirtualGirlfriendChatClient = ({
       </section>
 
 
-      <section className="chat-style-controls">
+      <section className="chat-style-controls vg-chat-module">
         <details open className="vg-voice-panel">
           <summary className="chat-style-summary">Voice (Premium)</summary>
           <div className="vg-voice-header">

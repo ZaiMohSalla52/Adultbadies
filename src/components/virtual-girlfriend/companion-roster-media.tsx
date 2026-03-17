@@ -31,7 +31,8 @@ export const CompanionRosterMedia = ({
     />
     {!imageUrl ? (
       <div className="vg-roster-image-empty" role="status" aria-live="polite">
-        {status === 'generating' ? 'Portrait generating…' : 'Portrait unavailable'}
+        <p className="my-0">{status === 'generating' ? 'Identity portrait is generating' : 'Portrait currently unavailable'}</p>
+        <span>{status === 'generating' ? 'Locked reference in progress' : 'Using fallback visual state'}</span>
       </div>
     ) : null}
   </ProfileMediaFrame>
