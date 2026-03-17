@@ -73,6 +73,8 @@ export type VirtualGirlfriendStructuredProfile = {
   affectionStyle: string;
   visualAesthetic: string;
   preferenceHints: string | null;
+  selectedPortraitPrompt?: string | null;
+  selectedPortraitImage?: string | null;
 };
 
 export type VirtualGirlfriendResolvedProfile = {
@@ -396,5 +398,7 @@ export type VirtualGirlfriendSetupPayload = {
   affectionStyle: string;
   visualAesthetic: string;
   preferenceHints?: string;
+  selectedPortraitPrompt?: string;
+  selectedPortraitImage?: string;
   createNew?: boolean;
 };

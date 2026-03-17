@@ -66,6 +66,8 @@ export async function POST(request: NextRequest) {
   };
 
   const preferenceHints = normalizeText(body.preferenceHints ?? body.freeformDetails);
+  const selectedPortraitPrompt = normalizeText(body.selectedPortraitPrompt);
+  const selectedPortraitImage = normalizeText(body.selectedPortraitImage);
 
   const structuredProfile = {
     schemaVersion: 1,
@@ -88,6 +90,8 @@ export async function POST(request: NextRequest) {
     affectionStyle: body.affectionStyle,
     visualAesthetic: body.visualAesthetic,
     preferenceHints,
+    selectedPortraitPrompt,
+    selectedPortraitImage,
   } satisfies VirtualGirlfriendStructuredProfile;
 
   const personaInput = resolvePersonaSemanticInput({
@@ -126,6 +130,8 @@ export async function POST(request: NextRequest) {
         affectionStyle: body.affectionStyle,
         visualAesthetic: body.visualAesthetic,
         preferenceHints: preferenceHints ?? undefined,
+        selectedPortraitPrompt: selectedPortraitPrompt ?? undefined,
+        selectedPortraitImage: selectedPortraitImage ?? undefined,
       },
     });
 

@@ -31,6 +31,8 @@ type BuildIdentityInput = {
   affectionStyle: string;
   visualAesthetic: string;
   preferenceHints?: string;
+  selectedPortraitPrompt?: string;
+  selectedPortraitImage?: string;
   companionName: string;
   persona: PersonaProfile;
   existingCompanionSignatures?: string[];
@@ -46,6 +48,8 @@ const resolveVisualIdentitySemanticInput = (input: {
     affectionStyle: string;
     visualAesthetic: string;
     preferenceHints?: string;
+    selectedPortraitPrompt?: string;
+    selectedPortraitImage?: string;
   };
 }): VirtualGirlfriendSetupPayload => {
   const structuredProfile = input.companion.structured_profile;
@@ -65,6 +69,8 @@ const resolveVisualIdentitySemanticInput = (input: {
       affectionStyle: structuredProfile.affectionStyle.trim(),
       visualAesthetic: structuredProfile.visualAesthetic.trim(),
       preferenceHints: structuredProfile.preferenceHints?.trim() || undefined,
+      selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt?.trim() || undefined,
+      selectedPortraitImage: structuredProfile.selectedPortraitImage?.trim() || undefined,
     };
   }
 
@@ -75,6 +81,8 @@ const resolveVisualIdentitySemanticInput = (input: {
     affectionStyle: input.fallback.affectionStyle.trim(),
     visualAesthetic: input.fallback.visualAesthetic.trim(),
     preferenceHints: input.fallback.preferenceHints?.trim() || undefined,
+    selectedPortraitPrompt: input.fallback.selectedPortraitPrompt?.trim() || undefined,
+    selectedPortraitImage: input.fallback.selectedPortraitImage?.trim() || undefined,
   };
 };
 
@@ -160,6 +168,8 @@ Context:
 - Persona core look: ${input.persona.visualPromptDNA.coreLook}
 - Persona anchors: ${input.persona.visualPromptDNA.styleAnchors.join(', ')}
 - Persona camera mood: ${input.persona.visualPromptDNA.cameraMood}
+- User-selected portrait seed prompt: ${input.selectedPortraitPrompt || 'none'}
+- User-selected portrait seed image URL/data: ${input.selectedPortraitImage || 'none'}
 - Existing companion signatures to avoid similarity with: ${
     input.existingCompanionSignatures?.length ? input.existingCompanionSignatures.join(' | ') : 'none'
   }
@@ -197,6 +207,7 @@ Requirements:
 - Diversify within archetype; avoid defaulting to the same glam/bombshell template.
 - Prevent all outputs from collapsing into cozy indoor portraits.
 - Prioritize realistic natural-lighting and believable phone-camera photography.
+- If portrait seed prompt/image are provided, use them as direct identity anchor signals (face/hair/age continuity) while still producing original generated imagery.
 - Maintain same-identity continuity across future images.
 - Dating-app appropriate, premium, and believable.
 - No explicit sexual content.`;
@@ -585,6 +596,8 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     affectionStyle: string;
     visualAesthetic: string;
     preferenceHints?: string;
+    selectedPortraitPrompt?: string;
+    selectedPortraitImage?: string;
   };
 }) => {
   const semanticSetup = resolveVisualIdentitySemanticInput({
@@ -607,6 +620,8 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     affectionStyle: semanticSetup.affectionStyle,
     visualAesthetic: semanticSetup.visualAesthetic,
     preferenceHints: semanticSetup.preferenceHints,
+    selectedPortraitPrompt: semanticSetup.selectedPortraitPrompt,
+    selectedPortraitImage: semanticSetup.selectedPortraitImage,
     companionName: semanticSetup.name,
     persona: input.companion.persona_profile,
     existingCompanionSignatures: siblingCompanionSignatures,

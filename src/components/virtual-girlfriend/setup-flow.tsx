@@ -13,174 +13,293 @@ import {
   VIRTUAL_GIRLFRIEND_VISUAL_AESTHETICS,
 } from '@/lib/virtual-girlfriend/types';
 
-type CreatorStep = 1 | 2 | 3 | 4 | 5;
+type BuilderStep =
+  | 'sex'
+  | 'name'
+  | 'origin'
+  | 'hair'
+  | 'body'
+  | 'age'
+  | 'portrait'
+  | 'occupation'
+  | 'personality'
+  | 'sexuality'
+  | 'relationshipTone'
+  | 'details'
+  | 'review';
+
+type PortraitCandidate = { id: string; imageDataUrl: string; prompt: string; label: string };
+
+type VisualOption = { label: string; image: string; cardClassName?: string; imageClassName?: string };
+type HairOption = { label: string; swatch: string; textureClassName: string };
 
 type CreatorState = {
   name: string;
   sex: string;
-  age: string;
   origin: string;
-  ethnicity: string;
   hairColor: string;
   figure: string;
-  chestSize: string;
-  visualAesthetic: string;
+  age: string;
   occupation: string;
   personality: string;
   sexuality: string;
   archetype: string;
   tone: string;
   affectionStyle: string;
+  visualAesthetic: string;
   freeformDetails: string;
-  likes: string;
-  habits: string;
+  selectedPortraitId: string;
+  selectedPortraitPrompt: string;
+  selectedPortraitImage: string;
 };
+
+const STEPS: BuilderStep[] = [
+  'sex',
+  'name',
+  'origin',
+  'hair',
+  'body',
+  'age',
+  'portrait',
+  'occupation',
+  'personality',
+  'sexuality',
+  'relationshipTone',
+  'details',
+  'review',
+];
 
 const initialState: CreatorState = {
   name: '',
   sex: 'Female',
-  age: '',
   origin: '',
-  ethnicity: '',
   hairColor: '',
   figure: '',
-  chestSize: '',
-  visualAesthetic: '',
+  age: '',
   occupation: '',
   personality: '',
   sexuality: '',
-  archetype: '',
-  tone: '',
-  affectionStyle: '',
+  archetype: VIRTUAL_GIRLFRIEND_ARCHETYPES[0],
+  tone: VIRTUAL_GIRLFRIEND_TONES[0],
+  affectionStyle: VIRTUAL_GIRLFRIEND_AFFECTION_STYLES[0],
+  visualAesthetic: VIRTUAL_GIRLFRIEND_VISUAL_AESTHETICS[0],
   freeformDetails: '',
-  likes: '',
-  habits: '',
+  selectedPortraitId: '',
+  selectedPortraitPrompt: '',
+  selectedPortraitImage: '',
 };
 
-const sexOptions = ['Female', 'Male', 'Non-binary'];
-const originOptions = ['North American', 'European', 'Latin American', 'East Asian', 'South Asian', 'Middle Eastern', 'African', 'Oceanian'];
-const hairOptions = [
-  { value: 'Jet black', swatch: '#09090b' },
-  { value: 'Dark brown', swatch: '#4a2c1b' },
-  { value: 'Light brown', swatch: '#8b5a2b' },
-  { value: 'Blonde', swatch: '#f4d186' },
-  { value: 'Platinum', swatch: '#f5f5f4' },
-  { value: 'Auburn', swatch: '#a7441f' },
-  { value: 'Red', swatch: '#d9482b' },
-  { value: 'Silver', swatch: '#cbd5e1' },
+const sexOptions: VisualOption[] = [
+  {
+    label: 'Female',
+    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    label: 'Male',
+    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=80',
+  },
 ];
-const figureOptions = ['Slim', 'Athletic', 'Curvy', 'Hourglass', 'Petite', 'Plus-size'];
-const chestOptions = ['Petite', 'Medium', 'Full', 'Voluptuous'];
-const personalityOptions = ['Warm romantic', 'Playful tease', 'Confident bombshell', 'Bookish charmer', 'Calm sweetheart'];
+
+const originOptions: VisualOption[] = [
+  { label: 'Africa', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Caucasian', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Indian', image: 'https://images.unsplash.com/photo-1615109398623-88346a601842?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Latina', image: 'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Asian', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Arab', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', image: 'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=900&q=80' },
+];
+
+const hairOptions: HairOption[] = [
+  { label: 'Jet black', swatch: '#101014', textureClassName: 'hair-jet-black' },
+  { label: 'Dark brown', swatch: '#3a2517', textureClassName: 'hair-dark-brown' },
+  { label: 'Light brown', swatch: '#7a5135', textureClassName: 'hair-light-brown' },
+  { label: 'Blonde', swatch: '#d7b56c', textureClassName: 'hair-blonde' },
+  { label: 'Platinum', swatch: '#dadde5', textureClassName: 'hair-platinum' },
+  { label: 'Auburn', swatch: '#8d3f23', textureClassName: 'hair-auburn' },
+  { label: 'Red', swatch: '#b7422d', textureClassName: 'hair-red' },
+  { label: 'Silver', swatch: '#a8afb9', textureClassName: 'hair-silver' },
+  { label: 'Random', swatch: '#6366f1', textureClassName: 'hair-random' },
+];
+
+const bodyOptions: VisualOption[] = [
+  { label: 'Slim', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
+  { label: 'Petite', image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
+  { label: 'Athletic', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
+  { label: 'Curvy', image: 'https://images.unsplash.com/photo-1464863979621-258859e62245?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
+  { label: 'Chubby', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
+  { label: 'Random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
+];
+
+const ageOptions: VisualOption[] = [
+  { label: '18', image: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=900&q=80' },
+  { label: '21', image: 'https://images.unsplash.com/photo-1525134479668-1bee5c7c6845?auto=format&fit=crop&w=900&q=80' },
+  { label: '24', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
+  { label: '27', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=80' },
+  { label: '30', image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=80' },
+  { label: '35', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80' },
+];
+
+const personalityOptions = ['Warm romantic', 'Playful tease', 'Confident', 'Intellectual', 'Calm sweetheart'];
 const sexualityOptions = ['Straight', 'Bisexual', 'Pansexual', 'Fluid'];
 
-const splitCsv = (value: string) => value.split(',').map((item) => item.trim()).filter(Boolean);
+const optionCard = (option: VisualOption, selected: boolean, onSelect: () => void) => (
+  <button
+    key={option.label}
+    type="button"
+    className={`vg-image-choice-card ${option.cardClassName ?? ''} ${selected ? 'is-selected' : ''}`}
+    onClick={onSelect}
+  >
+    <img src={option.image} alt={option.label} loading="lazy" className={option.imageClassName} />
+    <span>{option.label}</span>
+  </button>
+);
+
+const hairOptionCard = (option: HairOption, selected: boolean, onSelect: () => void) => (
+  <button
+    key={option.label}
+    type="button"
+    className={`vg-image-choice-card vg-hair-choice-card ${selected ? 'is-selected' : ''}`}
+    onClick={onSelect}
+  >
+    <div className={`vg-hair-texture ${option.textureClassName}`} aria-hidden="true" />
+    <span className="vg-hair-label-wrap">
+      <span className="vg-hair-swatch" style={{ backgroundColor: option.swatch }} aria-hidden="true" />
+      <span>{option.label}</span>
+    </span>
+  </button>
+);
 
 export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: boolean }) => {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<CreatorStep>(1);
+  const [stepIndex, setStepIndex] = useState(0);
   const [state, setState] = useState<CreatorState>(initialState);
   const [generationStarted, setGenerationStarted] = useState(false);
+  const [portraitsLoading, setPortraitsLoading] = useState(false);
+  const [portraitCandidates, setPortraitCandidates] = useState<PortraitCandidate[]>([]);
 
-  const progress = useMemo(() => (step / 5) * 100, [step]);
+  const step = STEPS[stepIndex];
+  const progress = useMemo(() => ((stepIndex + 1) / STEPS.length) * 100, [stepIndex]);
 
   const setField = <K extends keyof CreatorState>(key: K, value: CreatorState[K]) => {
     setState((current) => ({ ...current, [key]: value }));
   };
 
-  const stepValidationError = (targetStep: CreatorStep): string | null => {
-    if (targetStep === 1 && !state.name.trim()) return 'Please choose a name to continue.';
-    if (targetStep === 2 && (!state.hairColor || !state.figure || !state.chestSize || !state.visualAesthetic)) {
-      return 'Select appearance details before continuing.';
-    }
-    if (targetStep === 3 && (!state.archetype || !state.tone || !state.affectionStyle || !state.personality || !state.sexuality)) {
-      return 'Complete the character selections before continuing.';
-    }
+  const validateCurrentStep = (): string | null => {
+    if (step === 'name' && !state.name.trim()) return 'Name is required.';
+    if (step === 'origin' && !state.origin) return 'Choose origin.';
+    if (step === 'hair' && !state.hairColor) return 'Choose hair color.';
+    if (step === 'body' && !state.figure) return 'Choose body type.';
+    if (step === 'age' && !state.age) return 'Choose age.';
+    if (step === 'portrait' && !state.selectedPortraitId) return 'Pick one portrait to continue.';
+    if (step === 'occupation' && !state.occupation.trim()) return 'Occupation is required.';
+    if (step === 'personality' && !state.personality) return 'Choose personality.';
+    if (step === 'sexuality' && !state.sexuality) return 'Choose sexuality.';
     return null;
   };
 
-  const goNext = () => {
-    const nextStep = Math.min(5, step + 1) as CreatorStep;
-    const validationError = stepValidationError(step);
+  const maybeGeneratePortraits = async () => {
+    if (portraitCandidates.length > 0) return;
+    setPortraitsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/virtual-girlfriend/portrait-candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sex: state.sex,
+          origin: state.origin,
+          hairColor: state.hairColor,
+          figure: state.figure,
+          age: state.age,
+        }),
+      });
+
+      const body = (await response.json()) as { candidates?: PortraitCandidate[]; error?: string };
+      if (!response.ok || !body.candidates?.length) throw new Error(body.error ?? 'Unable to generate portraits now.');
+      setPortraitCandidates(body.candidates);
+    } catch (candidateError) {
+      setError(candidateError instanceof Error ? candidateError.message : 'Portrait generation failed.');
+    } finally {
+      setPortraitsLoading(false);
+    }
+  };
+
+  const goNext = async () => {
+    const validationError = validateCurrentStep();
     if (validationError) {
       setError(validationError);
       return;
     }
-    setError(null);
-    setStep(nextStep);
-  };
 
-  const goBack = () => {
+    const next = Math.min(STEPS.length - 1, stepIndex + 1);
     setError(null);
-    setStep((current) => Math.max(1, current - 1) as CreatorStep);
+    setStepIndex(next);
+
+    if (STEPS[next] === 'portrait') {
+      await maybeGeneratePortraits();
+    }
   };
 
   const submit = () => {
-    const reviewError = stepValidationError(1) ?? stepValidationError(2) ?? stepValidationError(3);
-    if (reviewError || !state.name.trim()) {
-      setError(reviewError ?? 'Please enter a companion name.');
+    if (!state.name.trim() || !state.selectedPortraitId) {
+      setError('Complete required steps before generating.');
       return;
     }
 
-    setError(null);
     setGenerationStarted(true);
+    setError(null);
 
     startTransition(async () => {
-      let response: Response;
-
-      const payload = {
-        createNew,
-        name: state.name.trim(),
-        sex: state.sex,
-        age: state.age,
-        origin: state.origin,
-        ethnicity: state.ethnicity,
-        hairColor: state.hairColor,
-        figure: state.figure,
-        chestSize: state.chestSize,
-        occupation: state.occupation,
-        personality: state.personality,
-        sexuality: state.sexuality,
-        freeformDetails: state.freeformDetails,
-        likes: splitCsv(state.likes),
-        habits: splitCsv(state.habits),
-        preferenceHints: state.freeformDetails,
-        archetype: state.archetype,
-        tone: state.tone,
-        affectionStyle: state.affectionStyle,
-        visualAesthetic: state.visualAesthetic,
-      };
-
       try {
-        response = await fetch('/api/virtual-girlfriend/setup', {
+        const response = await fetch('/api/virtual-girlfriend/setup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            createNew,
+            name: state.name.trim(),
+            sex: state.sex,
+            age: state.age,
+            origin: state.origin,
+            ethnicity: state.origin,
+            hairColor: state.hairColor,
+            figure: state.figure,
+            chestSize: 'Medium',
+            occupation: state.occupation,
+            personality: state.personality,
+            sexuality: state.sexuality,
+            freeformDetails: state.freeformDetails,
+            likes: [],
+            habits: [],
+            preferenceHints: state.freeformDetails,
+            archetype: state.archetype,
+            tone: state.tone,
+            affectionStyle: state.affectionStyle,
+            visualAesthetic: state.visualAesthetic,
+            selectedPortraitPrompt: state.selectedPortraitPrompt,
+            selectedPortraitImage: state.selectedPortraitImage,
+          }),
         });
+
+        const body = (await response.json()) as { error?: string; companionId?: string };
+        if (!response.ok) {
+          setError(body.error ?? 'Unable to create your Virtual Girlfriend.');
+          setGenerationStarted(false);
+          setStepIndex(STEPS.length - 1);
+          return;
+        }
+
+        const destination = body.companionId ? `/virtual-girlfriend/profile?companionId=${body.companionId}` : '/virtual-girlfriend/profile';
+        router.push(destination);
+        router.refresh();
       } catch {
+        setError('Unable to start generation right now. Please try again.');
         setGenerationStarted(false);
-        setError('Unable to start generation right now. Please try again in a moment.');
-        setStep(5);
-        return;
       }
-
-      const body = (await response.json()) as { error?: string; companionId?: string };
-
-      if (!response.ok) {
-        setError(body.error ?? 'Unable to create your Virtual Girlfriend.');
-        setGenerationStarted(false);
-        setStep(5);
-        return;
-      }
-
-      const destination = body.companionId
-        ? `/virtual-girlfriend/profile?companionId=${body.companionId}`
-        : '/virtual-girlfriend/profile';
-
-      router.push(destination);
-      router.refresh();
     });
   };
 
@@ -188,135 +307,98 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
   return (
     <div className="app-page-stack">
-      <Card className="app-page-header vg-setup-header">
-        <p className="chat-label">Virtual Girlfriend Creator</p>
-        <h1 className="my-0">{createNew ? 'Create another unique companion' : 'Build your dream AI companion'}</h1>
-        <p className="my-0 text-muted">Guided, visual setup tuned for mobile. Shape her vibe, appearance, and personality before generation.</p>
-      </Card>
+      <Card className="vg-stage-card">
+        <div className="vg-stage-topbar">
+          <Button variant="ghost" type="button" disabled={stepIndex === 0 || isSubmitting} onClick={() => setStepIndex((v) => Math.max(0, v - 1))}>
+            Back
+          </Button>
+          <p className="my-0 text-xs text-muted">{stepIndex + 1}/{STEPS.length}</p>
+          <Button variant="ghost" type="button" disabled={isSubmitting} onClick={() => router.push('/virtual-girlfriend')}>
+            Close
+          </Button>
+        </div>
+        <div className="vg-stage-progress-track"><div className="vg-stage-progress-fill" style={{ width: `${progress}%` }} /></div>
 
-      <Card className="app-surface-card vg-setup-shell">
         {isSubmitting ? (
           <div className="vg-generation-state" role="status" aria-live="polite">
-            <span className="vg-generation-orb" aria-hidden="true" />
-            <p className="my-0 text-sm font-semibold text-white">Creating unique {state.name.trim() || 'your companion'}&rsquo;s portrait</p>
-            <p className="my-0 text-sm text-muted">Building her profile, photos, and memory setup.</p>
-            <p className="my-0 text-xs text-muted">You can leave this page and check back shortly.</p>
-            <div className="vg-generation-summary">
-              <span>{state.sex}</span>
-              <span>{state.age ? `${state.age} yrs` : 'Age set later'}</span>
-              <span>{state.hairColor || 'Hair TBD'}</span>
-              <span>{state.personality || 'Personality selected'}</span>
-            </div>
+            <img src={state.selectedPortraitImage} alt="Chosen portrait" className="vg-picked-portrait" />
+            <h2 className="my-0">Generating {state.name}&rsquo;s final identity</h2>
+            <p className="my-0 text-sm text-muted">Applying your selected face seed to lock identity continuity and final profile generation.</p>
           </div>
         ) : (
           <>
-            <div className="vg-setup-progress">
-              <div className="vg-setup-progress-copy">
-                <p className="my-0 text-xs text-muted">Step {step} of 5</p>
-                <p className="my-0 text-sm font-semibold text-white">
-                  {step === 1 && 'Core identity'}
-                  {step === 2 && 'Appearance'}
-                  {step === 3 && 'Character'}
-                  {step === 4 && 'Personal details'}
-                  {step === 5 && 'Review'}
-                </p>
-              </div>
-              <div className="vg-setup-progress-track" aria-hidden="true">
-                <div className="vg-setup-progress-fill" style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-
-            {step === 1 ? (
-              <section className="vg-step-grid">
-                <Input
-                  name="name"
-                  placeholder="Companion name *"
-                  maxLength={40}
-                  value={state.name}
-                  onChange={(event) => setField('name', event.target.value)}
-                  required
-                />
-                <div className="vg-choice-grid">
-                  {sexOptions.map((option) => (
-                    <button key={option} type="button" className={`vg-choice-card ${state.sex === option ? 'is-selected' : ''}`} onClick={() => setField('sex', option)}>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-                <Input name="age" placeholder="Age" maxLength={3} value={state.age} onChange={(event) => setField('age', event.target.value)} />
-                <div className="vg-choice-grid">
-                  {originOptions.map((option) => (
-                    <button key={option} type="button" className={`vg-choice-card ${state.origin === option ? 'is-selected' : ''}`} onClick={() => setField('origin', option)}>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-                <Input
-                  name="ethnicity"
-                  placeholder="Ethnicity (optional)"
-                  maxLength={80}
-                  value={state.ethnicity}
-                  onChange={(event) => setField('ethnicity', event.target.value)}
-                />
+            {step === 'sex' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Choose a sex</h1>
+                <div className="vg-hero-grid">{sexOptions.map((option) => optionCard(option, state.sex === option.label, () => setField('sex', option.label)))}</div>
               </section>
             ) : null}
 
-            {step === 2 ? (
-              <section className="vg-step-grid">
-                <div className="vg-swatch-grid">
-                  {hairOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`vg-swatch-card ${state.hairColor === option.value ? 'is-selected' : ''}`}
-                      onClick={() => setField('hairColor', option.value)}
-                    >
-                      <span className="vg-swatch-dot" style={{ backgroundColor: option.swatch }} aria-hidden="true" />
-                      <span>{option.value}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="vg-image-choice-grid">
-                  {figureOptions.map((option, index) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className={`vg-image-choice-card ${state.figure === option ? 'is-selected' : ''}`}
-                      onClick={() => setField('figure', option)}
-                      style={{ backgroundImage: `linear-gradient(170deg, rgba(236,72,153,0.${index + 2}), rgba(30,41,59,0.92))` }}
-                    >
-                      <span>{option}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="vg-choice-grid">
-                  {chestOptions.map((option) => (
-                    <button key={option} type="button" className={`vg-choice-card ${state.chestSize === option ? 'is-selected' : ''}`} onClick={() => setField('chestSize', option)}>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="vg-image-choice-grid">
-                  {VIRTUAL_GIRLFRIEND_VISUAL_AESTHETICS.map((option, index) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className={`vg-image-choice-card ${state.visualAesthetic === option ? 'is-selected' : ''}`}
-                      onClick={() => setField('visualAesthetic', option)}
-                      style={{ backgroundImage: `linear-gradient(180deg, rgba(251,113,133,0.${index + 2}), rgba(15,23,42,0.9))` }}
-                    >
-                      <span>{option}</span>
-                    </button>
-                  ))}
-                </div>
+            {step === 'name' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">What is the name?</h1>
+                <Input name="name" placeholder="Enter name" maxLength={40} value={state.name} onChange={(event) => setField('name', event.target.value)} required />
               </section>
             ) : null}
 
-            {step === 3 ? (
-              <section className="vg-step-grid">
+            {step === 'origin' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Choose origin</h1>
+                <div className="vg-option-grid">{originOptions.map((option) => optionCard(option, state.origin === option.label, () => setField('origin', option.label)))}</div>
+              </section>
+            ) : null}
+
+            {step === 'hair' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Choose hair color</h1>
+                <div className="vg-option-grid">{hairOptions.map((option) => hairOptionCard(option, state.hairColor === option.label, () => setField('hairColor', option.label)))}</div>
+              </section>
+            ) : null}
+
+            {step === 'body' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Choose figure</h1>
+                <div className="vg-option-grid">{bodyOptions.map((option) => optionCard(option, state.figure === option.label, () => setField('figure', option.label)))}</div>
+              </section>
+            ) : null}
+
+            {step === 'age' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Choose age</h1>
+                <div className="vg-option-grid">{ageOptions.map((option) => optionCard(option, state.age === option.label, () => setField('age', option.label)))}</div>
+              </section>
+            ) : null}
+
+            {step === 'portrait' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Pick face identity</h1>
+                {portraitsLoading ? (
+                  <p className="text-sm text-muted">Generating portraits…</p>
+                ) : (
+                  <div className="vg-option-grid">
+                    {portraitCandidates.map((candidate) => (
+                      <button
+                        key={candidate.id}
+                        type="button"
+                        className={`vg-image-choice-card ${state.selectedPortraitId === candidate.id ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          setField('selectedPortraitId', candidate.id);
+                          setField('selectedPortraitPrompt', candidate.prompt);
+                          setField('selectedPortraitImage', candidate.imageDataUrl);
+                        }}
+                      >
+                        <img src={candidate.imageDataUrl} alt={candidate.label} />
+                        <span>{candidate.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            {step === 'occupation' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Choose occupation</h1>
                 <Input
                   name="occupation"
                   placeholder="Occupation"
@@ -324,48 +406,20 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                   value={state.occupation}
                   onChange={(event) => setField('occupation', event.target.value)}
                 />
+              </section>
+            ) : null}
 
-                <div className="vg-choice-grid">
+            {step === 'personality' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Choose personality</h1>
+                <div className="vg-chip-grid">
                   {personalityOptions.map((option) => (
                     <button
                       key={option}
                       type="button"
-                      className={`vg-choice-card vg-icon-choice-card ${state.personality === option ? 'is-selected' : ''}`}
+                      className={`vg-chip ${state.personality === option ? 'is-selected' : ''}`}
                       onClick={() => setField('personality', option)}
                     >
-                      <span aria-hidden="true">✨</span>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="vg-choice-grid">
-                  {sexualityOptions.map((option) => (
-                    <button key={option} type="button" className={`vg-choice-card ${state.sexuality === option ? 'is-selected' : ''}`} onClick={() => setField('sexuality', option)}>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="vg-choice-grid">
-                  {VIRTUAL_GIRLFRIEND_ARCHETYPES.map((option) => (
-                    <button key={option} type="button" className={`vg-choice-card ${state.archetype === option ? 'is-selected' : ''}`} onClick={() => setField('archetype', option)}>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="vg-choice-grid">
-                  {VIRTUAL_GIRLFRIEND_TONES.map((option) => (
-                    <button key={option} type="button" className={`vg-choice-card ${state.tone === option ? 'is-selected' : ''}`} onClick={() => setField('tone', option)}>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="vg-choice-grid">
-                  {VIRTUAL_GIRLFRIEND_AFFECTION_STYLES.map((option) => (
-                    <button key={option} type="button" className={`vg-choice-card ${state.affectionStyle === option ? 'is-selected' : ''}`} onClick={() => setField('affectionStyle', option)}>
                       {option}
                     </button>
                   ))}
@@ -373,63 +427,85 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
               </section>
             ) : null}
 
-            {step === 4 ? (
-              <section className="vg-step-grid">
+            {step === 'sexuality' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Choose sexuality</h1>
+                <div className="vg-chip-grid">
+                  {sexualityOptions.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={`vg-chip ${state.sexuality === option ? 'is-selected' : ''}`}
+                      onClick={() => setField('sexuality', option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {step === 'relationshipTone' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Set relationship vibe and tone</h1>
+                <div className="vg-select-stack">
+                  <label>Relationship vibe</label>
+                  <select value={state.affectionStyle} onChange={(event) => setField('affectionStyle', event.target.value)}>
+                    {VIRTUAL_GIRLFRIEND_AFFECTION_STYLES.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                  <label>Tone</label>
+                  <select value={state.tone} onChange={(event) => setField('tone', event.target.value)}>
+                    {VIRTUAL_GIRLFRIEND_TONES.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+              </section>
+            ) : null}
+
+            {step === 'details' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Personal details</h1>
                 <Textarea
                   name="freeformDetails"
-                  placeholder="Likes, habits, fantasy details, custom notes..."
-                  rows={5}
+                  placeholder="Likes, habits, boundaries, notes..."
+                  rows={6}
                   maxLength={400}
                   value={state.freeformDetails}
                   onChange={(event) => setField('freeformDetails', event.target.value)}
                 />
-                <Input
-                  name="likes"
-                  placeholder="Likes (comma separated)"
-                  maxLength={240}
-                  value={state.likes}
-                  onChange={(event) => setField('likes', event.target.value)}
-                />
-                <Input
-                  name="habits"
-                  placeholder="Habits (comma separated)"
-                  maxLength={240}
-                  value={state.habits}
-                  onChange={(event) => setField('habits', event.target.value)}
-                />
               </section>
             ) : null}
 
-            {step === 5 ? (
-              <section className="vg-step-grid vg-review-sheet">
-                <h2 className="my-0 text-base">Final review</h2>
-                <div className="vg-generation-summary">
-                  <span>{state.name || 'Unnamed'}</span>
+            {step === 'review' ? (
+              <section className="vg-step-panel">
+                <h1 className="vg-step-title">Review and generate</h1>
+                <img src={state.selectedPortraitImage} alt="Selected portrait" className="vg-picked-portrait" />
+                <div className="vg-review-pills">
+                  <span>{state.name}</span>
                   <span>{state.sex}</span>
-                  <span>{state.age || 'Age flexible'}</span>
-                  <span>{state.origin || 'Origin flexible'}</span>
-                  <span>{state.ethnicity || 'Ethnicity flexible'}</span>
-                  <span>{state.hairColor || 'Hair TBD'}</span>
-                  <span>{state.figure || 'Figure TBD'}</span>
-                  <span>{state.chestSize || 'Chest TBD'}</span>
-                  <span>{state.occupation || 'Occupation open'}</span>
-                  <span>{state.personality || 'Personality TBD'}</span>
-                  <span>{state.sexuality || 'Sexuality open'}</span>
+                  <span>{state.origin}</span>
+                  <span>{state.hairColor}</span>
+                  <span>{state.figure}</span>
+                  <span>{state.age}</span>
+                  <span>{state.occupation}</span>
+                  <span>{state.personality}</span>
+                  <span>{state.sexuality}</span>
+                  <span>{state.affectionStyle}</span>
+                  <span>{state.tone}</span>
                 </div>
-                {state.freeformDetails ? <p className="my-0 text-sm text-muted">{state.freeformDetails}</p> : null}
               </section>
             ) : null}
 
             {error ? <p className="onboarding-error my-0">{error}</p> : null}
 
             <div className="vg-step-actions">
-              <Button variant="ghost" disabled={step === 1} type="button" onClick={goBack}>Back</Button>
-              {step < 5 ? (
+              {step !== 'review' ? (
                 <Button type="button" onClick={goNext}>Continue</Button>
               ) : (
-                <Button type="button" onClick={submit} disabled={isSubmitting || !state.name.trim()}>
-                  Create Virtual Girlfriend
-                </Button>
+                <Button type="button" onClick={submit} disabled={isSubmitting}>Generate Companion</Button>
               )}
             </div>
           </>
