@@ -11,6 +11,7 @@ import {
   VIRTUAL_GIRLFRIEND_ARCHETYPES,
   VIRTUAL_GIRLFRIEND_TONES,
   VIRTUAL_GIRLFRIEND_VISUAL_AESTHETICS,
+  type VirtualGirlfriendSetupResult,
 } from '@/lib/virtual-girlfriend/types';
 
 type BuilderStep =
@@ -190,6 +191,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const [generationStarted, setGenerationStarted] = useState(false);
   const [portraitsLoading, setPortraitsLoading] = useState(false);
   const [portraitCandidates, setPortraitCandidates] = useState<PortraitCandidate[]>([]);
+  const [recoverableCompanionId, setRecoverableCompanionId] = useState<string | null>(null);
 
   const step = STEPS[stepIndex];
   const progress = useMemo(() => ((stepIndex + 1) / STEPS.length) * 100, [stepIndex]);
@@ -216,6 +218,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     setPortraitsLoading(true);
     setError(null);
     setConflictHelp(null);
+    setRecoverableCompanionId(null);
 
     try {
       const response = await fetch('/api/virtual-girlfriend/portrait-candidates', {
@@ -266,6 +269,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     setGenerationStarted(true);
     setError(null);
     setConflictHelp(null);
+    setRecoverableCompanionId(null);
 
     startTransition(async () => {
       try {
@@ -294,29 +298,43 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           }),
         });
 
-        const body = (await response.json()) as { error?: string; companionId?: string; conflict?: SetupConflict };
-        if (!response.ok) {
-          if (response.status === 409) {
-            setError(body.error ?? 'Generation did not start because this setup is too similar to an existing companion.');
-            setConflictHelp(body.conflict ?? null);
-          } else if (response.status === 400) {
-            setError(body.error ?? 'Please complete the setup fields and try again.');
-            setConflictHelp(null);
-          } else {
-            setError(body.error ?? 'Server error while creating your companion setup.');
-            setConflictHelp(null);
-          }
+        const body = (await response.json()) as VirtualGirlfriendSetupResult;
+
+        if (body.state === 'ready' || body.state === 'partial_success' || body.state === 'review_pending') {
+          const destination = body.companionId ? `/virtual-girlfriend/profile?companionId=${body.companionId}` : '/virtual-girlfriend/profile';
+          router.push(destination);
+          router.refresh();
+          return;
+        }
+
+        if (body.state === 'blocked_pre_gen') {
+          setError(body.message ?? 'Generation did not start because this setup is too similar to an existing companion.');
+          setConflictHelp((body.conflict as SetupConflict | undefined) ?? null);
           setGenerationStarted(false);
           setStepIndex(STEPS.length - 1);
           return;
         }
 
-        const destination = body.companionId ? `/virtual-girlfriend/profile?companionId=${body.companionId}` : '/virtual-girlfriend/profile';
-        router.push(destination);
-        router.refresh();
+        if (body.state === 'failed') {
+          setError(body.message ?? 'Profile was saved, but image generation failed.');
+          setRecoverableCompanionId(body.companionId ?? null);
+          setConflictHelp(null);
+          setGenerationStarted(false);
+          setStepIndex(STEPS.length - 1);
+          return;
+        }
+
+        if (!response.ok) {
+          setError(body.message ?? 'Server error while creating your companion setup.');
+          setConflictHelp(null);
+          setGenerationStarted(false);
+          setStepIndex(STEPS.length - 1);
+          return;
+        }
       } catch {
         setError('Unable to submit setup right now. Generation has not started yet. Please try again.');
         setConflictHelp(null);
+        setRecoverableCompanionId(null);
         setGenerationStarted(false);
       }
     });
@@ -520,6 +538,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             ) : null}
 
             {error ? <p className="onboarding-error my-0">{error}</p> : null}
+            {recoverableCompanionId ? (
+              <div className="vg-step-actions">
+                <Button type="button" variant="secondary" onClick={() => router.push(`/virtual-girlfriend/profile?companionId=${recoverableCompanionId}`)}>
+                  Open created profile
+                </Button>
+              </div>
+            ) : null}
             {conflictHelp ? (
               <div className="rounded-xl border border-rose-300/50 bg-rose-500/10 p-3 text-sm text-rose-100">
                 <p className="my-0 font-semibold">Too close to {conflictHelp.companionName ?? 'an existing companion'}.</p>

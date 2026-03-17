@@ -52,6 +52,14 @@ export type PersonaProfile = {
 
 export type VirtualGirlfriendGenerationStatus = 'generating' | 'ready' | 'failed';
 
+export type VirtualGirlfriendImageGenerationState =
+  | 'blocked_pre_gen'
+  | 'generating'
+  | 'partial_success'
+  | 'ready'
+  | 'failed'
+  | 'review_pending';
+
 export type VirtualGirlfriendStructuredProfile = {
   schemaVersion: 1;
   name: string;
@@ -187,7 +195,28 @@ export type VirtualGirlfriendImageLineageMetadata = {
   [key: string]: unknown;
 };
 
-export type VirtualGirlfriendCompanionStatus = 'ready' | 'generating' | 'failed';
+export type VirtualGirlfriendCompanionStatus = Exclude<VirtualGirlfriendImageGenerationState, 'blocked_pre_gen'>;
+
+export type VirtualGirlfriendSetupResult = {
+  state: VirtualGirlfriendImageGenerationState;
+  companionId?: string;
+  conversationId?: string;
+  message?: string;
+  warning?: string;
+  conflict?: {
+    companionName?: string;
+    guidance?: string[];
+    topFieldLabels?: string[];
+    conflictAreas?: string[];
+  };
+};
+
+export type VirtualGirlfriendChatImageOutcome =
+  | 'reused_existing'
+  | 'generated_new'
+  | 'skipped_prerequisites'
+  | 'failed_generation'
+  | 'not_requested';
 
 export type VirtualGirlfriendCompanionImageRecord = {
   id: string;

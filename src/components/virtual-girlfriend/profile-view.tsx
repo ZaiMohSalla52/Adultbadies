@@ -68,10 +68,14 @@ export const VirtualGirlfriendProfileView = ({
 
   const softStatusMessage =
     status === 'generating'
-      ? 'Additional gallery images are still being prepared.'
-      : status === 'failed'
-        ? 'Additional gallery images are still being prepared.'
-        : null;
+      ? 'Her image set is still generating. We will show her portrait as soon as it is ready.'
+      : status === 'partial_success'
+        ? 'Her locked portrait is ready, but some gallery moments did not finish yet.'
+        : status === 'failed'
+          ? 'Image generation failed for this profile. You can still chat and open her profile while we retry later.'
+          : status === 'review_pending'
+            ? 'Portrait is usable now and currently marked as pending internal review.'
+            : null;
 
   const traitPills = [
     cleanValue(structured?.personality) ?? companion.archetype,

@@ -55,8 +55,14 @@ export const ActiveCompanionPanel = ({
           {status === 'generating' ? (
             <p className="my-0 text-xs text-muted">Finalizing her locked portrait and gallery continuity…</p>
           ) : null}
+          {status === 'partial_success' ? (
+            <p className="my-0 text-xs text-muted">Portrait is ready. Additional gallery moments are still recovering.</p>
+          ) : null}
           {status === 'failed' ? (
             <p className="my-0 text-xs text-muted">A generation step failed. You can still chat and review profile details.</p>
+          ) : null}
+          {status === 'review_pending' ? (
+            <p className="my-0 text-xs text-muted">Portrait is visible while internal review is still pending.</p>
           ) : null}
         </div>
 

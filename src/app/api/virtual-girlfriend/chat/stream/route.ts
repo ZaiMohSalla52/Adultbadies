@@ -86,10 +86,12 @@ export async function POST(request: NextRequest) {
   }
 
   let imageAttachment = null;
+  let imageOutcome: 'not_requested' | 'reused_existing' | 'generated_new' | 'skipped_prerequisites' | 'failed_generation' = 'not_requested';
+  let imageOutcomeReason: string | null = null;
 
   if (imageMoment.shouldSendImage) {
     try {
-      imageAttachment = await resolveVirtualGirlfriendChatImage({
+      const resolvedImage = await resolveVirtualGirlfriendChatImage({
         token: auth.accessToken,
         userId: auth.user.id,
         companion,
@@ -98,9 +100,14 @@ export async function POST(request: NextRequest) {
         visualProfile,
         allowFreshGeneration: entitlements.isPremium,
       });
+      imageAttachment = resolvedImage.attachment;
+      imageOutcome = resolvedImage.outcome;
+      imageOutcomeReason = resolvedImage.reason ?? null;
     } catch (error) {
       console.error('[virtual-girlfriend] image resolve failed', error);
       imageAttachment = null;
+      imageOutcome = 'failed_generation';
+      imageOutcomeReason = error instanceof Error ? error.message : 'image_resolve_failed';
     }
   }
 
@@ -202,6 +209,11 @@ export async function POST(request: NextRequest) {
               contentType: imageAttachment ? 'mixed' : 'text',
               attachments: imageAttachment ? [imageAttachment] : [],
               generationMode: imageAttachment?.source ?? null,
+              imageGeneration: {
+                requested: imageMoment.shouldSendImage,
+                outcome: imageOutcome,
+                reason: imageOutcomeReason,
+              },
             },
           }) + '\n',
         ),

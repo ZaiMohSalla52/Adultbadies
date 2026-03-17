@@ -1367,6 +1367,19 @@ a {
   background: rgba(239, 68, 68, 0.14);
 }
 
+
+.vg-status-pill-partial_success {
+  color: #fef3c7;
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.vg-status-pill-review_pending {
+  color: #ede9fe;
+  border-color: rgba(167, 139, 250, 0.5);
+  background: rgba(139, 92, 246, 0.16);
+}
+
 .vg-create-cta-card {
   gap: 0.65rem;
 }
@@ -2158,6 +2171,12 @@ a {
 .vg-library-card:has(.vg-status-pill-generating) {
   border-color: rgba(96, 165, 250, 0.4);
   background: linear-gradient(160deg, rgba(16, 22, 42, 0.94), rgba(7, 18, 38, 0.84));
+}
+
+
+.vg-library-card:has(.vg-status-pill-partial_success) {
+  border-color: rgba(245, 158, 11, 0.42);
+  background: linear-gradient(160deg, rgba(59, 42, 14, 0.68), rgba(21, 18, 30, 0.86));
 }
 
 .vg-identity-surface {
