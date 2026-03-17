@@ -120,6 +120,22 @@ export const listVirtualGirlfriendCompanions = async (
   });
 };
 
+export const listVirtualGirlfriendCompanionsByIds = async (
+  token: string,
+  companionIds: string[],
+): Promise<VirtualGirlfriendCompanionRecord[]> => {
+  const ids = Array.from(new Set(companionIds.map((id) => id.trim()).filter(Boolean)));
+  if (!ids.length) return [];
+
+  return supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+    searchParams: new URLSearchParams({
+      select: companionSelect,
+      id: `in.(${ids.join(',')})`,
+      limit: String(Math.max(ids.length, 1)),
+    }),
+  });
+};
+
 export const setActiveVirtualGirlfriend = async (token: string, userId: string, companionId: string) => {
   await supabaseRest('ai_companions', token, {
     method: 'PATCH',
@@ -564,6 +580,22 @@ export const getVirtualGirlfriendCompanionImages = async (
       companion_id: `eq.${companionId}`,
       order: 'image_kind.asc,variant_index.asc,created_at.asc',
       limit: '30',
+    }),
+  });
+};
+
+export const listVirtualGirlfriendCompanionImagesByIds = async (
+  token: string,
+  imageIds: string[],
+): Promise<VirtualGirlfriendCompanionImageRecord[]> => {
+  const ids = Array.from(new Set(imageIds.map((id) => id.trim()).filter(Boolean)));
+  if (!ids.length) return [];
+
+  return supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+    searchParams: new URLSearchParams({
+      select: companionImageSelect,
+      id: `in.(${ids.join(',')})`,
+      limit: String(Math.max(ids.length, 1)),
     }),
   });
 };
