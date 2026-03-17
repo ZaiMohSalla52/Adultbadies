@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     tone: body.tone,
     affectionStyle: body.affectionStyle,
     visualAesthetic: body.visualAesthetic,
-    preferenceHints: body.preferenceHints,
+    preferenceHints: preferenceHints ?? undefined,
     profileTags: persona.vibeTags,
     structuredProfile,
   });
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         tone: body.tone,
         affectionStyle: body.affectionStyle,
         visualAesthetic: body.visualAesthetic,
-        preferenceHints: body.preferenceHints,
+        preferenceHints: preferenceHints ?? undefined,
       },
     });
 

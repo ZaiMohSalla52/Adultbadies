@@ -2072,3 +2072,163 @@ a {
     gap: 0.82rem;
   }
 }
+
+.vg-setup-header {
+  gap: 0.55rem;
+}
+
+.vg-setup-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.vg-setup-progress {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.vg-setup-progress-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.vg-setup-progress-track {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 194, 0.18);
+  overflow: hidden;
+}
+
+.vg-setup-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(236, 72, 153, 0.92), rgba(167, 139, 250, 0.9));
+  transition: width 180ms ease;
+}
+
+.vg-step-grid {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.vg-choice-grid,
+.vg-image-choice-grid,
+.vg-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.vg-choice-card,
+.vg-image-choice-card,
+.vg-swatch-card {
+  border: 1px solid rgba(148, 163, 194, 0.24);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  font-size: 0.86rem;
+  font-weight: 600;
+  min-height: 48px;
+  padding: 0.62rem;
+  text-align: left;
+  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.vg-image-choice-card {
+  min-height: 92px;
+  display: grid;
+  align-items: end;
+}
+
+.vg-swatch-card {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.vg-swatch-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+}
+
+.vg-icon-choice-card {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.vg-choice-card.is-selected,
+.vg-image-choice-card.is-selected,
+.vg-swatch-card.is-selected {
+  border-color: rgba(236, 72, 153, 0.88);
+  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.22);
+  transform: translateY(-1px);
+}
+
+.vg-step-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.vg-generation-state {
+  border-radius: 20px;
+  border: 1px solid rgba(236, 72, 153, 0.45);
+  background:
+    radial-gradient(circle at 12% 12%, rgba(236, 72, 153, 0.3), transparent 44%),
+    linear-gradient(165deg, rgba(20, 26, 45, 0.98), rgba(8, 12, 26, 0.95));
+  padding: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.vg-generation-orb {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 2px solid rgba(244, 114, 182, 0.5);
+  border-top-color: #fdf2f8;
+  animation: spin 900ms linear infinite;
+}
+
+.vg-generation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.vg-generation-summary span {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 194, 0.32);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.73rem;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.75);
+}
+
+.vg-review-sheet {
+  border: 1px solid rgba(148, 163, 194, 0.2);
+  border-radius: 16px;
+  padding: 0.85rem;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (min-width: 900px) {
+  .vg-choice-grid,
+  .vg-image-choice-grid,
+  .vg-swatch-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

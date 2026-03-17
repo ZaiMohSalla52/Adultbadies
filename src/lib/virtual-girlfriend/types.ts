@@ -378,6 +378,19 @@ export type VirtualGirlfriendProactiveEventRecord = {
 
 export type VirtualGirlfriendSetupPayload = {
   name: string;
+  sex?: string;
+  age?: string | number;
+  origin?: string;
+  ethnicity?: string;
+  hairColor?: string;
+  figure?: string;
+  chestSize?: string;
+  occupation?: string;
+  personality?: string;
+  sexuality?: string;
+  freeformDetails?: string;
+  likes?: string[];
+  habits?: string[];
   archetype: string;
   tone: string;
   affectionStyle: string;
