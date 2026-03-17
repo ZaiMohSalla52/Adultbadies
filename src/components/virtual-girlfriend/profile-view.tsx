@@ -27,6 +27,40 @@ export const VirtualGirlfriendProfileView = ({
   const gallery = curated.gallery;
   const profileDisclosure = companion.disclosure_label;
   const photoDisclosure = visualProfile ? 'AI-generated photos' : null;
+  const structured = companion.structured_profile;
+
+  const cleanValue = (value: unknown): string | null => {
+    if (typeof value === 'number') return `${value}`;
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  };
+
+  const dossierAttributes = [
+    { label: 'Age', value: cleanValue(structured?.age) },
+    {
+      label: 'Origin',
+      value: [cleanValue(structured?.origin), cleanValue(structured?.ethnicity)].filter(Boolean).join(' • ') || null,
+    },
+    { label: 'Hair color', value: cleanValue(structured?.hairColor) },
+    {
+      label: 'Figure',
+      value: [cleanValue(structured?.figure), cleanValue(structured?.chestSize)].filter(Boolean).join(' • ') || null,
+    },
+    { label: 'Occupation', value: cleanValue(structured?.occupation) },
+    { label: 'Personality', value: cleanValue(structured?.personality) ?? companion.archetype },
+    { label: 'Sexuality', value: cleanValue(structured?.sexuality) },
+    {
+      label: 'Relationship vibe',
+      value: [cleanValue(structured?.tone) ?? companion.tone, cleanValue(structured?.affectionStyle) ?? companion.affection_style]
+        .filter(Boolean)
+        .join(' • ') || null,
+    },
+    {
+      label: 'Lifestyle',
+      value: cleanValue(structured?.freeformDetails) ?? cleanValue(structured?.visualAesthetic) ?? companion.visual_aesthetic,
+    },
+  ].filter((item) => Boolean(item.value));
 
   const statusMessage =
     status === 'generating'
@@ -36,11 +70,11 @@ export const VirtualGirlfriendProfileView = ({
         : null;
 
   return (
-    <div className="app-page-stack vg-premium-profile">
+    <div className="app-page-stack vg-premium-profile vg-profile-shell">
       <section className="vg-hero-card vg-identity-surface">
         {canonical ? (
           <ProfileMediaFrame className="vg-hero-image-wrap">
-            <Avatar name={companion.name} imageUrl={canonical.delivery_url} kind="ai" size="hero" variant="rounded" ring className="vg-hero-avatar" />
+            <Avatar name={companion.name} imageUrl={canonical.delivery_url} kind="ai" size="hero" variant="rounded" className="vg-hero-avatar" />
           </ProfileMediaFrame>
         ) : (
           <div className="vg-hero-image-empty">Her profile portrait is being prepared. Check back in a moment.</div>
@@ -49,7 +83,7 @@ export const VirtualGirlfriendProfileView = ({
         <div className="vg-hero-copy">
           <h1 className="my-0 vg-hero-name">{companion.name}</h1>
           <p className="my-0 text-muted vg-hero-bio">{companion.display_bio ?? companion.persona_profile.shortBio}</p>
-          <p className="my-0 text-xs text-muted">Canonical portrait + gallery continuity are now identity-locked.</p>
+          <p className="my-0 text-xs text-muted">A premium companion dossier with identity-locked portrait continuity.</p>
           <p className="my-0 vg-disclosure-row text-muted text-xs">
             <span>{profileDisclosure}</span>
             {photoDisclosure ? <span>{photoDisclosure}</span> : null}
@@ -69,10 +103,27 @@ export const VirtualGirlfriendProfileView = ({
         </div>
       </section>
 
+      {dossierAttributes.length ? (
+        <section className="vg-dossier-card vg-identity-surface">
+          <div className="vg-section-heading">
+            <h2 className="my-0 text-base font-semibold">Character dossier</h2>
+            <p className="my-0 text-sm text-muted">Key traits and profile details at a glance.</p>
+          </div>
+          <dl className="vg-dossier-grid">
+            {dossierAttributes.map((item) => (
+              <div key={item.label} className="vg-dossier-item">
+                <dt className="text-xs text-muted">{item.label}</dt>
+                <dd className="my-0 text-sm">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+
       <section className="vg-gallery-section">
         <div className="vg-section-heading">
-          <h2 className="my-0 text-base font-semibold">Photos</h2>
-          <p className="my-0 text-sm text-muted">A closer look at her moments.</p>
+          <h2 className="my-0 text-base font-semibold">Gallery moments</h2>
+          <p className="my-0 text-sm text-muted">A secondary lookbook that supports the canonical portrait.</p>
         </div>
 
         {gallery.length ? (
