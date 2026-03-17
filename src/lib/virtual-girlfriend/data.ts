@@ -18,7 +18,7 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 
 const companionSelect =
-  'id,user_id,name,display_bio,persona_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,generation_status,canonical_reference_image_id,disclosure_label,is_active,created_at,updated_at';
+  'id,user_id,name,display_bio,persona_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,generation_status,disclosure_label,is_active,created_at,updated_at';
 
 
 const visualProfileSelect =
@@ -234,11 +234,13 @@ export const setCanonicalReferenceImageId = async (
   companionId: string,
   canonicalReferenceImageId: string,
 ) => {
-  await supabaseRest('ai_companions', token, {
-    method: 'PATCH',
-    searchParams: new URLSearchParams({ user_id: `eq.${userId}`, id: `eq.${companionId}` }),
-    body: { canonical_reference_image_id: canonicalReferenceImageId },
-    prefer: 'return=minimal',
+  const latestProfile = await getLatestVisualProfileForCompanion(token, userId, companionId);
+  if (!latestProfile) return;
+
+  await setCanonicalReferenceImageForVisualProfile(token, {
+    userId,
+    visualProfileId: latestProfile.id,
+    canonicalReferenceImageId,
   });
 };
 
