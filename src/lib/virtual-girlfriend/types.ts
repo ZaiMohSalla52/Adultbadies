@@ -92,6 +92,8 @@ export type VirtualGirlfriendVisualProfileRecord = {
   prompt_hash: string;
   source_setup: Record<string, unknown>;
   identity_pack: VirtualGirlfriendVisualIdentityPack;
+  canonical_reference_image_id: string | null;
+  canonical_reference_metadata: Record<string, unknown>;
   continuity_notes: string | null;
   moderation_status: string;
   provenance: Record<string, unknown>;
@@ -100,6 +102,29 @@ export type VirtualGirlfriendVisualProfileRecord = {
 };
 
 export type VirtualGirlfriendImageKind = 'canonical' | 'gallery' | 'thumbnail';
+
+export type VirtualGirlfriendImageGenerationMode =
+  | 'canonical'
+  | 'gallery_from_canonical'
+  | 'chat_from_canonical'
+  | 'legacy_independent';
+
+export type VirtualGirlfriendImageLineageMetadata = {
+  revisedPrompt?: string | null;
+  continuityAnchors?: string[];
+  captureLabel?: string;
+  captureMood?: string;
+  captureEnvironment?: string;
+  chatCategory?: VirtualGirlfriendImageCategory;
+  source?: string;
+  reference_image_id?: string | null;
+  generation_mode?: VirtualGirlfriendImageGenerationMode;
+  provider?: string;
+  provider_model?: string;
+  provider_request_id?: string | null;
+  provider_job_id?: string | null;
+  [key: string]: unknown;
+};
 
 export type VirtualGirlfriendCompanionStatus = 'ready' | 'generating' | 'failed';
 
@@ -122,7 +147,7 @@ export type VirtualGirlfriendCompanionImageRecord = {
   prompt_hash: string;
   style_version: string;
   seed_metadata: Record<string, unknown>;
-  lineage_metadata: Record<string, unknown>;
+  lineage_metadata: VirtualGirlfriendImageLineageMetadata;
   moderation_status: string;
   moderation: Record<string, unknown>;
   provenance: Record<string, unknown>;
