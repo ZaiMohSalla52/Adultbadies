@@ -1,30 +1,24 @@
 import crypto from 'node:crypto';
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
 import {
-  generateCanonicalImageFromReferenceWithIdeogram,
-  generateCanonicalImageWithIdeogram,
-  generateGalleryImageFromReferenceWithIdeogram,
-} from '@/lib/virtual-girlfriend/image-ideogram';
-import { uploadToR2 } from '@/lib/storage/r2';
-import { uploadToCloudinary } from '@/lib/storage/cloudinary';
+  createVisualProfile,
+  listVirtualGirlfriendCompanions,
+} from '@/lib/virtual-girlfriend/data';
+import {
+  runRegenerateCanonicalOnlyImageMachine,
+  runRegenerateCanonicalWithGalleryImageMachine,
+  runSetupImageMachine,
+} from '@/lib/virtual-girlfriend/image-machine';
 import type {
   PersonaProfile,
-  VirtualGirlfriendCompanionImageRecord,
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendSetupPayload,
   VirtualGirlfriendVisualIdentityPack,
+  VirtualGirlfriendVisualProfileRecord,
 } from '@/lib/virtual-girlfriend/types';
-import {
-  createVisualProfile,
-  getVirtualGirlfriendCompanionById,
-  insertCompanionImages,
-  listVirtualGirlfriendCompanions,
-  setCanonicalReferenceImageId,
-  setCanonicalReferenceImageForVisualProfile,
-} from '@/lib/virtual-girlfriend/data';
 
 const STYLE_VERSION = 'vg-image-v3';
-const IDEOGRAM_PROVIDER = 'ideogram';
+const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
 type BuildIdentityInput = {
   sex?: string;
@@ -91,18 +85,6 @@ const resolveVisualIdentitySemanticInput = (input: {
   };
 };
 
-type CapturePlan = {
-  kind: 'canonical' | 'gallery';
-  variantIndex: number;
-  label: string;
-  framing: string;
-  environment: string;
-  mood: string;
-  wardrobe: string;
-  expression: string;
-  glamourLevel: string;
-};
-
 const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisualIdentityPack => ({
   coreLookDescriptors: [input.visualAesthetic, input.archetype, input.tone, 'premium dating photography', 'real phone-camera portrait'],
   portraitFramingStyle: 'mix of close-up portrait, mirror selfie, and medium lifestyle framing; natural eye-level camera',
@@ -146,42 +128,23 @@ const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisua
 const sanitizePack = (raw: VirtualGirlfriendVisualIdentityPack, fallback: VirtualGirlfriendVisualIdentityPack) => ({
   ...fallback,
   ...raw,
-  coreLookDescriptors: raw.coreLookDescriptors?.length ? raw.coreLookDescriptors : fallback.coreLookDescriptors,
-  continuityAnchors: raw.continuityAnchors?.length ? raw.continuityAnchors : fallback.continuityAnchors,
-  negativeConstraints: raw.negativeConstraints?.length ? raw.negativeConstraints : fallback.negativeConstraints,
-  negativeOverlapCues: raw.negativeOverlapCues?.length ? raw.negativeOverlapCues : fallback.negativeOverlapCues,
-  cameraCompositionPreferences: raw.cameraCompositionPreferences?.length
-    ? raw.cameraCompositionPreferences
-    : fallback.cameraCompositionPreferences,
+  coreLookDescriptors: raw.coreLookDescriptors?.filter(Boolean)?.slice(0, 14) ?? fallback.coreLookDescriptors,
+  cameraCompositionPreferences: raw.cameraCompositionPreferences?.filter(Boolean)?.slice(0, 12) ?? fallback.cameraCompositionPreferences,
+  continuityAnchors: raw.continuityAnchors?.filter(Boolean)?.slice(0, 14) ?? fallback.continuityAnchors,
+  negativeConstraints: raw.negativeConstraints?.filter(Boolean)?.slice(0, 16) ?? fallback.negativeConstraints,
+  negativeOverlapCues: raw.negativeOverlapCues?.filter(Boolean)?.slice(0, 12) ?? fallback.negativeOverlapCues,
   identityInvariants: {
     ...fallback.identityInvariants,
     ...(raw.identityInvariants ?? {}),
   },
 });
 
-export const buildVisualIdentityPack = async (input: BuildIdentityInput) => {
+const buildVisualIdentityPack = async (input: BuildIdentityInput): Promise<VirtualGirlfriendVisualIdentityPack> => {
   const fallback = fallbackIdentityPack(input);
 
-  const prompt = `Build a strict JSON visual identity pack for a premium virtual girlfriend image system.
-Context:
-- Name: ${input.companionName}
-- Archetype: ${input.archetype}
-- Tone: ${input.tone}
-- Affection style: ${input.affectionStyle}
-- Visual aesthetic: ${input.visualAesthetic}
-- User hints: ${input.preferenceHints || 'none'}
-- Persona core look: ${input.persona.visualPromptDNA.coreLook}
-- Persona anchors: ${input.persona.visualPromptDNA.styleAnchors.join(', ')}
-- Persona camera mood: ${input.persona.visualPromptDNA.cameraMood}
-- User-selected portrait seed prompt: ${input.selectedPortraitPrompt || 'none'}
-- User-selected portrait seed image URL/data: ${input.selectedPortraitImage || 'none'}
-- Existing companion signatures to avoid similarity with: ${
-    input.existingCompanionSignatures?.length ? input.existingCompanionSignatures.join(' | ') : 'none'
-  }
-
-Output JSON only with keys:
+  const prompt = `Return strict JSON with this schema only:
 {
-  "coreLookDescriptors": string[6..14],
+  "coreLookDescriptors": string[],
   "portraitFramingStyle": string,
   "wardrobeDirection": string,
   "lightingMoodDirection": string,
@@ -198,18 +161,31 @@ Output JSON only with keys:
     "bodyPresentation": string,
     "signatureAccessoryOrMotif": string
   },
-  "cameraCompositionPreferences": string[3..8],
-  "continuityAnchors": string[6..16],
-  "negativeConstraints": string[6..16],
-  "negativeOverlapCues": string[4..10]
+  "cameraCompositionPreferences": string[],
+  "continuityAnchors": string[],
+  "negativeConstraints": string[],
+  "negativeOverlapCues": string[]
 }
 
-Requirements:
-- Strongly map archetype/tone/aesthetic to wardrobe, scene, expression, and energy.
-- Design a clearly fictional companion identity spec (not a real-person likeness and not biometric identification intent).
-- Ensure identity invariants are concrete and stable across canonical/gallery/chat generation.
-- Push distinctness away from existing companion signatures while still fitting the chosen archetype.
-- Diversify within archetype; avoid defaulting to the same glam/bombshell template.
+Input profile:
+- Companion name: ${input.companionName}
+- Sex: ${input.sex || 'female'}
+- Archetype: ${input.archetype}
+- Tone: ${input.tone}
+- Affection style: ${input.affectionStyle}
+- Visual aesthetic: ${input.visualAesthetic}
+- Preference hints: ${input.preferenceHints || 'none'}
+- User-selected portrait seed prompt: ${input.selectedPortraitPrompt || 'none'}
+- User-selected portrait seed image URL/data: ${input.selectedPortraitImage || 'none'}
+- Persona visual DNA coreLook: ${input.persona.visualPromptDNA.coreLook}
+- Persona style anchors: ${input.persona.visualPromptDNA.styleAnchors.join(', ')}
+- Existing sibling signatures to avoid overlap: ${(input.existingCompanionSignatures ?? []).join(' || ') || 'none'}
+
+Rules:
+- Preserve one stable identity across all generated outputs.
+- Enforce high distinctness from sibling companion signatures.
+- Keep descriptors practical and image-model useful.
+- Keep negative constraints explicit for anatomy quality, identity drift, and duplicate-scene drift.
 - Prevent all outputs from collapsing into cozy indoor portraits.
 - Prioritize realistic natural-lighting and believable phone-camera photography.
 - If portrait seed prompt/image are provided, use them as direct identity anchor signals (face/hair/age continuity) while still producing original generated imagery.
@@ -231,423 +207,27 @@ Requirements:
   }
 };
 
-const buildCapturePlan = (companion: VirtualGirlfriendCompanionRecord): CapturePlan[] => {
-  const style = `${companion.archetype ?? ''} ${companion.tone ?? ''} ${companion.visual_aesthetic ?? ''} ${companion.affection_style ?? ''}`.toLowerCase();
-
-  const personaSpecificLifestyle = /bombshell|glam|nightlife|bold/.test(style)
-    ? {
-        label: 'date-night glam look',
-        environment: 'upscale evening venue or chic city backdrop',
-        mood: 'playful confident date-night energy',
-        wardrobe: 'dressy evening outfit with polished accessories',
-        expression: 'confident smile with teasing eye contact',
-        glamourLevel: 'high glamour',
-      }
-    : /intellectual|bookish|cozy|soft|calm/.test(style)
-      ? {
-          label: 'bookish cozy lifestyle',
-          environment: 'warm cafe corner or home reading nook with texture',
-          mood: 'soft understated romance',
-          wardrobe: 'minimalist knit or cardigan with subtle elegance',
-          expression: 'gentle half-smile and thoughtful gaze',
-          glamourLevel: 'low-to-medium glamour',
-        }
-      : /playful|sporty|casual/.test(style)
-        ? {
-            label: 'daylight active lifestyle',
-            environment: 'park, boardwalk, or casual outdoor city path',
-            mood: 'fresh upbeat playful vibe',
-            wardrobe: 'athleisure or casual sporty outfit',
-            expression: 'energetic candid smile',
-            glamourLevel: 'casual-fresh styling',
-          }
-        : {
-            label: 'polished luxury lifestyle',
-            environment: 'elegant hotel lounge or upscale modern interior',
-            mood: 'poised romantic confidence',
-            wardrobe: 'tailored refined outfit with clean lines',
-            expression: 'composed warm confidence',
-            glamourLevel: 'polished premium styling',
-          };
-
-  return [
-    {
-      kind: 'canonical',
-      variantIndex: 0,
-      label: 'editorial signature portrait',
-      framing: 'tight chest-up portrait, subtle lens compression, eye-level camera, face-dominant composition',
-      environment: 'premium interior corner with depth and bokeh, elegant but not busy',
-      mood: 'refined magnetic chemistry with confident premium presence',
-      wardrobe: 'intentional hero styling with elevated textures, flattering neckline, tasteful statement accessory',
-      expression: 'steady eye contact, poised micro-smile, confident warmth',
-      glamourLevel: 'premium editorial polish with believable realism',
-    },
-    {
-      kind: 'gallery',
-      variantIndex: 1,
-      label: 'street-style daytime candid',
-      framing: 'waist-up editorial candid with slight motion and clear separation from background',
-      environment: 'daylight city sidewalk, upscale cafe exterior, or architectural street backdrop',
-      mood: 'fresh spontaneous confidence with lifestyle energy',
-      wardrobe: 'fashion-forward daytime look, layered smart-casual styling, clean accessories',
-      expression: 'natural candid smile with in-the-moment interaction',
-      glamourLevel: 'daytime polished-casual fashion',
-    },
-    {
-      kind: 'gallery',
-      variantIndex: 2,
-      label: `golden-hour date-night editorial — ${personaSpecificLifestyle.label}`,
-      framing: 'half-body cinematic framing, intentional depth, flattering perspective, editorial composition',
-      environment: personaSpecificLifestyle.environment,
-      mood: personaSpecificLifestyle.mood,
-      wardrobe: `${personaSpecificLifestyle.wardrobe}; elevated fit, styling coherence, premium finishing details`,
-      expression: personaSpecificLifestyle.expression,
-      glamourLevel: personaSpecificLifestyle.glamourLevel,
-    },
-  ];
-};
-
-const buildStructuredAppearanceContext = (companion: VirtualGirlfriendCompanionRecord) => {
-  const structured = companion.structured_profile;
-  if (!structured) return '';
-
-  const cues = [
-    structured.sex ? `sex: ${structured.sex}` : null,
-    structured.age ? `age: ${structured.age}` : null,
-    structured.origin ? `origin: ${structured.origin}` : null,
-    structured.hairColor ? `hair: ${structured.hairColor}` : null,
-    structured.figure ? `figure: ${structured.figure}` : null,
-    structured.occupation ? `occupation vibe: ${structured.occupation}` : null,
-    structured.personality ? `personality styling signal: ${structured.personality}` : null,
-    structured.visualAesthetic ? `visual aesthetic: ${structured.visualAesthetic}` : null,
-    structured.preferenceHints ? `user preference hints: ${structured.preferenceHints}` : null,
-  ].filter(Boolean);
-
-  return cues.length ? `Structured profile anchors: ${cues.join('; ')}.` : '';
-};
-
-const resolvePromptSubject = (sex: string | null | undefined) => {
-  const normalized = (sex ?? '').trim().toLowerCase();
-  if (normalized === 'male' || normalized === 'man') return 'man';
-  return 'woman';
-};
-
-const buildImagePrompt = (input: {
-  companion: VirtualGirlfriendCompanionRecord;
-  identityPack: VirtualGirlfriendVisualIdentityPack;
-  capture: CapturePlan;
-}) => {
-  const structuredAppearanceContext = buildStructuredAppearanceContext(input.companion);
-
-  return [
-    `Create a premium ${input.capture.label} image of the same single AI-generated ${resolvePromptSubject(input.companion.structured_profile?.sex)} identity named ${input.companion.name}.`,
-    `Identity anchors: ${input.identityPack.continuityAnchors.join(', ')}.`,
-    `Core look: ${input.identityPack.coreLookDescriptors.join(', ')}.`,
-    structuredAppearanceContext,
-    `Identity invariants: age band ${input.identityPack.identityInvariants.ageBand}; face ${input.identityPack.identityInvariants.faceShape}; eyes ${input.identityPack.identityInvariants.eyeShapeColor}; brows ${input.identityPack.identityInvariants.browCharacter}; nose ${input.identityPack.identityInvariants.noseProfile}; lips ${input.identityPack.identityInvariants.lipShape}; skin tone ${input.identityPack.identityInvariants.skinToneBand}; hair ${input.identityPack.identityInvariants.hairSignature}; body presentation ${input.identityPack.identityInvariants.bodyPresentation}; signature motif ${input.identityPack.identityInvariants.signatureAccessoryOrMotif}.`,
-    `Wardrobe direction system-wide: ${input.identityPack.wardrobeDirection}.`,
-    `Camera/composition preferences: ${input.identityPack.cameraCompositionPreferences.join(', ')}.`,
-    `Framing: ${input.capture.framing}.`,
-    `Background/environment: ${input.capture.environment}.`,
-    `Wardrobe: ${input.capture.wardrobe}.`,
-    `Expression and energy: ${input.capture.expression}; mood ${input.capture.mood}.`,
-    `Glamour-to-casual level: ${input.capture.glamourLevel}.`,
-    `Lighting/mood direction: ${input.identityPack.lightingMoodDirection}.`,
-    `Realism target: ${input.identityPack.realismPolishLevel}; natural skin texture, true-to-life lighting, smartphone-photo authenticity.`,
-    `Aesthetic context: ${input.companion.visual_aesthetic ?? 'premium romantic portrait aesthetic'}.`,
-    `This companion must remain the same ${resolvePromptSubject(input.companion.structured_profile?.sex)} identity across all 3 total images in this set.`,
-    'Each slot must look like a different moment from her life, not alternate crops of the same scene.',
-    'Do not repeat framing, camera angle, background, expression, or props from other slots.',
-    'Must be meaningfully distinct from other variants in scene, framing, and styling while preserving the same identity.',
-    'Keep dating-app appropriate, emotionally warm, and believable premium quality.',
-    `Show exactly one adult ${resolvePromptSubject(input.companion.structured_profile?.sex)}, no extra people, no text overlays, no logos.`,
-    'Avoid bland basics, avoid same outfit energy across slots, avoid generic mall-catalog styling.',
-    `Avoid: ${input.identityPack.negativeConstraints.join(', ')}.`,
-    `Negative overlap cues: ${input.identityPack.negativeOverlapCues.join(', ')}.`,
-  ].join(' ');
-};
-
-const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string } | null => {
-  const trimmed = dataUrl.trim();
-  const matched = trimmed.match(/^data:(.+?);base64,(.+)$/);
-  if (!matched) return null;
-
-  try {
-    return {
-      mimeType: matched[1] ?? 'image/png',
-      bytes: Buffer.from(matched[2] ?? '', 'base64'),
-    };
-  } catch {
-    return null;
-  }
-};
-
-const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
-
-export class VirtualGirlfriendImagePackError extends Error {
-  canonicalImageId: string | null;
-
-  constructor(message: string, canonicalImageId: string | null = null, options?: { cause?: unknown }) {
-    super(message, options);
-    this.name = 'VirtualGirlfriendImagePackError';
-    this.canonicalImageId = canonicalImageId;
-  }
-}
-
-export class VirtualGirlfriendCanonicalRegenerateError extends Error {
-  canonicalImageId: string | null;
-
-  constructor(message: string, canonicalImageId: string | null = null, options?: { cause?: unknown }) {
-    super(message, options);
-    this.name = 'VirtualGirlfriendCanonicalRegenerateError';
-    this.canonicalImageId = canonicalImageId;
-  }
-}
-
-const buildImageRecord = (input: {
-  userId: string;
-  companionId: string;
-  visualProfileId: string;
-  capture: CapturePlan;
-  generated: {
-    bytes: Buffer;
-    mimeType: string;
-    width: number | null;
-    height: number | null;
-    revisedPrompt: string | null;
-    provider: 'ideogram';
-    model: string;
-    endpoint: string;
-    requestId: string | null;
-    jobId: string | null;
-  };
-  promptHash: string;
-  identityPack: VirtualGirlfriendVisualIdentityPack;
-  referenceImageId?: string;
-}): Promise<Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>> => {
-  const key = `virtual-girlfriend-images/${input.userId}/${input.companionId}/${STYLE_VERSION}/${input.capture.kind}-${input.capture.variantIndex}-${Date.now()}.png`;
-
-  return uploadToR2({
-    key,
-    body: input.generated.bytes,
-    contentType: input.generated.mimeType,
-  }).then(async (r2) => {
-    const cloudinary = await uploadToCloudinary({
-      bytes: input.generated.bytes,
-      mimeType: input.generated.mimeType,
-      folderPath: `${input.userId}/${input.companionId}`,
-      publicId: `${STYLE_VERSION}-${input.capture.kind}-${input.capture.variantIndex}`,
-    });
-
-    return {
-      user_id: input.userId,
-      companion_id: input.companionId,
-      visual_profile_id: input.visualProfileId,
-      image_kind: input.capture.kind,
-      variant_index: input.capture.variantIndex,
-      origin_storage_provider: r2.provider,
-      origin_storage_key: r2.key,
-      origin_mime_type: input.generated.mimeType,
-      origin_byte_size: input.generated.bytes.byteLength,
-      delivery_provider: cloudinary.provider,
-      delivery_public_id: cloudinary.publicId,
-      delivery_url: cloudinary.deliveryUrl,
-      width: cloudinary.width ?? input.generated.width,
-      height: cloudinary.height ?? input.generated.height,
-      prompt_hash: input.promptHash,
-      style_version: STYLE_VERSION,
-      seed_metadata: {},
-      lineage_metadata: {
-        generation_mode: input.capture.kind === 'canonical' ? 'canonical' : 'gallery_from_canonical',
-        reference_image_id: input.referenceImageId ?? null,
-        provider: input.generated.provider,
-        providerModel: input.generated.model,
-        providerEndpoint: input.generated.endpoint,
-        providerRequestId: input.generated.requestId,
-        providerJobId: input.generated.jobId,
-        revisedPrompt: input.generated.revisedPrompt ?? null,
-        continuityAnchors: input.identityPack.continuityAnchors,
-        captureLabel: input.capture.label,
-        captureMood: input.capture.mood,
-        captureEnvironment: input.capture.environment,
-      },
-      moderation_status: 'pending',
-      moderation: { provider: 'ideogram-v3' },
-      provenance: {
-        generatedBy: `${IDEOGRAM_PROVIDER}:V_3`,
-        originalStorage: 'cloudflare_r2',
-        delivery: 'cloudinary',
-        generatedAt: new Date().toISOString(),
-        providerEndpoint: input.generated.endpoint,
-        providerRequestId: input.generated.requestId,
-        providerJobId: input.generated.jobId,
-      },
-      quality_score: 0.92,
-    };
-  });
-};
-
-const downloadCanonicalReferenceBytes = async (canonicalDeliveryUrl: string) => {
-  const response = await fetch(canonicalDeliveryUrl);
-  if (!response.ok) {
-    throw new Error(`Canonical reference download failed (${response.status}).`);
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  return {
-    bytes: Buffer.from(arrayBuffer),
-    mimeType: response.headers.get('content-type') ?? 'image/png',
-  };
-};
+export { VirtualGirlfriendImagePackError, VirtualGirlfriendCanonicalRegenerateError } from '@/lib/virtual-girlfriend/image-machine';
 
 export const regenerateCanonicalForVisualProfile = async (input: {
   token: string;
-  visualProfile: {
-    id: string;
-    user_id: string;
-    companion_id: string;
-    prompt_hash: string;
-    identity_pack: VirtualGirlfriendVisualIdentityPack;
-    canonical_reference_image_id: string | null;
-    canonical_reference_metadata: Record<string, unknown>;
-    canonical_review_status: 'pending' | 'approved' | 'rejected';
-    reviewed_by: string | null;
-    reviewed_at: string | null;
-    review_notes: string | null;
-    source_setup?: Record<string, unknown>;
-  };
+  visualProfile: VirtualGirlfriendVisualProfileRecord;
   requestedBy: string;
   regenerateGallery: boolean;
 }) => {
-  const companion = await getVirtualGirlfriendCompanionById(
-    input.token,
-    input.visualProfile.user_id,
-    input.visualProfile.companion_id,
-  );
-
-  if (!companion) {
-    throw new VirtualGirlfriendCanonicalRegenerateError('Companion was not found for canonical regeneration.');
+  if (input.regenerateGallery) {
+    return runRegenerateCanonicalWithGalleryImageMachine({
+      token: input.token,
+      visualProfile: input.visualProfile,
+      requestedBy: input.requestedBy,
+    });
   }
 
-  const captures = buildCapturePlan(companion);
-  const canonicalCapture = captures.find((capture) => capture.kind === 'canonical');
-  const galleryCaptures = captures.filter((capture) => capture.kind === 'gallery');
-
-  if (!canonicalCapture) {
-    throw new VirtualGirlfriendCanonicalRegenerateError('Canonical capture plan is missing.');
-  }
-
-  const canonicalPrompt = buildImagePrompt({
-    companion,
-    identityPack: input.visualProfile.identity_pack,
-    capture: canonicalCapture,
+  return runRegenerateCanonicalOnlyImageMachine({
+    token: input.token,
+    visualProfile: input.visualProfile,
+    requestedBy: input.requestedBy,
   });
-
-  const canonicalPromptHash = sha(
-    `${input.visualProfile.prompt_hash}:regen:${Date.now()}:${canonicalCapture.kind}:${canonicalCapture.variantIndex}:${canonicalPrompt}`,
-  );
-
-  const portraitReferenceDataUrl =
-    typeof input.visualProfile.source_setup?.selectedPortraitImage === 'string'
-      ? input.visualProfile.source_setup.selectedPortraitImage
-      : null;
-  const portraitReference = portraitReferenceDataUrl ? parseDataUrlImage(portraitReferenceDataUrl) : null;
-
-  const canonicalGenerated = portraitReference
-    ? await generateCanonicalImageFromReferenceWithIdeogram({
-        prompt: canonicalPrompt,
-        referenceImageBytes: portraitReference.bytes,
-        referenceMimeType: portraitReference.mimeType,
-        imageWeight: 90,
-      })
-    : await generateCanonicalImageWithIdeogram(canonicalPrompt);
-  const canonicalRow = await buildImageRecord({
-    userId: input.visualProfile.user_id,
-    companionId: input.visualProfile.companion_id,
-    visualProfileId: input.visualProfile.id,
-    capture: canonicalCapture,
-    generated: canonicalGenerated,
-    promptHash: canonicalPromptHash,
-    identityPack: input.visualProfile.identity_pack,
-  });
-
-  const [canonicalImage] = await insertCompanionImages(input.token, [canonicalRow]);
-  if (!canonicalImage) {
-    throw new VirtualGirlfriendCanonicalRegenerateError('Canonical image persistence failed.');
-  }
-
-  const metadata = {
-    ...(input.visualProfile.canonical_reference_metadata ?? {}),
-    lastRegeneratedAt: new Date().toISOString(),
-    regeneratedBy: input.requestedBy,
-    previousCanonicalReferenceImageId: input.visualProfile.canonical_reference_image_id,
-    previousReview: {
-      status: input.visualProfile.canonical_review_status,
-      reviewedBy: input.visualProfile.reviewed_by,
-      reviewedAt: input.visualProfile.reviewed_at,
-      reviewNotes: input.visualProfile.review_notes,
-    },
-  };
-
-  await setCanonicalReferenceImageForVisualProfile(input.token, {
-    userId: input.visualProfile.user_id,
-    visualProfileId: input.visualProfile.id,
-    canonicalReferenceImageId: canonicalImage.id,
-    canonicalReferenceMetadata: metadata,
-    canonicalReviewStatus: 'pending',
-  });
-
-  await setCanonicalReferenceImageId(
-    input.token,
-    input.visualProfile.user_id,
-    input.visualProfile.companion_id,
-    canonicalImage.id,
-  );
-
-  if (!input.regenerateGallery) {
-    return { canonicalImage, galleryImages: [] as VirtualGirlfriendCompanionImageRecord[] };
-  }
-
-  try {
-    const canonicalReference = await downloadCanonicalReferenceBytes(canonicalImage.delivery_url);
-    const galleryRows: Array<Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>> = [];
-
-    for (const capture of galleryCaptures) {
-      const prompt = buildImagePrompt({
-        companion,
-        identityPack: input.visualProfile.identity_pack,
-        capture,
-      });
-      const promptHash = sha(`${input.visualProfile.prompt_hash}:regen:${capture.kind}:${capture.variantIndex}:${prompt}`);
-      const generated = await generateGalleryImageFromReferenceWithIdeogram({
-        prompt,
-        referenceImageBytes: canonicalReference.bytes,
-        referenceMimeType: canonicalReference.mimeType,
-      });
-
-      galleryRows.push(
-        await buildImageRecord({
-          userId: input.visualProfile.user_id,
-          companionId: input.visualProfile.companion_id,
-          visualProfileId: input.visualProfile.id,
-          capture,
-          generated,
-          promptHash,
-          identityPack: input.visualProfile.identity_pack,
-          referenceImageId: canonicalImage.id,
-        }),
-      );
-    }
-
-    const galleryImages = galleryRows.length ? await insertCompanionImages(input.token, galleryRows) : [];
-    return { canonicalImage, galleryImages };
-  } catch (error) {
-    throw new VirtualGirlfriendCanonicalRegenerateError(
-      'Canonical regenerated, but gallery refresh from new canonical failed.',
-      canonicalImage.id,
-      { cause: error },
-    );
-  }
 };
 
 export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
@@ -665,10 +245,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     selectedPortraitImage?: string;
   };
 }) => {
-  const semanticSetup = resolveVisualIdentitySemanticInput({
-    companion: input.companion,
-    fallback: input.setup,
-  });
+  const semanticSetup = resolveVisualIdentitySemanticInput({ companion: input.companion, fallback: input.setup });
 
   const allCompanions = await listVirtualGirlfriendCompanions(input.token, input.userId);
   const siblingCompanionSignatures = allCompanions
@@ -693,98 +270,25 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     existingCompanionSignatures: siblingCompanionSignatures,
   });
 
-  const promptBaseHash = sha(JSON.stringify(identityPack));
-  const captures = buildCapturePlan(input.companion);
-  const canonicalCapture = captures.find((capture) => capture.kind === 'canonical');
-  const galleryCaptures = captures.filter((capture) => capture.kind === 'gallery');
-
-  if (!canonicalCapture) {
-    throw new VirtualGirlfriendImagePackError('Canonical capture plan is missing.');
-  }
-
   const visualProfile = await createVisualProfile(input.token, {
     userId: input.userId,
     companionId: input.companion.id,
     styleVersion: STYLE_VERSION,
-    promptHash: promptBaseHash,
+    promptHash: sha(JSON.stringify(identityPack)),
     sourceSetup: semanticSetup,
     identityPack,
-    continuityNotes: 'Identity continuity anchored by profile pack with varied scene plans for non-duplicate gallery outcomes.',
+    continuityNotes: 'Identity continuity anchored by canonical image machine.',
     moderationStatus: 'pending',
-    provenance: { generatedBy: 'openai:gpt-5-mini', phase: 'stage9-phase3-refinement' },
+    provenance: { generatedBy: 'openai:gpt-5-mini', phase: 'image-machine-pass-c' },
   });
 
-  const canonicalPrompt = buildImagePrompt({
-    companion: input.companion,
-    identityPack,
-    capture: canonicalCapture,
-  });
-  const canonicalPromptHash = sha(`${promptBaseHash}:${canonicalCapture.kind}:${canonicalCapture.variantIndex}:${canonicalPrompt}`);
-
-  const selectedPortraitReference = semanticSetup.selectedPortraitImage
-    ? parseDataUrlImage(semanticSetup.selectedPortraitImage)
-    : null;
-
-  const canonicalGenerated = selectedPortraitReference
-    ? await generateCanonicalImageFromReferenceWithIdeogram({
-        prompt: canonicalPrompt,
-        referenceImageBytes: selectedPortraitReference.bytes,
-        referenceMimeType: selectedPortraitReference.mimeType,
-        imageWeight: 93,
-      })
-    : await generateCanonicalImageWithIdeogram(canonicalPrompt);
-  const canonicalRow = await buildImageRecord({
+  const generated = await runSetupImageMachine({
+    kind: 'setup_pack',
+    token: input.token,
     userId: input.userId,
-    companionId: input.companion.id,
-    visualProfileId: visualProfile.id,
-    capture: canonicalCapture,
-    generated: canonicalGenerated,
-    promptHash: canonicalPromptHash,
-    identityPack,
+    companion: input.companion,
+    visualProfile,
   });
 
-  const [canonicalImage] = await insertCompanionImages(input.token, [canonicalRow]);
-  if (!canonicalImage) {
-    throw new VirtualGirlfriendImagePackError('Canonical image persistence failed.');
-  }
-
-  try {
-    const canonicalReference = await downloadCanonicalReferenceBytes(canonicalImage.delivery_url);
-    const galleryRows: Array<Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>> = [];
-
-    for (const capture of galleryCaptures) {
-      const prompt = buildImagePrompt({
-        companion: input.companion,
-        identityPack,
-        capture,
-      });
-      const promptHash = sha(`${promptBaseHash}:${capture.kind}:${capture.variantIndex}:${prompt}`);
-      const generated = await generateGalleryImageFromReferenceWithIdeogram({
-        prompt,
-        referenceImageBytes: canonicalReference.bytes,
-        referenceMimeType: canonicalReference.mimeType,
-      });
-
-      galleryRows.push(
-        await buildImageRecord({
-          userId: input.userId,
-          companionId: input.companion.id,
-          visualProfileId: visualProfile.id,
-          capture,
-          generated,
-          promptHash,
-          identityPack,
-          referenceImageId: canonicalImage.id,
-        }),
-      );
-    }
-
-    const galleryImages = galleryRows.length ? await insertCompanionImages(input.token, galleryRows) : [];
-
-    return { visualProfile, images: [canonicalImage, ...galleryImages], canonicalImage };
-  } catch (error) {
-    throw new VirtualGirlfriendImagePackError('Gallery generation from canonical reference failed.', canonicalImage.id, {
-      cause: error,
-    });
-  }
+  return { visualProfile, images: [generated.canonicalImage, ...generated.galleryImages], canonicalImage: generated.canonicalImage };
 };
