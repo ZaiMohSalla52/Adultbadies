@@ -1,6 +1,7 @@
 import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendResolvedProfile,
+  VirtualGirlfriendStructuredProfile,
 } from '@/lib/virtual-girlfriend/types';
 
 const toNonEmptyString = (value: unknown): string | null => {
@@ -84,7 +85,6 @@ const deriveLegacyProfile = (companion: VirtualGirlfriendCompanionRecord): Virtu
     visualAesthetic: toNonEmptyString(companion.visual_aesthetic),
     preferenceHints: toNonEmptyString(companion.preference_hints),
     personality: toNonEmptyString(personality.join(', ')),
-    sexuality: null,
     freeformDetails: toNonEmptyString(freeformDetails),
     likes: likes.length ? likes : null,
     habits: habits.length ? habits : null,
