@@ -427,7 +427,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                       <button
                         key={candidate.id}
                         type="button"
-                        className={`vg-option-card vg-option-card--portrait ${state.selectedPortraitId === candidate.id ? 'is-selected' : ''}`}
+                        className={`vg-option-card vg-option-card--portrait ${state.selectedPortraitImage === candidate.imageDataUrl ? 'is-selected' : ''}`}
                         onClick={() => {
                           setField('selectedPortraitPrompt', candidate.prompt);
                           setField('selectedPortraitImage', candidate.imageDataUrl);
