@@ -78,14 +78,30 @@ export type VirtualGirlfriendCompanionRecord = {
   updated_at: string;
 };
 
+export type VirtualGirlfriendVisualIdentityInvariants = {
+  ageBand: string;
+  faceShape: string;
+  eyeShapeColor: string;
+  browCharacter: string;
+  noseProfile: string;
+  lipShape: string;
+  skinToneBand: string;
+  hairSignature: string;
+  bodyPresentation: string;
+  signatureAccessoryOrMotif: string;
+};
+
 export type VirtualGirlfriendVisualIdentityPack = {
   coreLookDescriptors: string[];
   portraitFramingStyle: string;
   wardrobeDirection: string;
   lightingMoodDirection: string;
   realismPolishLevel: string;
+  identityInvariants: VirtualGirlfriendVisualIdentityInvariants;
+  cameraCompositionPreferences: string[];
   continuityAnchors: string[];
   negativeConstraints: string[];
+  negativeOverlapCues: string[];
 };
 
 export type VirtualGirlfriendVisualProfileRecord = {

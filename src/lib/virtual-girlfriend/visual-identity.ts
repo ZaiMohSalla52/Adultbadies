@@ -12,7 +12,12 @@ import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendVisualIdentityPack,
 } from '@/lib/virtual-girlfriend/types';
-import { createVisualProfile, insertCompanionImages } from '@/lib/virtual-girlfriend/data';
+import {
+  createVisualProfile,
+  insertCompanionImages,
+  listVirtualGirlfriendCompanions,
+  setCanonicalReferenceImageForVisualProfile,
+} from '@/lib/virtual-girlfriend/data';
 
 const STYLE_VERSION = 'vg-image-v3';
 const IDEOGRAM_PROVIDER = 'ideogram';
@@ -25,6 +30,7 @@ type BuildIdentityInput = {
   preferenceHints?: string;
   companionName: string;
   persona: PersonaProfile;
+  existingCompanionSignatures?: string[];
 };
 
 type CapturePlan = {
@@ -45,6 +51,23 @@ const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisua
   wardrobeDirection: 'wardrobe changes by scene: one polished look, one casual look, one lifestyle look',
   lightingMoodDirection: 'mostly natural light with scene-true practical lighting; avoid studio flash look',
   realismPolishLevel: 'high realism with natural skin texture, candid imperfections, and believable phone-camera detail',
+  identityInvariants: {
+    ageBand: 'mid-20s to early-30s adult',
+    faceShape: 'defined oval face with soft jawline',
+    eyeShapeColor: 'almond eyes, warm brown tone',
+    browCharacter: 'naturally full brows with gentle arch',
+    noseProfile: 'straight refined bridge with soft tip',
+    lipShape: 'balanced full lips with clear cupid bow',
+    skinToneBand: 'medium warm skin tone range',
+    hairSignature: 'deep brunette, softly wavy, chest-length',
+    bodyPresentation: 'fit feminine silhouette with natural proportions',
+    signatureAccessoryOrMotif: 'minimal gold jewelry accent',
+  },
+  cameraCompositionPreferences: [
+    'eye-level focal priority on face with natural perspective',
+    'mixed composition plan: close portrait, waist-up candid, half-body environmental',
+    'avoid repeated angle or repeated room layout across variants',
+  ],
   continuityAnchors: [...input.persona.visualPromptDNA.styleAnchors, input.companionName],
   negativeConstraints: [
     'avoid multiple people',
@@ -54,6 +77,12 @@ const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisua
     'avoid repetitive same room composition',
     'avoid explicit nudity',
   ],
+  negativeOverlapCues: [
+    'avoid default bombshell clone look with heavy glam makeup every scene',
+    'avoid long black straight hair + same pout + same bodycon outfit defaults',
+    'avoid repeating polished nightlife-only environments',
+    'avoid same-face-template outputs with only outfit swaps',
+  ],
 });
 
 const sanitizePack = (raw: VirtualGirlfriendVisualIdentityPack, fallback: VirtualGirlfriendVisualIdentityPack) => ({
@@ -62,6 +91,14 @@ const sanitizePack = (raw: VirtualGirlfriendVisualIdentityPack, fallback: Virtua
   coreLookDescriptors: raw.coreLookDescriptors?.length ? raw.coreLookDescriptors : fallback.coreLookDescriptors,
   continuityAnchors: raw.continuityAnchors?.length ? raw.continuityAnchors : fallback.continuityAnchors,
   negativeConstraints: raw.negativeConstraints?.length ? raw.negativeConstraints : fallback.negativeConstraints,
+  negativeOverlapCues: raw.negativeOverlapCues?.length ? raw.negativeOverlapCues : fallback.negativeOverlapCues,
+  cameraCompositionPreferences: raw.cameraCompositionPreferences?.length
+    ? raw.cameraCompositionPreferences
+    : fallback.cameraCompositionPreferences,
+  identityInvariants: {
+    ...fallback.identityInvariants,
+    ...(raw.identityInvariants ?? {}),
+  },
 });
 
 export const buildVisualIdentityPack = async (input: BuildIdentityInput) => {
@@ -78,20 +115,41 @@ Context:
 - Persona core look: ${input.persona.visualPromptDNA.coreLook}
 - Persona anchors: ${input.persona.visualPromptDNA.styleAnchors.join(', ')}
 - Persona camera mood: ${input.persona.visualPromptDNA.cameraMood}
+- Existing companion signatures to avoid similarity with: ${
+    input.existingCompanionSignatures?.length ? input.existingCompanionSignatures.join(' | ') : 'none'
+  }
 
 Output JSON only with keys:
 {
-  "coreLookDescriptors": string[5..12],
+  "coreLookDescriptors": string[6..14],
   "portraitFramingStyle": string,
   "wardrobeDirection": string,
   "lightingMoodDirection": string,
   "realismPolishLevel": string,
-  "continuityAnchors": string[5..14],
-  "negativeConstraints": string[5..14]
+  "identityInvariants": {
+    "ageBand": string,
+    "faceShape": string,
+    "eyeShapeColor": string,
+    "browCharacter": string,
+    "noseProfile": string,
+    "lipShape": string,
+    "skinToneBand": string,
+    "hairSignature": string,
+    "bodyPresentation": string,
+    "signatureAccessoryOrMotif": string
+  },
+  "cameraCompositionPreferences": string[3..8],
+  "continuityAnchors": string[6..16],
+  "negativeConstraints": string[6..16],
+  "negativeOverlapCues": string[4..10]
 }
 
 Requirements:
 - Strongly map archetype/tone/aesthetic to wardrobe, scene, expression, and energy.
+- Design a clearly fictional companion identity spec (not a real-person likeness and not biometric identification intent).
+- Ensure identity invariants are concrete and stable across canonical/gallery/chat generation.
+- Push distinctness away from existing companion signatures while still fitting the chosen archetype.
+- Diversify within archetype; avoid defaulting to the same glam/bombshell template.
 - Prevent all outputs from collapsing into cozy indoor portraits.
 - Prioritize realistic natural-lighting and believable phone-camera photography.
 - Maintain same-identity continuity across future images.
@@ -197,6 +255,8 @@ const buildImagePrompt = (input: {
     `Create a premium ${input.capture.label} image of the same single AI-generated woman identity named ${input.companion.name}.`,
     `Identity anchors: ${input.identityPack.continuityAnchors.join(', ')}.`,
     `Core look: ${input.identityPack.coreLookDescriptors.join(', ')}.`,
+    `Identity invariants: age band ${input.identityPack.identityInvariants.ageBand}; face ${input.identityPack.identityInvariants.faceShape}; eyes ${input.identityPack.identityInvariants.eyeShapeColor}; brows ${input.identityPack.identityInvariants.browCharacter}; nose ${input.identityPack.identityInvariants.noseProfile}; lips ${input.identityPack.identityInvariants.lipShape}; skin tone ${input.identityPack.identityInvariants.skinToneBand}; hair ${input.identityPack.identityInvariants.hairSignature}; body presentation ${input.identityPack.identityInvariants.bodyPresentation}; signature motif ${input.identityPack.identityInvariants.signatureAccessoryOrMotif}.`,
+    `Camera/composition preferences: ${input.identityPack.cameraCompositionPreferences.join(', ')}.`,
     `Framing: ${input.capture.framing}.`,
     `Background/environment: ${input.capture.environment}.`,
     `Wardrobe: ${input.capture.wardrobe}.`,
@@ -212,6 +272,7 @@ const buildImagePrompt = (input: {
     'Keep dating-app appropriate, emotionally warm, and believable.',
     'Show exactly one adult woman, no extra people, no text overlays, no logos.',
     `Avoid: ${input.identityPack.negativeConstraints.join(', ')}.`,
+    `Negative overlap cues: ${input.identityPack.negativeOverlapCues.join(', ')}.`,
   ].join(' ');
 };
 
@@ -335,10 +396,20 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     preferenceHints?: string;
   };
 }) => {
+  const allCompanions = await listVirtualGirlfriendCompanions(input.token, input.userId);
+  const siblingCompanionSignatures = allCompanions
+    .filter((companion) => companion.id !== input.companion.id)
+    .slice(0, 8)
+    .map((companion) => {
+      const tags = companion.profile_tags?.slice(0, 4).join(', ') || 'no-tags';
+      return `${companion.name}|${companion.archetype ?? 'n/a'}|${companion.visual_aesthetic ?? 'n/a'}|${tags}`;
+    });
+
   const identityPack = await buildVisualIdentityPack({
     ...input.setup,
     companionName: input.companion.name,
     persona: input.companion.persona_profile,
+    existingCompanionSignatures: siblingCompanionSignatures,
   });
 
   const promptBaseHash = sha(JSON.stringify(identityPack));
