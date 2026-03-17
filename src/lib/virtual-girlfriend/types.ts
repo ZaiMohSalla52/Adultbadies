@@ -63,21 +63,17 @@ export type VirtualGirlfriendStructuredProfile = {
 };
 
 export type VirtualGirlfriendResolvedProfile = {
+  source: 'structured_profile' | 'legacy_derived';
   name: string | null;
-  sex: string | null;
-  origin: string | null;
-  ethnicity: string | null;
-  hairColor: string | null;
-  figure: string | null;
-  age: number | null;
-  chestSize: string | null;
-  occupation: string | null;
+  archetype: string | null;
+  tone: string | null;
+  affectionStyle: string | null;
+  visualAesthetic: string | null;
+  preferenceHints: string | null;
   personality: string | null;
-  sexuality: string | null;
   freeformDetails: string | null;
   likes: string[] | null;
   habits: string[] | null;
-  source: 'structured_profile' | 'legacy_derived';
 };
 
 
