@@ -16,7 +16,6 @@ import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfri
 import { generateVirtualGirlfriendPersona, resolvePersonaSemanticInput } from '@/lib/virtual-girlfriend/persona';
 import type { VirtualGirlfriendSetupPayload, VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
 
-
 const CONFLICT_FIELD_LABELS: Record<string, string> = {
   selectedPortraitPrompt: 'portrait style',
   selectedPortraitImageKey: 'portrait choice',
@@ -24,7 +23,6 @@ const CONFLICT_FIELD_LABELS: Record<string, string> = {
   figure: 'body type',
   sex: 'sex',
   origin: 'origin',
-  ethnicity: 'ethnicity',
   ageBand: 'age',
   occupation: 'occupation',
   personality: 'personality',
@@ -35,8 +33,6 @@ const CONFLICT_FIELD_LABELS: Record<string, string> = {
   visualAesthetic: 'visual aesthetic',
   preferenceHints: 'preference hints',
   freeformDetails: 'details',
-  likes: 'likes',
-  habits: 'habits',
 };
 
 const toOptionalString = (value: unknown) => {
@@ -45,30 +41,18 @@ const toOptionalString = (value: unknown) => {
   return trimmed ? trimmed : null;
 };
 
-const toOptionalStringArray = (value: unknown) => {
-  if (!Array.isArray(value)) return null;
-  const normalized = value
-    .map((item) => (typeof item === 'string' ? item.trim() : ''))
-    .filter(Boolean);
-  return normalized.length ? normalized : null;
-};
-
-const buildStructuredProfile = (body: Record<string, unknown>, name: string): VirtualGirlfriendStructuredProfile => ({
+const normalizeSetupInput = (body: Record<string, unknown>, name: string): VirtualGirlfriendStructuredProfile => ({
   schemaVersion: 1,
   name,
   sex: toOptionalString(body.sex),
   age: typeof body.age === 'number' || typeof body.age === 'string' ? body.age : null,
   origin: toOptionalString(body.origin),
-  ethnicity: toOptionalString(body.ethnicity),
   hairColor: toOptionalString(body.hairColor),
   figure: toOptionalString(body.figure),
-  chestSize: toOptionalString(body.chestSize),
   occupation: toOptionalString(body.occupation),
   personality: toOptionalString(body.personality),
   sexuality: toOptionalString(body.sexuality),
   freeformDetails: toOptionalString(body.freeformDetails),
-  likes: toOptionalStringArray(body.likes),
-  habits: toOptionalStringArray(body.habits),
   archetype: String(body.archetype ?? '').trim(),
   tone: String(body.tone ?? '').trim(),
   affectionStyle: String(body.affectionStyle ?? '').trim(),
@@ -90,7 +74,7 @@ const generateDistinctNameSuggestion = async (input: {
 }
 
 Rules:
-- Keep it feminine and natural.
+- Keep it natural.
 - 1-2 words, max 24 chars.
 - Must be meaningfully distinct from: ${input.existingNames.join(', ') || 'none'}.
 - Avoid same surname/family variants.
@@ -118,32 +102,31 @@ export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
 
-  const body = (await request.json()) as VirtualGirlfriendSetupPayload & { companionId?: string; createNew?: boolean };
+  console.info('[virtual-girlfriend][setup] request received', { userId: auth.user.id });
 
+  const body = (await request.json()) as VirtualGirlfriendSetupPayload & { companionId?: string; createNew?: boolean };
   const baseName = String(body.name ?? '').trim();
 
   if (!baseName) {
     return NextResponse.json({ error: 'Please enter a companion name.' }, { status: 400 });
   }
 
-  if (!body.archetype || !body.tone || !body.affectionStyle || !body.visualAesthetic) {
-    return NextResponse.json({ error: 'Please complete all setup selections.' }, { status: 400 });
+  if (!body.archetype || !body.tone || !body.affectionStyle || !body.visualAesthetic || !body.selectedPortraitImage || !body.selectedPortraitPrompt) {
+    return NextResponse.json({ error: 'Please complete all setup selections before generating.' }, { status: 400 });
   }
 
-  const setupPayload: VirtualGirlfriendSetupPayload = {
-    ...body,
-    name: baseName,
-  };
-
+  const setupPayload: VirtualGirlfriendSetupPayload = { ...body, name: baseName };
   const companions = await listVirtualGirlfriends(auth.accessToken, auth.user.id);
   const maxDistinctnessAttempts = Boolean(body.createNew) ? 3 : 1;
 
   let chosenName = baseName;
+  let structuredProfile = normalizeSetupInput(body, chosenName);
 
-  let structuredProfile = buildStructuredProfile(body, chosenName);
-  const preferenceHints = structuredProfile.preferenceHints;
-  const selectedPortraitPrompt = structuredProfile.selectedPortraitPrompt;
-  const selectedPortraitImage = structuredProfile.selectedPortraitImage;
+  console.info('[virtual-girlfriend][setup] normalized input built', {
+    userId: auth.user.id,
+    name: structuredProfile.name,
+    createNew: Boolean(body.createNew),
+  });
 
   let conflict = findDistinctnessConflict({
     candidateProfile: structuredProfile,
@@ -159,13 +142,10 @@ export async function POST(request: NextRequest) {
       conflictReasons: conflict.reasons,
     });
 
-    if (!suggestion || suggestion.toLowerCase() === chosenName.toLowerCase()) {
-      break;
-    }
+    if (!suggestion || suggestion.toLowerCase() === chosenName.toLowerCase()) break;
 
     chosenName = suggestion;
-    structuredProfile = buildStructuredProfile(body, chosenName);
-
+    structuredProfile = normalizeSetupInput(body, chosenName);
     conflict = findDistinctnessConflict({
       candidateProfile: structuredProfile,
       existingCompanions: companions,
@@ -177,9 +157,15 @@ export async function POST(request: NextRequest) {
     const conflictAreas = Array.from(new Set(conflict.topFields.map((field) => field.category)));
     const topFieldLabels = conflict.topFields.map((field) => CONFLICT_FIELD_LABELS[field.field] ?? field.field);
 
+    console.info('[virtual-girlfriend][setup] distinctness conflict', {
+      userId: auth.user.id,
+      blockedByCompanionId: conflict.companionId,
+      reasons: conflict.reasons,
+    });
+
     return NextResponse.json(
       {
-        error: `Too close to ${conflict.companionName}. Try changing name, appearance, personality, or relationship vibe.`,
+        error: `Generation did not start. This profile is too close to ${conflict.companionName}. Change some traits and try again.`,
         conflict: {
           ...conflict,
           conflictAreas,
@@ -190,11 +176,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  console.info('[virtual-girlfriend][setup] accepted past distinctness', { userId: auth.user.id, name: chosenName });
+
   const personaInput = resolvePersonaSemanticInput({
     structuredProfile,
     fallback: { ...setupPayload, name: chosenName },
   });
-
   const persona = await generateVirtualGirlfriendPersona(personaInput);
 
   const companion = await upsertVirtualGirlfriend(auth.accessToken, {
@@ -204,30 +191,35 @@ export async function POST(request: NextRequest) {
     name: chosenName,
     bio: persona.shortBio,
     personaProfile: persona,
-    archetype: body.archetype,
-    tone: body.tone,
-    affectionStyle: body.affectionStyle,
-    visualAesthetic: body.visualAesthetic,
-    preferenceHints: preferenceHints ?? undefined,
+    archetype: structuredProfile.archetype,
+    tone: structuredProfile.tone,
+    affectionStyle: structuredProfile.affectionStyle,
+    visualAesthetic: structuredProfile.visualAesthetic,
+    preferenceHints: structuredProfile.preferenceHints ?? undefined,
     profileTags: persona.vibeTags,
     structuredProfile,
   });
 
+  console.info('[virtual-girlfriend][setup] companion persisted', { userId: auth.user.id, companionId: companion.id });
+
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
 
   try {
+    console.info('[virtual-girlfriend][setup] visual generation started', { userId: auth.user.id, companionId: companion.id });
+
     const generatedPack = await generateAndPersistVirtualGirlfriendImagePack({
       token: auth.accessToken,
       userId: auth.user.id,
       companion,
       setup: {
-        archetype: body.archetype,
-        tone: body.tone,
-        affectionStyle: body.affectionStyle,
-        visualAesthetic: body.visualAesthetic,
-        preferenceHints: preferenceHints ?? undefined,
-        selectedPortraitPrompt: selectedPortraitPrompt ?? undefined,
-        selectedPortraitImage: selectedPortraitImage ?? undefined,
+        archetype: structuredProfile.archetype,
+        tone: structuredProfile.tone,
+        affectionStyle: structuredProfile.affectionStyle,
+        visualAesthetic: structuredProfile.visualAesthetic,
+        preferenceHints: structuredProfile.preferenceHints ?? undefined,
+        selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt ?? undefined,
+        selectedPortraitImage: structuredProfile.selectedPortraitImage ?? undefined,
+        sex: structuredProfile.sex ?? undefined,
       },
     });
 
@@ -236,15 +228,19 @@ export async function POST(request: NextRequest) {
     }
 
     await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
+    console.info('[virtual-girlfriend][setup] provider success + persistence complete', { userId: auth.user.id, companionId: companion.id });
+
     return NextResponse.json({ ok: true, companionId: companion.id, conversationId: conversation.id, imageStatus: 'ready' });
   } catch (error) {
-    console.error('[virtual-girlfriend] setup image generation failed', error);
+    console.error('[virtual-girlfriend][setup] provider failure', error);
 
     if (error instanceof VirtualGirlfriendImagePackError && error.canonicalImageId) {
       await setCanonicalReferenceImageId(auth.accessToken, auth.user.id, companion.id, error.canonicalImageId);
     }
 
     await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'failed');
+    console.info('[virtual-girlfriend][setup] persistence complete with failed image status', { userId: auth.user.id, companionId: companion.id });
+
     return NextResponse.json({
       ok: true,
       companionId: companion.id,

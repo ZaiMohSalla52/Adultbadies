@@ -27,6 +27,7 @@ const STYLE_VERSION = 'vg-image-v3';
 const IDEOGRAM_PROVIDER = 'ideogram';
 
 type BuildIdentityInput = {
+  sex?: string;
   archetype: string;
   tone: string;
   affectionStyle: string;
@@ -44,6 +45,7 @@ const hasSemanticValue = (value: string | null | undefined) => Boolean(value && 
 const resolveVisualIdentitySemanticInput = (input: {
   companion: VirtualGirlfriendCompanionRecord;
   fallback: {
+    sex?: string;
     archetype: string;
     tone: string;
     affectionStyle: string;
@@ -65,6 +67,7 @@ const resolveVisualIdentitySemanticInput = (input: {
   ) {
     return {
       name: structuredProfile.name.trim(),
+      sex: structuredProfile.sex?.trim() || undefined,
       archetype: structuredProfile.archetype.trim(),
       tone: structuredProfile.tone.trim(),
       affectionStyle: structuredProfile.affectionStyle.trim(),
@@ -77,6 +80,7 @@ const resolveVisualIdentitySemanticInput = (input: {
 
   return {
     name: input.companion.name,
+    sex: input.fallback.sex?.trim() || undefined,
     archetype: input.fallback.archetype.trim(),
     tone: input.fallback.tone.trim(),
     affectionStyle: input.fallback.affectionStyle.trim(),
@@ -311,7 +315,6 @@ const buildStructuredAppearanceContext = (companion: VirtualGirlfriendCompanionR
     structured.sex ? `sex: ${structured.sex}` : null,
     structured.age ? `age: ${structured.age}` : null,
     structured.origin ? `origin: ${structured.origin}` : null,
-    structured.ethnicity ? `ethnicity: ${structured.ethnicity}` : null,
     structured.hairColor ? `hair: ${structured.hairColor}` : null,
     structured.figure ? `figure: ${structured.figure}` : null,
     structured.occupation ? `occupation vibe: ${structured.occupation}` : null,
@@ -323,6 +326,12 @@ const buildStructuredAppearanceContext = (companion: VirtualGirlfriendCompanionR
   return cues.length ? `Structured profile anchors: ${cues.join('; ')}.` : '';
 };
 
+const resolvePromptSubject = (sex: string | null | undefined) => {
+  const normalized = (sex ?? '').trim().toLowerCase();
+  if (normalized === 'male' || normalized === 'man') return 'man';
+  return 'woman';
+};
+
 const buildImagePrompt = (input: {
   companion: VirtualGirlfriendCompanionRecord;
   identityPack: VirtualGirlfriendVisualIdentityPack;
@@ -331,7 +340,7 @@ const buildImagePrompt = (input: {
   const structuredAppearanceContext = buildStructuredAppearanceContext(input.companion);
 
   return [
-    `Create a premium ${input.capture.label} image of the same single AI-generated woman identity named ${input.companion.name}.`,
+    `Create a premium ${input.capture.label} image of the same single AI-generated ${resolvePromptSubject(input.companion.structured_profile?.sex)} identity named ${input.companion.name}.`,
     `Identity anchors: ${input.identityPack.continuityAnchors.join(', ')}.`,
     `Core look: ${input.identityPack.coreLookDescriptors.join(', ')}.`,
     structuredAppearanceContext,
@@ -346,12 +355,12 @@ const buildImagePrompt = (input: {
     `Lighting/mood direction: ${input.identityPack.lightingMoodDirection}.`,
     `Realism target: ${input.identityPack.realismPolishLevel}; natural skin texture, true-to-life lighting, smartphone-photo authenticity.`,
     `Aesthetic context: ${input.companion.visual_aesthetic ?? 'premium romantic portrait aesthetic'}.`,
-    'This companion must remain the same woman identity across all 3 total images in this set.',
+    `This companion must remain the same ${resolvePromptSubject(input.companion.structured_profile?.sex)} identity across all 3 total images in this set.`,
     'Each slot must look like a different moment from her life, not alternate crops of the same scene.',
     'Do not repeat framing, camera angle, background, expression, or props from other slots.',
     'Must be meaningfully distinct from other variants in scene, framing, and styling while preserving the same identity.',
     'Keep dating-app appropriate, emotionally warm, and believable premium quality.',
-    'Show exactly one adult woman, no extra people, no text overlays, no logos.',
+    `Show exactly one adult ${resolvePromptSubject(input.companion.structured_profile?.sex)}, no extra people, no text overlays, no logos.`,
     'Avoid bland basics, avoid same outfit energy across slots, avoid generic mall-catalog styling.',
     `Avoid: ${input.identityPack.negativeConstraints.join(', ')}.`,
     `Negative overlap cues: ${input.identityPack.negativeOverlapCues.join(', ')}.`,
@@ -646,6 +655,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
   userId: string;
   companion: VirtualGirlfriendCompanionRecord;
   setup: {
+    sex?: string;
     archetype: string;
     tone: string;
     affectionStyle: string;
@@ -670,6 +680,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     });
 
   const identityPack = await buildVisualIdentityPack({
+    sex: semanticSetup.sex,
     archetype: semanticSetup.archetype,
     tone: semanticSetup.tone,
     affectionStyle: semanticSetup.affectionStyle,

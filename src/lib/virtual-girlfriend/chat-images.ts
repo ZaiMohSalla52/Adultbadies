@@ -27,6 +27,12 @@ const IMAGE_REQUEST_PATTERN = /\b(send|show|share|drop).{0,20}\b(selfie|photo|pi
 
 const hash = (input: string) => crypto.createHash('sha256').update(input).digest('hex');
 
+const resolvePromptSubject = (sex: string | null | undefined) => {
+  const normalized = (sex ?? '').trim().toLowerCase();
+  if (normalized === 'male' || normalized === 'man') return 'man';
+  return 'woman';
+};
+
 export const detectRequestedImageCategory = (message: string): VirtualGirlfriendImageCategory => {
   const normalized = message.toLowerCase();
   const matched = Object.entries(CATEGORY_KEYWORDS).find(([, pattern]) => pattern.test(normalized));
@@ -90,7 +96,7 @@ const buildChatImagePrompt = (input: {
   const identityPack = input.visualProfile.identity_pack;
 
   return [
-    `Generate a premium ${input.category} chat photo of the same single AI-generated woman identity named ${input.companion.name}.`,
+    `Generate a premium ${input.category} chat photo of the same single AI-generated ${resolvePromptSubject(input.companion.structured_profile?.sex)} identity named ${input.companion.name}.`,
     'Make it look like a believable dating-app or private chat photo: natural lighting, candid framing, real-world texture.',
     `Continuity anchors: ${identityPack.continuityAnchors.join(', ')}.`,
     `Core look descriptors: ${identityPack.coreLookDescriptors.join(', ')}.`,
@@ -101,7 +107,7 @@ const buildChatImagePrompt = (input: {
     `Lighting direction: ${identityPack.lightingMoodDirection}.`,
     `Realism quality: ${identityPack.realismPolishLevel}.`,
     `Aesthetic lineage: ${input.companion.visual_aesthetic ?? 'premium romantic portrait'}.`,
-    'App-safe, elegant, warm emotional tone. Adult woman only. Exactly one person.',
+    `App-safe, elegant, warm emotional tone. Adult ${resolvePromptSubject(input.companion.structured_profile?.sex)} only. Exactly one person.`,
     'Ensure this image is not a near-duplicate of previous gallery images; vary scene, angle, and outfit while preserving identity.',
     'No explicit nudity, no lingerie closeups, no transparent clothing, no suggestive sexual framing.',
     `Avoid: ${identityPack.negativeConstraints.join(', ')}.`,

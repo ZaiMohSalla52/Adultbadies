@@ -46,12 +46,12 @@ export const VirtualGirlfriendProfileView = ({
     { label: 'Age', value: cleanValue(structured?.age) },
     {
       label: 'Origin',
-      value: joinUnique([cleanValue(structured?.origin), cleanValue(structured?.ethnicity)]),
+      value: cleanValue(structured?.origin),
     },
     { label: 'Hair color', value: cleanValue(structured?.hairColor) },
     {
       label: 'Figure',
-      value: joinUnique([cleanValue(structured?.figure), cleanValue(structured?.chestSize)]),
+      value: cleanValue(structured?.figure),
     },
     { label: 'Occupation', value: cleanValue(structured?.occupation) },
     { label: 'Personality', value: cleanValue(structured?.personality) ?? companion.archetype },
