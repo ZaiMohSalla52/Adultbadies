@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { ReactNode, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -37,7 +37,7 @@ type SetupConflict = {
   conflictAreas?: string[];
 };
 
-type VisualOption = { label: string; image: string; cardClassName?: string; imageClassName?: string };
+type VisualOption = { label: string; image: string };
 type HairOption = { label: string; swatch: string; textureClassName: string };
 
 type CreatorState = {
@@ -130,12 +130,12 @@ const hairOptions: HairOption[] = [
 ];
 
 const bodyOptions: VisualOption[] = [
-  { label: 'Slim', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
-  { label: 'Petite', image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
-  { label: 'Athletic', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
-  { label: 'Curvy', image: 'https://images.unsplash.com/photo-1464863979621-258859e62245?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
-  { label: 'Chubby', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
-  { label: 'Random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80', cardClassName: 'vg-body-choice-card', imageClassName: 'vg-body-choice-image' },
+  { label: 'Slim', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Petite', image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Athletic', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Curvy', image: 'https://images.unsplash.com/photo-1464863979621-258859e62245?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Chubby', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80' },
 ];
 
 const ageOptions: VisualOption[] = [
@@ -151,31 +151,35 @@ const ageOptions: VisualOption[] = [
 const personalityOptions = ['Warm romantic', 'Playful tease', 'Confident', 'Intellectual', 'Calm sweetheart'];
 const sexualityOptions = ['Straight', 'Bisexual', 'Pansexual', 'Fluid'];
 
-const optionCard = (option: VisualOption, selected: boolean, onSelect: () => void, variantClassName = '') => (
-  <button
-    key={option.label}
-    type="button"
-    className={`vg-image-choice-card ${variantClassName} ${option.cardClassName ?? ''} ${selected ? 'is-selected' : ''}`}
-    onClick={onSelect}
-  >
-    <img src={option.image} alt={option.label} loading="lazy" className={option.imageClassName} />
-    <span>{option.label}</span>
+const optionCard = (option: VisualOption, selected: boolean, onSelect: () => void, extraClassName = '') => (
+  <button key={option.label} type="button" className={`vg-option-card ${extraClassName} ${selected ? 'is-selected' : ''}`} onClick={onSelect}>
+    <div className="vg-option-card-media">
+      <img src={option.image} alt={option.label} loading="lazy" className="vg-option-card-image" />
+    </div>
+    <span className="vg-option-card-label">{option.label}</span>
   </button>
 );
 
 const hairOptionCard = (option: HairOption, selected: boolean, onSelect: () => void) => (
-  <button
-    key={option.label}
-    type="button"
-    className={`vg-image-choice-card vg-hair-choice-card ${selected ? 'is-selected' : ''}`}
-    onClick={onSelect}
-  >
-    <div className={`vg-hair-texture ${option.textureClassName}`} aria-hidden="true" />
-    <span className="vg-hair-label-wrap">
+  <button key={option.label} type="button" className={`vg-option-card ${selected ? 'is-selected' : ''}`} onClick={onSelect}>
+    <div className="vg-option-card-media">
+      <div className={`vg-hair-texture ${option.textureClassName}`} aria-hidden="true" />
+    </div>
+    <span className="vg-option-card-label vg-hair-label-wrap">
       <span className="vg-hair-swatch" style={{ backgroundColor: option.swatch }} aria-hidden="true" />
       <span>{option.label}</span>
     </span>
   </button>
+);
+
+const StepPanel = ({ title, subtitle, children, rich = false }: { title: string; subtitle?: string; children: ReactNode; rich?: boolean }) => (
+  <section className={`vg-step-panel ${rich ? 'is-rich' : ''}`}>
+    <div className="vg-step-heading">
+      <h1 className="vg-step-title">{title}</h1>
+      {subtitle ? <p className="vg-step-support my-0">{subtitle}</p> : null}
+    </div>
+    {children}
+  </section>
 );
 
 export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: boolean }) => {
@@ -328,9 +332,23 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     { label: 'Occupation', value: state.occupation },
   ].filter((item) => item.value);
 
+  const reviewChips = [
+    state.name,
+    state.sex,
+    state.origin,
+    state.hairColor,
+    state.figure,
+    state.age,
+    state.occupation,
+    state.personality,
+    state.sexuality,
+    state.affectionStyle,
+    state.tone,
+  ].filter(Boolean);
+
   return (
     <div className="app-page-stack">
-      <Card className="vg-stage-card">
+      <Card className={`vg-stage-card ${step === 'review' ? 'is-review-step' : ''}`}>
         <div className="vg-stage-topbar">
           <Button variant="ghost" type="button" disabled={stepIndex === 0 || isSubmitting} onClick={() => setStepIndex((v) => Math.max(0, v - 1))}>
             Back
@@ -359,131 +377,104 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         ) : (
           <>
             {step === 'sex' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Choose a sex</h1>
-                <div className="vg-hero-grid">{sexOptions.map((option) => optionCard(option, state.sex === option.label, () => setField('sex', option.label), 'vg-sex-choice-card'))}</div>
-              </section>
+              <StepPanel title="Choose a sex" subtitle="Pick the companion lane you want to build.">
+                <div className="vg-option-group vg-option-group--small">{sexOptions.map((option) => optionCard(option, state.sex === option.label, () => setField('sex', option.label)))}</div>
+              </StepPanel>
             ) : null}
 
             {step === 'name' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">What is the name?</h1>
+              <StepPanel title="What is the name?" subtitle="This will be used for profile and chat identity.">
                 <Input name="name" placeholder="Enter name" maxLength={40} value={state.name} onChange={(event) => setField('name', event.target.value)} required />
-              </section>
+              </StepPanel>
             ) : null}
 
             {step === 'origin' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Choose origin</h1>
-                <div className="vg-option-grid vg-origin-grid">{originOptions.map((option) => optionCard(option, state.origin === option.label, () => setField('origin', option.label), 'vg-origin-choice-card'))}</div>
-              </section>
+              <StepPanel title="Choose origin" subtitle="Set a foundational visual direction.">
+                <div className="vg-option-group vg-option-group--medium">{originOptions.map((option) => optionCard(option, state.origin === option.label, () => setField('origin', option.label)))}</div>
+              </StepPanel>
             ) : null}
 
             {step === 'hair' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Choose hair color</h1>
-                <div className="vg-option-grid vg-hair-grid">{hairOptions.map((option) => hairOptionCard(option, state.hairColor === option.label, () => setField('hairColor', option.label)))}</div>
-              </section>
+              <StepPanel title="Choose hair color" subtitle="Keep it tight and intentional.">
+                <div className="vg-option-group vg-option-group--medium">{hairOptions.map((option) => hairOptionCard(option, state.hairColor === option.label, () => setField('hairColor', option.label)))}</div>
+              </StepPanel>
             ) : null}
 
             {step === 'body' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Choose figure</h1>
-                <div className="vg-option-grid vg-body-grid">{bodyOptions.map((option) => optionCard(option, state.figure === option.label, () => setField('figure', option.label), 'vg-body-choice-card'))}</div>
-              </section>
+              <StepPanel title="Choose figure" subtitle="Select the body silhouette.">
+                <div className="vg-option-group vg-option-group--medium">{bodyOptions.map((option) => optionCard(option, state.figure === option.label, () => setField('figure', option.label)))}</div>
+              </StepPanel>
             ) : null}
 
             {step === 'age' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Choose age</h1>
-                <div className="vg-option-grid vg-age-grid">{ageOptions.map((option) => optionCard(option, state.age === option.label, () => setField('age', option.label), 'vg-age-choice-card'))}</div>
-              </section>
+              <StepPanel title="Choose age" subtitle="Set age expression for generation.">
+                <div className="vg-option-group vg-option-group--medium">{ageOptions.map((option) => optionCard(option, state.age === option.label, () => setField('age', option.label)))}</div>
+              </StepPanel>
             ) : null}
 
             {step === 'portrait' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Pick face identity</h1>
+              <StepPanel title="Pick face identity" subtitle="Choose one portrait candidate to lock in." rich>
                 {portraitsLoading ? (
-                  <div className="vg-portrait-loading-state" role="status" aria-live="polite">
+                  <div className="vg-portrait-loading-state">
                     <div className="vg-portrait-loading-orb" aria-hidden="true" />
-                    <p className="my-0 text-sm">Generating portraits…</p>
-                    <p className="my-0 text-xs text-muted">Building face candidates from your selections</p>
+                    <p className="my-0 text-sm text-muted">Generating portrait candidates…</p>
                   </div>
                 ) : (
-                  <div className="vg-option-grid vg-portrait-grid">
+                  <div className="vg-option-group vg-option-group--portrait">
                     {portraitCandidates.map((candidate) => (
                       <button
                         key={candidate.id}
                         type="button"
-                        className={`vg-image-choice-card vg-portrait-choice-card ${state.selectedPortraitId === candidate.id ? 'is-selected' : ''}`}
+                        className={`vg-option-card vg-option-card--portrait ${state.selectedPortraitId === candidate.id ? 'is-selected' : ''}`}
                         onClick={() => {
                           setField('selectedPortraitId', candidate.id);
                           setField('selectedPortraitPrompt', candidate.prompt);
                           setField('selectedPortraitImage', candidate.imageDataUrl);
                         }}
                       >
-                        <img src={candidate.imageDataUrl} alt={candidate.label} />
-                        <span>{candidate.label}</span>
+                        <div className="vg-option-card-media">
+                          <img src={candidate.imageDataUrl} alt={candidate.label} className="vg-option-card-image" />
+                        </div>
+                        <span className="vg-option-card-label">{candidate.label}</span>
                       </button>
                     ))}
                   </div>
                 )}
-              </section>
+              </StepPanel>
             ) : null}
 
             {step === 'occupation' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Choose occupation</h1>
-                <Input
-                  className="vg-occupation-input"
-                  name="occupation"
-                  placeholder="Occupation"
-                  maxLength={80}
-                  value={state.occupation}
-                  onChange={(event) => setField('occupation', event.target.value)}
-                />
-              </section>
+              <StepPanel title="Choose occupation" subtitle="Add the role that grounds personality.">
+                <Input className="vg-occupation-input" name="occupation" placeholder="Occupation" maxLength={80} value={state.occupation} onChange={(event) => setField('occupation', event.target.value)} />
+              </StepPanel>
             ) : null}
 
             {step === 'personality' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Choose personality</h1>
+              <StepPanel title="Choose personality" subtitle="Select one dominant mode.">
                 <div className="vg-chip-grid">
                   {personalityOptions.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className={`vg-chip ${state.personality === option ? 'is-selected' : ''}`}
-                      onClick={() => setField('personality', option)}
-                    >
+                    <button key={option} type="button" className={`vg-chip ${state.personality === option ? 'is-selected' : ''}`} onClick={() => setField('personality', option)}>
                       {option}
                     </button>
                   ))}
                 </div>
-              </section>
+              </StepPanel>
             ) : null}
 
             {step === 'sexuality' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Choose sexuality</h1>
+              <StepPanel title="Choose sexuality" subtitle="Set attraction framing.">
                 <div className="vg-chip-grid">
                   {sexualityOptions.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className={`vg-chip ${state.sexuality === option ? 'is-selected' : ''}`}
-                      onClick={() => setField('sexuality', option)}
-                    >
+                    <button key={option} type="button" className={`vg-chip ${state.sexuality === option ? 'is-selected' : ''}`} onClick={() => setField('sexuality', option)}>
                       {option}
                     </button>
                   ))}
                 </div>
-              </section>
+              </StepPanel>
             ) : null}
 
             {step === 'relationshipTone' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Set relationship vibe and tone</h1>
+              <StepPanel title="Set relationship vibe and tone" subtitle="Tune emotional style and conversation energy.">
                 <div className="vg-select-stack">
                   <label>Relationship vibe</label>
                   <select value={state.affectionStyle} onChange={(event) => setField('affectionStyle', event.target.value)}>
@@ -498,68 +489,53 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                     ))}
                   </select>
                 </div>
-              </section>
+              </StepPanel>
             ) : null}
 
             {step === 'details' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Personal details</h1>
-                <Textarea
-                  name="freeformDetails"
-                  placeholder="Likes, habits, boundaries, notes..."
-                  rows={6}
-                  maxLength={400}
-                  value={state.freeformDetails}
-                  onChange={(event) => setField('freeformDetails', event.target.value)}
-                />
-              </section>
+              <StepPanel title="Personal details" subtitle="Optional preferences, habits, and boundaries.">
+                <Textarea name="freeformDetails" placeholder="Likes, habits, boundaries, notes..." rows={6} maxLength={400} value={state.freeformDetails} onChange={(event) => setField('freeformDetails', event.target.value)} />
+              </StepPanel>
             ) : null}
 
             {step === 'review' ? (
-              <section className="vg-step-panel">
-                <h1 className="vg-step-title">Review and generate</h1>
-                <img src={state.selectedPortraitImage} alt="Selected portrait" className="vg-picked-portrait" />
-                <div className="vg-review-pills">
-                  <span>{state.name}</span>
-                  <span>{state.sex}</span>
-                  <span>{state.origin}</span>
-                  <span>{state.hairColor}</span>
-                  <span>{state.figure}</span>
-                  <span>{state.age}</span>
-                  <span>{state.occupation}</span>
-                  <span>{state.personality}</span>
-                  <span>{state.sexuality}</span>
-                  <span>{state.affectionStyle}</span>
-                  <span>{state.tone}</span>
+              <StepPanel title="Review and generate" subtitle="Final check before creating your companion." rich>
+                <div className="vg-review-layout">
+                  <div className="vg-review-portrait-frame">
+                    <img src={state.selectedPortraitImage} alt="Selected portrait" className="vg-review-portrait" />
+                  </div>
+                  <div className="vg-review-content">
+                    <h2 className="my-0">{state.name || 'Your companion'}</h2>
+                    <p className="my-0 text-sm text-muted">Profile settings are locked in and ready for generation.</p>
+                    <div className="vg-review-pills">
+                      {reviewChips.map((chip) => (
+                        <span key={chip}>{chip}</span>
+                      ))}
+                    </div>
+                    <Button type="button" className="vg-review-generate-btn" onClick={submit} disabled={isSubmitting}>Generate Companion</Button>
+                  </div>
                 </div>
-              </section>
+              </StepPanel>
             ) : null}
 
             {error ? <p className="onboarding-error my-0">{error}</p> : null}
             {conflictHelp ? (
               <div className="rounded-xl border border-rose-300/50 bg-rose-500/10 p-3 text-sm text-rose-100">
                 <p className="my-0 font-semibold">Too close to {conflictHelp.companionName ?? 'an existing companion'}.</p>
-                {conflictHelp.topFieldLabels?.length ? (
-                  <p className="my-2">Most overlapping areas: {conflictHelp.topFieldLabels.slice(0, 3).join(', ')}.</p>
-                ) : null}
+                {conflictHelp.topFieldLabels?.length ? <p className="my-2">Most overlapping areas: {conflictHelp.topFieldLabels.slice(0, 3).join(', ')}.</p> : null}
                 <ul className="mb-0 mt-2 list-disc space-y-1 pl-5">
-                  {(conflictHelp.guidance?.length
-                    ? conflictHelp.guidance
-                    : ['Try changing appearance, personality, or relationship vibe.']
-                  ).map((tip) => (
+                  {(conflictHelp.guidance?.length ? conflictHelp.guidance : ['Try changing appearance, personality, or relationship vibe.']).map((tip) => (
                     <li key={tip}>{tip}</li>
                   ))}
                 </ul>
               </div>
             ) : null}
 
-            <div className="vg-step-actions">
-              {step !== 'review' ? (
+            {step !== 'review' ? (
+              <div className="vg-step-actions">
                 <Button type="button" onClick={goNext} disabled={portraitContinueDisabled}>Continue</Button>
-              ) : (
-                <Button type="button" onClick={submit} disabled={isSubmitting}>Generate Companion</Button>
-              )}
-            </div>
+              </div>
+            ) : null}
           </>
         )}
       </Card>

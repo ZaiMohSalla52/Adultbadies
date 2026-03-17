@@ -2112,104 +2112,265 @@ a {
   }
 }
 
-.vg-setup-header {
-  gap: 0.55rem;
-}
-
-.vg-setup-shell {
+.vg-stage-card {
+  width: min(100%, 820px);
+  margin: 0 auto;
   display: grid;
-  gap: 1rem;
+  gap: 24px;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: linear-gradient(180deg, rgba(12, 18, 34, 0.98), rgba(6, 10, 22, 0.98));
+  padding: 28px;
 }
 
-.vg-setup-progress {
+.vg-stage-card.is-review-step {
+  width: min(100%, 980px);
+}
+
+.vg-stage-topbar {
   display: grid;
-  gap: 0.6rem;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 48px;
 }
 
-.vg-setup-progress-copy {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.vg-setup-progress-track {
-  height: 7px;
+.vg-stage-progress-track {
+  height: 10px;
   border-radius: 999px;
-  background: rgba(148, 163, 194, 0.18);
+  background: rgba(100, 116, 139, 0.35);
   overflow: hidden;
 }
 
-.vg-setup-progress-fill {
+.vg-stage-progress-fill {
   height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(236, 72, 153, 0.92), rgba(167, 139, 250, 0.9));
-  transition: width 180ms ease;
+  background: linear-gradient(90deg, #f43f5e, #a855f7);
 }
 
-.vg-step-grid {
+.vg-step-panel {
   display: grid;
-  gap: 0.72rem;
+  gap: 24px;
+  min-height: 340px;
+  align-content: start;
 }
 
-.vg-choice-grid,
-.vg-image-choice-grid,
-.vg-swatch-grid {
+.vg-step-panel.is-rich {
+  gap: 28px;
+}
+
+.vg-step-heading {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
+  gap: 16px;
 }
 
-.vg-choice-card,
-.vg-image-choice-card,
-.vg-swatch-card {
-  border: 1px solid rgba(148, 163, 194, 0.24);
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.72);
+.vg-step-title {
+  margin: 0;
+  font-size: 1.85rem;
+  line-height: 1.2;
   color: #f8fafc;
-  font-size: 0.86rem;
-  font-weight: 600;
-  min-height: 48px;
-  padding: 0.62rem;
+}
+
+.vg-step-support {
+  color: #94a3b8;
+  max-width: 60ch;
+}
+
+.vg-option-group {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.vg-option-group--small {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.vg-option-group--medium {
+  width: min(100%, 720px);
+}
+
+.vg-option-group--portrait {
+  width: min(100%, 760px);
+}
+
+.vg-option-card {
+  width: clamp(136px, 15vw, 156px);
+  min-height: 186px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.75);
+  padding: 10px;
+  color: #f8fafc;
   text-align: left;
-  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
-.vg-image-choice-card {
-  min-height: 92px;
-  display: grid;
-  align-items: end;
-}
-
-.vg-swatch-card {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.vg-swatch-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-}
-
-.vg-icon-choice-card {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.vg-choice-card.is-selected,
-.vg-image-choice-card.is-selected,
-.vg-swatch-card.is-selected {
-  border-color: rgba(236, 72, 153, 0.88);
-  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.22);
+.vg-option-card:hover {
   transform: translateY(-1px);
+}
+
+.vg-option-card.is-selected {
+  border-color: rgba(244, 63, 94, 0.9);
+  box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.7), 0 8px 20px rgba(244, 63, 94, 0.2);
+}
+
+.vg-option-card-media {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.vg-option-card-image,
+.vg-review-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vg-option-card-label {
+  font-size: 0.88rem;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vg-option-card--portrait {
+  width: min(100%, 320px);
+  min-height: auto;
+}
+
+.vg-option-card--portrait .vg-option-card-media {
+  aspect-ratio: 4 / 5;
+}
+
+.vg-hair-texture {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  background-size: 180% 180%;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.vg-chip-grid {
+  width: min(100%, 640px);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.vg-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.55);
+  color: #e2e8f0;
+  padding: 0.45rem 0.75rem;
+}
+
+.vg-chip.is-selected {
+  border-color: rgba(244, 63, 94, 0.9);
+  box-shadow: 0 6px 16px rgba(244, 63, 94, 0.2);
+}
+
+.vg-select-stack {
+  width: min(100%, 560px);
+  display: grid;
+  gap: 10px;
+}
+
+.vg-select-stack select {
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  padding: 0.55rem;
+}
+
+.vg-portrait-loading-state {
+  min-height: 380px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+}
+
+.vg-portrait-loading-orb {
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  border: 3px solid rgba(244, 114, 182, 0.42);
+  border-top-color: rgba(253, 242, 248, 1);
+  animation: spin 900ms linear infinite;
+}
+
+.vg-occupation-input {
+  width: min(100%, 560px);
+  height: 64px;
+  border-radius: 20px;
+  font-size: 1.05rem;
+}
+
+.vg-review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+  align-items: start;
+  gap: 28px;
+  padding: 24px;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.vg-review-portrait-frame {
+  width: min(100%, 380px);
+  aspect-ratio: 4 / 5;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.vg-review-content {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.vg-review-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vg-review-pills span {
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 999px;
+  padding: 0.35rem 0.66rem;
+  color: #cbd5e1;
+  font-size: 0.76rem;
+}
+
+.vg-review-generate-btn {
+  width: min(100%, 380px);
 }
 
 .vg-step-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
 }
 
 .vg-generation-state {
@@ -2263,13 +2424,6 @@ a {
   font-weight: 600;
 }
 
-.vg-review-sheet {
-  border: 1px solid rgba(148, 163, 194, 0.2);
-  border-radius: 16px;
-  padding: 0.85rem;
-  background: rgba(15, 23, 42, 0.6);
-}
-
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -2280,296 +2434,19 @@ a {
   }
 }
 
-@media (min-width: 900px) {
-  .vg-choice-grid,
-  .vg-image-choice-grid,
-  .vg-swatch-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.vg-stage-card {
-  width: min(100%, 920px);
-  margin: 0 auto;
-  display: grid;
-  gap: 1rem;
-  border-radius: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: linear-gradient(180deg, rgba(12, 18, 34, 0.98), rgba(6, 10, 22, 0.98));
-  padding: 32px;
-}
-
-.vg-stage-topbar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 52px;
-}
-
-.vg-stage-progress-track {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(100, 116, 139, 0.35);
-  overflow: hidden;
-}
-
-.vg-stage-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #f43f5e, #a855f7);
-}
-
-.vg-step-panel {
-  display: grid;
-  gap: 1rem;
-  min-height: 340px;
-  align-content: start;
-}
-
-.vg-step-title {
-  margin: 24px 0 0;
-  font-size: 1.9rem;
-  line-height: 1.2;
-  color: #f8fafc;
-}
-
-.vg-hero-grid,
-.vg-option-grid {
-  display: grid;
-  justify-content: center;
-}
-
-.vg-hero-grid {
-  grid-template-columns: repeat(2, 220px);
-  gap: 28px;
-}
-
-.vg-option-grid {
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 20px;
-}
-
-.vg-image-choice-card {
-  display: grid;
-  gap: 0.5rem;
-  justify-items: center;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.75);
-  padding: 0.55rem;
-  color: #f8fafc;
-  text-align: center;
-}
-
-.vg-image-choice-card img,
-.vg-picked-portrait {
-  width: 100%;
-  object-fit: cover;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.vg-sex-choice-card {
-  width: 220px;
-  border-radius: 22px;
-}
-
-.vg-sex-choice-card img {
-  width: 220px;
-  height: 270px;
-  border-radius: 22px;
-}
-
-.vg-sex-choice-card span {
-  margin-top: 14px;
-}
-
-.vg-origin-grid {
-  grid-template-columns: repeat(auto-fit, 118px);
-  gap: 20px;
-}
-
-.vg-origin-choice-card {
-  width: 118px;
-  border-radius: 20px;
-}
-
-.vg-origin-choice-card img {
-  width: 118px;
-  height: 118px;
-  border-radius: 20px;
-}
-
-.vg-origin-choice-card span {
-  font-size: 0.86rem;
-}
-
-.vg-hair-grid {
-  grid-template-columns: repeat(auto-fit, 110px);
-  gap: 20px;
-}
-
-.vg-hair-choice-card {
-  width: 110px;
-  padding: 0.4rem;
-  gap: 0.6rem;
-  border-radius: 18px;
-}
-
-.vg-hair-texture {
-  width: 110px;
-  height: 110px;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background-size: 180% 180%;
-  background-position: center;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-
-.vg-body-grid {
-  grid-template-columns: repeat(auto-fit, 126px);
-  gap: 24px;
-}
-
-.vg-body-choice-card {
-  width: 126px;
-  border-radius: 20px;
-  padding: 0.35rem;
-}
-
-.vg-body-choice-image {
-  width: 126px;
-  height: 126px;
-  border-radius: 20px;
-  object-position: center 45%;
-}
-
-.vg-age-grid {
-  grid-template-columns: repeat(auto-fit, 110px);
-  gap: 20px;
-}
-
-.vg-age-choice-card {
-  width: 110px;
-  border-radius: 20px;
-}
-
-.vg-age-choice-card img {
-  width: 110px;
-  height: 110px;
-  border-radius: 20px;
-}
-
-.vg-chip-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.vg-chip {
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(30, 41, 59, 0.55);
-  color: #e2e8f0;
-  padding: 0.4rem 0.7rem;
-}
-
-.vg-chip.is-selected,
-.vg-hero-choice.is-selected,
-.vg-image-choice-card.is-selected {
-  border-color: rgba(244, 63, 94, 0.9);
-  box-shadow: 0 8px 22px rgba(244, 63, 94, 0.25);
-}
-
-.vg-select-stack {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.vg-select-stack select {
-  background: rgba(15, 23, 42, 0.75);
-  color: #f8fafc;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 10px;
-  padding: 0.55rem;
-}
-
-.vg-portrait-grid {
-  grid-template-columns: repeat(auto-fit, 280px);
-  gap: 20px;
-}
-
-.vg-portrait-choice-card {
-  width: 280px;
-  border-radius: 24px;
-}
-
-.vg-portrait-choice-card img {
-  width: 280px;
-  height: 360px;
-  border-radius: 24px;
-}
-
-.vg-portrait-loading-state {
-  min-height: 380px;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 0.65rem;
-}
-
-.vg-portrait-loading-orb {
-  width: 88px;
-  height: 88px;
-  border-radius: 999px;
-  border: 3px solid rgba(244, 114, 182, 0.42);
-  border-top-color: rgba(253, 242, 248, 1);
-  animation: spin 900ms linear infinite;
-}
-
-.vg-occupation-input {
-  margin-top: 28px;
-  width: 100%;
-  max-width: 560px;
-  height: 64px;
-  border-radius: 20px;
-  font-size: 1.05rem;
-}
-
-.vg-review-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.vg-review-pills span {
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 999px;
-  padding: 0.25rem 0.55rem;
-  color: #cbd5e1;
-  font-size: 0.78rem;
-}
-
-.vg-step-actions {
-  display: grid;
-}
-
 @media (max-width: 1023px) {
   .vg-stage-card {
     max-width: 760px;
-    padding: 24px;
+    padding: 22px;
+    gap: 22px;
   }
 
-  .vg-portrait-grid {
-    grid-template-columns: repeat(auto-fit, 240px);
+  .vg-option-group--small {
+    width: min(100%, 560px);
   }
 
-  .vg-portrait-choice-card,
-  .vg-portrait-choice-card img {
-    width: 240px;
-  }
-
-  .vg-portrait-choice-card img {
-    height: 320px;
+  .vg-review-layout {
+    gap: 22px;
   }
 }
 
@@ -2577,95 +2454,53 @@ a {
   .vg-stage-card {
     width: calc(100vw - 24px);
     max-width: none;
-    padding: 20px;
+    padding: 16px;
     border-radius: 24px;
+    gap: 16px;
   }
 
   .vg-step-title {
-    font-size: 1.55rem;
+    font-size: 1.5rem;
   }
 
-  .vg-hero-grid {
-    grid-template-columns: repeat(2, 150px);
-    gap: 18px;
+  .vg-step-panel {
+    gap: 16px;
+    min-height: auto;
   }
 
-  .vg-sex-choice-card,
-  .vg-sex-choice-card img {
-    width: 150px;
+  .vg-option-group,
+  .vg-option-group--small,
+  .vg-option-group--medium,
+  .vg-option-group--portrait {
+    width: 100%;
+    justify-content: center;
   }
 
-  .vg-sex-choice-card img {
-    height: 184px;
+  .vg-option-card {
+    width: min(100%, 156px);
   }
 
-  .vg-origin-grid {
-    grid-template-columns: repeat(auto-fit, 92px);
-  }
-
-  .vg-origin-choice-card,
-  .vg-origin-choice-card img {
-    width: 92px;
-  }
-
-  .vg-origin-choice-card img {
-    height: 92px;
-  }
-
-  .vg-hair-grid {
-    grid-template-columns: repeat(auto-fit, 84px);
-  }
-
-  .vg-hair-choice-card,
-  .vg-hair-texture {
-    width: 84px;
-  }
-
-  .vg-hair-texture {
-    height: 84px;
-  }
-
-  .vg-body-grid {
-    grid-template-columns: repeat(auto-fit, 96px);
-  }
-
-  .vg-body-choice-card,
-  .vg-body-choice-image {
-    width: 96px;
-  }
-
-  .vg-body-choice-image {
-    height: 96px;
-  }
-
-  .vg-age-grid {
-    grid-template-columns: repeat(auto-fit, 84px);
-  }
-
-  .vg-age-choice-card,
-  .vg-age-choice-card img {
-    width: 84px;
-  }
-
-  .vg-age-choice-card img {
-    height: 84px;
-  }
-
-  .vg-portrait-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .vg-portrait-choice-card,
-  .vg-portrait-choice-card img {
+  .vg-option-card--portrait {
     width: 100%;
   }
 
-  .vg-portrait-choice-card img {
-    height: min(300px, 62vw);
+  .vg-review-layout {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .vg-review-portrait-frame {
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .vg-review-generate-btn {
+    width: 100%;
   }
 
   .vg-occupation-input {
-    max-width: none;
+    width: 100%;
     height: 56px;
   }
 
