@@ -7,8 +7,8 @@ import {
   getVirtualGirlfriendCompanionImages,
   setActiveVirtualGirlfriend,
 } from '@/lib/virtual-girlfriend/data';
+import { resolveCompanionImageState } from '@/lib/virtual-girlfriend/generation-state';
 import { VirtualGirlfriendProfileView } from '@/components/virtual-girlfriend/profile-view';
-import type { VirtualGirlfriendCompanionStatus } from '@/lib/virtual-girlfriend/types';
 
 export default async function VirtualGirlfriendProfilePage({
   searchParams,
@@ -45,18 +45,7 @@ export default async function VirtualGirlfriendProfilePage({
     getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
   ]);
 
-  const explicitStatus = companion.generation_status;
-  const hasImages = images.length > 0;
-  const ageMs = Date.now() - new Date(companion.updated_at).getTime();
-  const staleWithoutImages = ageMs > 2 * 60 * 1000;
-  const fallbackStatus: VirtualGirlfriendCompanionStatus = !companion.setup_completed
-    ? 'generating'
-    : hasImages
-      ? 'ready'
-      : staleWithoutImages
-        ? 'failed'
-        : 'generating';
-  const status: VirtualGirlfriendCompanionStatus = explicitStatus ?? fallbackStatus;
+  const status = resolveCompanionImageState({ companion, images, visualProfile });
 
   return <VirtualGirlfriendProfileView companion={companion} visualProfile={visualProfile} images={images} status={status} />;
 }
