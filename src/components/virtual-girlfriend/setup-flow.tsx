@@ -18,13 +18,16 @@ type BuilderStep =
   | 'sex'
   | 'name'
   | 'origin'
+  | 'skinTone'
   | 'hair'
+  | 'hairLength'
+  | 'eyeColor'
   | 'body'
+  | 'styleVibe'
   | 'age'
   | 'portrait'
   | 'occupation'
   | 'personality'
-  | 'sexuality'
   | 'relationshipTone'
   | 'details'
   | 'review';
@@ -39,14 +42,18 @@ type SetupConflict = {
 };
 
 type VisualOption = { label: string; value: string; image: string };
-type HairOption = { label: string; swatch: string; textureClassName: string };
+type HairOption = { label: string; value: string; swatch: string; textureClassName: string };
 
 type CreatorState = {
   name: string;
   sex: string;
   origin: string;
+  skinTone: string;
   hairColor: string;
-  figure: string;
+  hairLength: string;
+  eyeColor: string;
+  bodyType: string;
+  styleVibe: string;
   age: string;
   occupation: string;
   personality: string;
@@ -64,13 +71,16 @@ const STEPS: BuilderStep[] = [
   'sex',
   'name',
   'origin',
+  'skinTone',
   'hair',
+  'hairLength',
+  'eyeColor',
   'body',
+  'styleVibe',
   'age',
   'portrait',
   'occupation',
   'personality',
-  'sexuality',
   'relationshipTone',
   'details',
   'review',
@@ -78,10 +88,14 @@ const STEPS: BuilderStep[] = [
 
 const initialState: CreatorState = {
   name: '',
-  sex: 'Female',
+  sex: 'female',
   origin: '',
+  skinTone: '',
   hairColor: '',
-  figure: '',
+  hairLength: '',
+  eyeColor: '',
+  bodyType: '',
+  styleVibe: '',
   age: '',
   occupation: '',
   personality: '',
@@ -98,12 +112,12 @@ const initialState: CreatorState = {
 const sexOptions: VisualOption[] = [
   {
     label: 'Female',
-    value: 'Female',
+    value: 'female',
     image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=80',
   },
   {
     label: 'Male',
-    value: 'Male',
+    value: 'male',
     image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=80',
   },
 ];
@@ -112,32 +126,67 @@ const originOptions: VisualOption[] = [
   { label: 'East Asian', value: 'asian', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=80' },
   { label: 'Latina', value: 'latina', image: 'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?auto=format&fit=crop&w=900&q=80' },
   { label: 'Black / African', value: 'black', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Caucasian', value: 'white', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Caucasian / White', value: 'white', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
   { label: 'Mixed', value: 'mixed', image: 'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=900&q=80' },
   { label: 'Middle Eastern', value: 'middle_eastern', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=80' },
-  { label: 'South Asian', value: 'south_asian', image: 'https://images.unsplash.com/photo-1615109398623-88346a601842?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1615109398623-88346a601842?auto=format&fit=crop&w=900&q=80' },
 ];
 
 const hairOptions: HairOption[] = [
-  { label: 'Jet black', swatch: '#101014', textureClassName: 'hair-jet-black' },
-  { label: 'Dark brown', swatch: '#3a2517', textureClassName: 'hair-dark-brown' },
-  { label: 'Light brown', swatch: '#7a5135', textureClassName: 'hair-light-brown' },
-  { label: 'Blonde', swatch: '#d7b56c', textureClassName: 'hair-blonde' },
-  { label: 'Platinum', swatch: '#dadde5', textureClassName: 'hair-platinum' },
-  { label: 'Auburn', swatch: '#8d3f23', textureClassName: 'hair-auburn' },
-  { label: 'Red', swatch: '#b7422d', textureClassName: 'hair-red' },
-  { label: 'Silver', swatch: '#a8afb9', textureClassName: 'hair-silver' },
-  { label: 'Random', swatch: '#6366f1', textureClassName: 'hair-random' },
+  { label: 'Black', value: 'black', swatch: '#101014', textureClassName: 'hair-jet-black' },
+  { label: 'Dark brown', value: 'dark brown', swatch: '#3a2517', textureClassName: 'hair-dark-brown' },
+  { label: 'Light brown', value: 'light brown', swatch: '#7a5135', textureClassName: 'hair-light-brown' },
+  { label: 'Blonde', value: 'blonde', swatch: '#d7b56c', textureClassName: 'hair-blonde' },
+  { label: 'Platinum', value: 'platinum', swatch: '#dadde5', textureClassName: 'hair-platinum' },
+  { label: 'Auburn', value: 'auburn', swatch: '#8d3f23', textureClassName: 'hair-auburn' },
+  { label: 'Red', value: 'red', swatch: '#b7422d', textureClassName: 'hair-red' },
+  { label: 'Silver', value: 'silver', swatch: '#a8afb9', textureClassName: 'hair-silver' },
+  { label: 'Random', value: 'random', swatch: '#6366f1', textureClassName: 'hair-random' },
 ];
 
 const bodyOptions: VisualOption[] = [
-  { label: 'Slim', value: 'Slim', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Petite', value: 'Petite', image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Athletic', value: 'Athletic', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Curvy', value: 'Curvy', image: 'https://images.unsplash.com/photo-1464863979621-258859e62245?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Chubby', value: 'Chubby', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Random', value: 'Random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Slim', value: 'slim', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Petite', value: 'petite', image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Athletic', value: 'athletic', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Curvy', value: 'curvy', image: 'https://images.unsplash.com/photo-1464863979621-258859e62245?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Plus size', value: 'plus size', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80' },
+];
+
+const hairLengthOptions: VisualOption[] = [
+  { label: 'Short', value: 'short', image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Medium', value: 'medium', image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Long', value: 'long', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1525134479668-1bee5c7c6845?auto=format&fit=crop&w=900&q=80' },
+];
+
+const eyeColorOptions: VisualOption[] = [
+  { label: 'Brown', value: 'brown', image: 'https://images.unsplash.com/photo-1479936343636-73cdc5aae0c3?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Blue', value: 'blue', image: 'https://images.unsplash.com/photo-1546967191-fdfb13ed6b1e?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Green', value: 'green', image: 'https://images.unsplash.com/photo-1492447166138-50c3889fccb1?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Hazel', value: 'hazel', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Dark brown', value: 'dark brown', image: 'https://images.unsplash.com/photo-1615109398623-88346a601842?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Amber', value: 'amber', image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80' },
+];
+
+const skinToneOptions: VisualOption[] = [
+  { label: 'Fair', value: 'fair', image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Light', value: 'light', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Medium', value: 'medium', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Tan', value: 'tan', image: 'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Dark', value: 'dark', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Deep', value: 'deep', image: 'https://images.unsplash.com/photo-1525134479668-1bee5c7c6845?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80' },
+];
+
+const styleVibeOptions: VisualOption[] = [
+  { label: 'Casual everyday', value: 'casual', image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Professional / Elegant', value: 'elegant', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Streetwear / Edgy', value: 'edgy', image: 'https://images.unsplash.com/photo-1464863979621-258859e62245?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Bohemian / Natural', value: 'bohemian', image: 'https://images.unsplash.com/photo-1525134479668-1bee5c7c6845?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Sporty / Active', value: 'sporty', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80' },
 ];
 
 const ageOptions: VisualOption[] = [
@@ -147,11 +196,19 @@ const ageOptions: VisualOption[] = [
   { label: '27', value: '27', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=80' },
   { label: '30', value: '30', image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=80' },
   { label: '35', value: '35', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Random', value: 'Random', image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80' },
 ];
 
-const personalityOptions = ['Warm romantic', 'Playful tease', 'Confident', 'Intellectual', 'Calm sweetheart'];
-const sexualityOptions = ['Straight', 'Bisexual', 'Pansexual', 'Fluid'];
+const personalityOptions = [
+  { label: 'Warm & romantic', value: 'warm_romantic' },
+  { label: 'Playful & teasing', value: 'playful_tease' },
+  { label: 'Confident & bold', value: 'confident_bold' },
+  { label: 'Intellectual & deep', value: 'intellectual' },
+  { label: 'Sweet & caring', value: 'sweet_caring' },
+  { label: 'Sarcastic & witty', value: 'sarcastic_witty' },
+  { label: 'Mysterious & intense', value: 'mysterious' },
+  { label: 'Bubbly & energetic', value: 'bubbly_energetic' },
+];
 
 const optionCard = (option: VisualOption, selected: boolean, onSelect: () => void, extraClassName = '') => (
   <button key={`${option.label}-${option.value}`} type="button" className={`vg-option-card ${extraClassName} ${selected ? 'is-selected' : ''}`} onClick={onSelect}>
@@ -173,6 +230,9 @@ const hairOptionCard = (option: HairOption, selected: boolean, onSelect: () => v
     </span>
   </button>
 );
+
+const getOptionLabel = (options: Array<{ value: string; label: string }>, value: string) =>
+  options.find((option) => option.value === value)?.label ?? value;
 
 const StepPanel = ({ title, subtitle, children, rich = false }: { title: string; subtitle?: string; children: ReactNode; rich?: boolean }) => (
   <section className={`vg-step-panel ${rich ? 'is-rich' : ''}`}>
@@ -206,13 +266,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const validateCurrentStep = (): string | null => {
     if (step === 'name' && !state.name.trim()) return 'Name is required.';
     if (step === 'origin' && !state.origin) return 'Choose origin.';
+    if (step === 'skinTone' && !state.skinTone) return 'Choose skin tone.';
     if (step === 'hair' && !state.hairColor) return 'Choose hair color.';
-    if (step === 'body' && !state.figure) return 'Choose body type.';
+    if (step === 'hairLength' && !state.hairLength) return 'Choose hair length.';
+    if (step === 'eyeColor' && !state.eyeColor) return 'Choose eye color.';
+    if (step === 'body' && !state.bodyType) return 'Choose body type.';
+    if (step === 'styleVibe' && !state.styleVibe) return 'Choose style vibe.';
     if (step === 'age' && !state.age) return 'Choose age.';
     if (step === 'portrait' && !state.selectedPortraitImage) return 'Pick one portrait to continue.';
     if (step === 'occupation' && !state.occupation.trim()) return 'Occupation is required.';
     if (step === 'personality' && !state.personality) return 'Choose personality.';
-    if (step === 'sexuality' && !state.sexuality) return 'Choose sexuality.';
     return null;
   };
 
@@ -231,7 +294,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           sex: state.sex,
           origin: state.origin,
           hairColor: state.hairColor,
-          figure: state.figure,
+          hairLength: state.hairLength,
+          eyeColor: state.eyeColor,
+          skinTone: state.skinTone,
+          bodyType: state.bodyType,
           age: state.age,
         }),
       });
@@ -286,10 +352,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             age: state.age,
             origin: state.origin,
             hairColor: state.hairColor,
-            figure: state.figure,
+            hairLength: state.hairLength,
+            eyeColor: state.eyeColor,
+            skinTone: state.skinTone,
+            bodyType: state.bodyType,
+            styleVibe: state.styleVibe,
             occupation: state.occupation,
             personality: state.personality,
-            sexuality: state.sexuality,
             freeformDetails: state.freeformDetails,
             preferenceHints: state.freeformDetails,
             archetype: state.archetype,
@@ -348,9 +417,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
   const generationSummary = [
     { label: 'Name', value: state.name },
-    { label: 'Origin', value: state.origin },
-    { label: 'Hair', value: state.hairColor },
-    { label: 'Body', value: state.figure },
+    { label: 'Origin', value: getOptionLabel(originOptions, state.origin) },
+    { label: 'Skin tone', value: getOptionLabel(skinToneOptions, state.skinTone) },
+    { label: 'Hair', value: getOptionLabel(hairOptions, state.hairColor) },
+    { label: 'Hair length', value: getOptionLabel(hairLengthOptions, state.hairLength) },
+    { label: 'Eyes', value: getOptionLabel(eyeColorOptions, state.eyeColor) },
+    { label: 'Body', value: getOptionLabel(bodyOptions, state.bodyType) },
+    { label: 'Style', value: getOptionLabel(styleVibeOptions, state.styleVibe) },
     { label: 'Age', value: state.age },
     { label: 'Occupation', value: state.occupation },
   ].filter((item) => item.value);
@@ -358,13 +431,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const reviewChips = [
     state.name,
     state.sex,
-    state.origin,
-    state.hairColor,
-    state.figure,
+    getOptionLabel(originOptions, state.origin),
+    getOptionLabel(skinToneOptions, state.skinTone),
+    getOptionLabel(hairOptions, state.hairColor),
+    getOptionLabel(hairLengthOptions, state.hairLength),
+    getOptionLabel(eyeColorOptions, state.eyeColor),
+    getOptionLabel(bodyOptions, state.bodyType),
+    getOptionLabel(styleVibeOptions, state.styleVibe),
     state.age,
     state.occupation,
     state.personality,
-    state.sexuality,
     state.affectionStyle,
     state.tone,
   ].filter(Boolean);
@@ -401,7 +477,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           <>
             {step === 'sex' ? (
               <StepPanel title="Choose a sex" subtitle="Pick the companion lane you want to build.">
-                <div className="vg-option-group vg-option-group--small">{sexOptions.map((option) => optionCard(option, state.sex === option.label, () => setField('sex', option.label)))}</div>
+                <div className="vg-option-group vg-option-group--small">{sexOptions.map((option) => optionCard(option, state.sex === option.value, () => setField('sex', option.value)))}</div>
               </StepPanel>
             ) : null}
 
@@ -417,21 +493,45 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
               </StepPanel>
             ) : null}
 
+            {step === 'skinTone' ? (
+              <StepPanel title="Choose skin tone" subtitle="Set complexion direction for visuals.">
+                <div className="vg-option-group vg-option-group--medium">{skinToneOptions.map((option) => optionCard(option, state.skinTone === option.value, () => setField('skinTone', option.value)))}</div>
+              </StepPanel>
+            ) : null}
+
             {step === 'hair' ? (
               <StepPanel title="Choose hair color" subtitle="Keep it tight and intentional.">
-                <div className="vg-option-group vg-option-group--medium">{hairOptions.map((option) => hairOptionCard(option, state.hairColor === option.label, () => setField('hairColor', option.label)))}</div>
+                <div className="vg-option-group vg-option-group--medium">{hairOptions.map((option) => hairOptionCard(option, state.hairColor === option.value, () => setField('hairColor', option.value)))}</div>
+              </StepPanel>
+            ) : null}
+
+            {step === 'hairLength' ? (
+              <StepPanel title="Choose hair length" subtitle="Pick the overall hair length.">
+                <div className="vg-option-group vg-option-group--medium">{hairLengthOptions.map((option) => optionCard(option, state.hairLength === option.value, () => setField('hairLength', option.value)))}</div>
+              </StepPanel>
+            ) : null}
+
+            {step === 'eyeColor' ? (
+              <StepPanel title="Choose eye color" subtitle="Select the primary eye color.">
+                <div className="vg-option-group vg-option-group--medium">{eyeColorOptions.map((option) => optionCard(option, state.eyeColor === option.value, () => setField('eyeColor', option.value)))}</div>
               </StepPanel>
             ) : null}
 
             {step === 'body' ? (
-              <StepPanel title="Choose figure" subtitle="Select the body silhouette.">
-                <div className="vg-option-group vg-option-group--medium">{bodyOptions.map((option) => optionCard(option, state.figure === option.label, () => setField('figure', option.label)))}</div>
+              <StepPanel title="Choose body type" subtitle="Select the body silhouette.">
+                <div className="vg-option-group vg-option-group--medium">{bodyOptions.map((option) => optionCard(option, state.bodyType === option.value, () => setField('bodyType', option.value)))}</div>
+              </StepPanel>
+            ) : null}
+
+            {step === 'styleVibe' ? (
+              <StepPanel title="Choose style / vibe" subtitle="Define wardrobe and fashion direction.">
+                <div className="vg-option-group vg-option-group--medium">{styleVibeOptions.map((option) => optionCard(option, state.styleVibe === option.value, () => setField('styleVibe', option.value)))}</div>
               </StepPanel>
             ) : null}
 
             {step === 'age' ? (
               <StepPanel title="Choose age" subtitle="Set age expression for generation.">
-                <div className="vg-option-group vg-option-group--medium">{ageOptions.map((option) => optionCard(option, state.age === option.label, () => setField('age', option.label)))}</div>
+                <div className="vg-option-group vg-option-group--medium">{ageOptions.map((option) => optionCard(option, state.age === option.value, () => setField('age', option.value)))}</div>
               </StepPanel>
             ) : null}
 
@@ -475,20 +575,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
               <StepPanel title="Choose personality" subtitle="Select one dominant mode.">
                 <div className="vg-chip-grid">
                   {personalityOptions.map((option) => (
-                    <button key={option} type="button" className={`vg-chip ${state.personality === option ? 'is-selected' : ''}`} onClick={() => setField('personality', option)}>
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              </StepPanel>
-            ) : null}
-
-            {step === 'sexuality' ? (
-              <StepPanel title="Choose sexuality" subtitle="Set attraction framing.">
-                <div className="vg-chip-grid">
-                  {sexualityOptions.map((option) => (
-                    <button key={option} type="button" className={`vg-chip ${state.sexuality === option ? 'is-selected' : ''}`} onClick={() => setField('sexuality', option)}>
-                      {option}
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`vg-chip ${state.personality === option.value ? 'is-selected' : ''}`}
+                      onClick={() => setField('personality', option.value)}
+                    >
+                      {option.label}
                     </button>
                   ))}
                 </div>
