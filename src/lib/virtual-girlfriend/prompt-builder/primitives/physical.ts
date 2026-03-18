@@ -6,7 +6,15 @@ export const resolveOrigin = (origin: string): string => {
   if (normalized === 'white') return 'Caucasian features';
   if (normalized === 'mixed') return 'mixed ethnicity features';
   if (normalized === 'middle_eastern') return 'Middle Eastern features';
-  return origin;
+  if (normalized === 'south_asian' || normalized === 'south asian') return 'South Asian features';
+
+  if (normalized === 'africa' || normalized === 'african') return 'Black features';
+  if (normalized === 'caucasian') return 'Caucasian features';
+  if (normalized === 'indian' || normalized === 'south asian') return 'South Asian features';
+  if (normalized === 'arab') return 'Middle Eastern features';
+
+  console.warn('[prompt-builder][physical] Unknown origin input, defaulting to Caucasian features.', { origin });
+  return 'Caucasian features';
 };
 
 export const resolveBodyType = (bodyType: string): string => {
@@ -27,10 +35,12 @@ export const resolvePhysicalTraitLine = (traits: {
   eyeColor: string;
   bodyType: string;
   age: number;
+  skinTone?: string;
 }): string => {
   const originDescriptor = resolveOrigin(traits.origin);
   const hairDescriptor = resolveHairDescriptor(traits.hairColor, traits.hairLength);
   const bodyTypeDescriptor = resolveBodyType(traits.bodyType);
+  const skinToneDescriptor = traits.skinTone ? `${traits.skinTone} skin tone, ` : '';
 
-  return `${originDescriptor}, ${hairDescriptor}, ${traits.eyeColor} eyes, ${bodyTypeDescriptor}, approximately ${traits.age} years old`;
+  return `${originDescriptor}, ${hairDescriptor}, ${traits.eyeColor} eyes, ${skinToneDescriptor}${bodyTypeDescriptor}, approximately ${traits.age} years old`;
 };

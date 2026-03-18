@@ -12,7 +12,7 @@
 
 export type Sex = 'male' | 'female';
 
-export type Origin = 'asian' | 'latina' | 'black' | 'white' | 'mixed' | 'middle_eastern';
+export type Origin = 'asian' | 'latina' | 'black' | 'white' | 'mixed' | 'middle_eastern' | 'south_asian';
 
 export type HairLength = 'short' | 'medium' | 'long';
 
@@ -48,6 +48,7 @@ const VALID_ORIGINS: ReadonlySet<Origin> = new Set([
   'white',
   'mixed',
   'middle_eastern',
+  'south_asian',
 ]);
 const VALID_BODY_TYPES: ReadonlySet<BodyType> = new Set(['slim', 'athletic', 'curvy', 'petite']);
 const VALID_HAIR_LENGTHS: ReadonlySet<HairLength> = new Set(['short', 'medium', 'long']);

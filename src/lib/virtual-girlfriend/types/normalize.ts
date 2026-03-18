@@ -46,7 +46,7 @@ const normalizeOrigin = (origin: string | undefined): Origin => {
   if (!normalized) return 'white';
   if (!isValidOrigin(normalized)) {
     throw new Error(
-      `Invalid origin "${origin ?? ''}". Expected one of: asian, latina, black, white, mixed, middle_eastern.`
+      `Invalid origin "${origin ?? ''}". Expected one of: asian, latina, black, white, mixed, middle_eastern, south_asian.`
     );
   }
   return normalized;

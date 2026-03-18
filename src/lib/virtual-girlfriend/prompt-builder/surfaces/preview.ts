@@ -22,6 +22,7 @@ export interface PreviewPromptInput {
   hairLength: string;
   eyeColor: string;
   bodyType: string;
+  skinTone?: string;
 }
 
 export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: number): string =>

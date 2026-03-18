@@ -38,7 +38,7 @@ type SetupConflict = {
   conflictAreas?: string[];
 };
 
-type VisualOption = { label: string; image: string };
+type VisualOption = { label: string; value: string; image: string };
 type HairOption = { label: string; swatch: string; textureClassName: string };
 
 type CreatorState = {
@@ -98,22 +98,25 @@ const initialState: CreatorState = {
 const sexOptions: VisualOption[] = [
   {
     label: 'Female',
+    value: 'Female',
     image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=80',
   },
   {
     label: 'Male',
+    value: 'Male',
     image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=80',
   },
 ];
 
 const originOptions: VisualOption[] = [
-  { label: 'Africa', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Caucasian', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Indian', image: 'https://images.unsplash.com/photo-1615109398623-88346a601842?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Latina', image: 'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Asian', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Arab', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Random', image: 'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=900&q=80' },
+  { label: 'East Asian', value: 'asian', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Latina', value: 'latina', image: 'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Black / African', value: 'black', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Caucasian', value: 'white', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Mixed', value: 'mixed', image: 'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Middle Eastern', value: 'middle_eastern', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=80' },
+  { label: 'South Asian', value: 'south_asian', image: 'https://images.unsplash.com/photo-1615109398623-88346a601842?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=900&q=80' },
 ];
 
 const hairOptions: HairOption[] = [
@@ -129,29 +132,29 @@ const hairOptions: HairOption[] = [
 ];
 
 const bodyOptions: VisualOption[] = [
-  { label: 'Slim', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Petite', image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Athletic', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Curvy', image: 'https://images.unsplash.com/photo-1464863979621-258859e62245?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Chubby', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Slim', value: 'Slim', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Petite', value: 'Petite', image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Athletic', value: 'Athletic', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Curvy', value: 'Curvy', image: 'https://images.unsplash.com/photo-1464863979621-258859e62245?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Chubby', value: 'Chubby', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'Random', image: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80' },
 ];
 
 const ageOptions: VisualOption[] = [
-  { label: '18', image: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=900&q=80' },
-  { label: '21', image: 'https://images.unsplash.com/photo-1525134479668-1bee5c7c6845?auto=format&fit=crop&w=900&q=80' },
-  { label: '24', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
-  { label: '27', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=80' },
-  { label: '30', image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=80' },
-  { label: '35', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' },
-  { label: 'Random', image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80' },
+  { label: '18', value: '18', image: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=900&q=80' },
+  { label: '21', value: '21', image: 'https://images.unsplash.com/photo-1525134479668-1bee5c7c6845?auto=format&fit=crop&w=900&q=80' },
+  { label: '24', value: '24', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
+  { label: '27', value: '27', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=80' },
+  { label: '30', value: '30', image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=80' },
+  { label: '35', value: '35', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80' },
+  { label: 'Random', value: 'Random', image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=80' },
 ];
 
 const personalityOptions = ['Warm romantic', 'Playful tease', 'Confident', 'Intellectual', 'Calm sweetheart'];
 const sexualityOptions = ['Straight', 'Bisexual', 'Pansexual', 'Fluid'];
 
 const optionCard = (option: VisualOption, selected: boolean, onSelect: () => void, extraClassName = '') => (
-  <button key={option.label} type="button" className={`vg-option-card ${extraClassName} ${selected ? 'is-selected' : ''}`} onClick={onSelect}>
+  <button key={`${option.label}-${option.value}`} type="button" className={`vg-option-card ${extraClassName} ${selected ? 'is-selected' : ''}`} onClick={onSelect}>
     <div className="vg-option-card-media">
       <img src={option.image} alt={option.label} loading="lazy" className="vg-option-card-image" />
     </div>
@@ -410,7 +413,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'origin' ? (
               <StepPanel title="Choose origin" subtitle="Set a foundational visual direction.">
-                <div className="vg-option-group vg-option-group--medium">{originOptions.map((option) => optionCard(option, state.origin === option.label, () => setField('origin', option.label)))}</div>
+                <div className="vg-option-group vg-option-group--medium">{originOptions.map((option) => optionCard(option, state.origin === option.value, () => setField('origin', option.value)))}</div>
               </StepPanel>
             ) : null}
 
