@@ -211,7 +211,7 @@ const personalityOptions = [
 ];
 
 const optionCard = (option: VisualOption, selected: boolean, onSelect: () => void, extraClassName = '') => (
-  <button key={option.label} type="button" className={`vg-option-card ${extraClassName} ${selected ? 'is-selected' : ''}`} onClick={onSelect}>
+  <button key={`${option.label}-${option.value}`} type="button" className={`vg-option-card ${extraClassName} ${selected ? 'is-selected' : ''}`} onClick={onSelect}>
     <div className="vg-option-card-media">
       <img src={option.image} alt={option.label} loading="lazy" className="vg-option-card-image" />
     </div>

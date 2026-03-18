@@ -6,6 +6,8 @@ import {
   generateGalleryImageFromReferenceWithIdeogram,
   type IdeogramGeneratedImage,
 } from '@/lib/virtual-girlfriend/image-ideogram';
+import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
+import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
 import { uploadToR2 } from '@/lib/storage/r2';
 import {
@@ -13,6 +15,7 @@ import {
   insertCompanionImages,
   setCanonicalReferenceImageForVisualProfile,
 } from '@/lib/virtual-girlfriend/data';
+import type { PreviewTraits } from '@/lib/virtual-girlfriend/types/traits';
 import type {
   VirtualGirlfriendChatImageOutcome,
   VirtualGirlfriendCompanionImageRecord,
@@ -175,15 +178,10 @@ export type VirtualGirlfriendChatMachineRequest = {
 
 export type VirtualGirlfriendPortraitPreviewRequest = {
   kind: 'portrait_preview';
-  sex?: string;
-  origin?: string;
-  hairColor?: string;
-  hairLength?: string;
-  eyeColor?: string;
-  figure?: string;
-  age?: string;
   count?: number;
-};
+} & PreviewTraits & {
+    skinTone?: string;
+  };
 
 export type VirtualGirlfriendSetupMachineResult = {
   kind: 'setup_pack';
@@ -211,6 +209,7 @@ export type VirtualGirlfriendPortraitPreviewCandidate = {
   id: string;
   label: string;
   prompt: string;
+  promptVersion: typeof PROMPT_VERSION.preview;
   imageDataUrl: string;
 };
 
@@ -323,46 +322,6 @@ const buildChatPrompt = (input: {
     `Wardrobe direction: ${identityPack.wardrobeDirection}. Lighting direction: ${identityPack.lightingMoodDirection}.`,
     'Ensure this image is not a near-duplicate of previous images; vary scene, angle, and outfit while preserving identity.',
     `Avoid: ${identityPack.negativeConstraints.join(', ')}.`,
-  ].join(' ');
-};
-
-const buildPortraitPreviewPrompt = (input: {
-  sex?: string;
-  origin?: string;
-  hairColor?: string;
-  hairLength?: string;
-  eyeColor?: string;
-  figure?: string;
-  age?: string;
-  variant: number;
-}) => {
-  /*
-   * PREVIEW SURFACE — intentionally strict and composition-conservative.
-   * Rules:
-   * - No UI/mockup/editorial/presentation/device language in prompt
-   * - No contradictory subject constraints (never mix variable sex
-   *   with hardcoded gender)
-   * - Positive composition anchor must come first
-   * - Hard negatives must come last
-   * - style_type must be REALISTIC, never AUTO
-   * - Variation comes from expression only, not scene or layout
-   */
-  const normalizedSex = (input.sex ?? '').trim().toLowerCase();
-  const subject = normalizedSex === 'male' ? 'exactly one adult man' : 'exactly one adult woman';
-  const expressionByVariant = [
-    'Neutral relaxed expression.',
-    'Soft natural smile.',
-    'Calm confident expression.',
-    'Gentle thoughtful expression.',
-  ] as const;
-  const expression = expressionByVariant[input.variant % expressionByVariant.length];
-
-  return [
-    `Single centered close-up portrait photograph of ${subject}. One face filling most of the frame. Head and shoulders framing only. Subject occupies the full frame. Plain solid uncluttered background.`,
-    `${input.hairColor ?? 'natural'} ${input.hairLength ?? 'medium length'} hair, ${input.eyeColor ?? 'brown'} eyes, ${input.origin ?? 'mixed origin'}, ${input.figure ?? 'balanced body type'}, approximately ${input.age ?? '24'} years old.`,
-    'Straightforward realistic portrait photography. Natural lighting. Clear facial visibility. Sharp focus on face.',
-    expression,
-    'No second person. No duplicate person. No twin. No mirrored subject. No repeated face. No side-by-side subject. No collage. No diptych. No triptych. No split screen. No grid. No carousel. No editorial layout. No phone frame. No mobile app UI. No camera interface. No extra background faces. No text overlay. No watermark. No logo. No nudity.',
   ].join(' ');
 };
 
@@ -937,7 +896,7 @@ export const runPortraitPreviewImageMachine = async (
   const count = Math.min(Math.max(input.count ?? 4, 1), 8);
   const settled = await Promise.allSettled(
     Array.from({ length: count }).map(async (_, index) => {
-      const prompt = buildPortraitPreviewPrompt({ ...input, variant: index });
+      const prompt = buildPreviewPrompt(input, index);
       const generated = await withRetries({
         attempts: MACHINE_RETRY_ATTEMPTS.providerRequest,
         scope: 'portrait_preview',
@@ -952,18 +911,15 @@ export const runPortraitPreviewImageMachine = async (
         id: `candidate-${index + 1}`,
         label: `Candidate ${index + 1}`,
         prompt,
+        promptVersion: PROMPT_VERSION.preview,
         imageDataUrl: toDataUrl(generated.bytes, generated.mimeType),
       } satisfies VirtualGirlfriendPortraitPreviewCandidate;
     }),
   );
 
   const candidates = settled
-    .map((result) => ({ result }))
-    .filter(
-      (entry): entry is { result: PromiseFulfilledResult<VirtualGirlfriendPortraitPreviewCandidate> } =>
-        entry.result.status === 'fulfilled',
-    )
-    .map(({ result }, successIndex) => ({
+    .filter((result): result is PromiseFulfilledResult<VirtualGirlfriendPortraitPreviewCandidate> => result.status === 'fulfilled')
+    .map((result, successIndex) => ({
       ...result.value,
       id: `candidate-${successIndex + 1}`,
       label: `Candidate ${successIndex + 1}`,

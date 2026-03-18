@@ -1,4 +1,5 @@
 import { env } from '@/lib/env';
+import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 
 export type IdeogramGeneratedImage = {
   bytes: Buffer;
@@ -107,16 +108,18 @@ export const generateCanonicalImageWithIdeogram = async (prompt: string): Promis
 };
 
 export const generatePortraitPreviewImageWithIdeogram = async (prompt: string): Promise<IdeogramGeneratedImage> => {
+  const previewParams = SURFACE_PARAMS.preview;
+
   const response = await fetchIdeogram(
     IDEOGRAM_GENERATE_ENDPOINT,
     {
       prompt,
-      aspect_ratio: '3x4',
+      aspect_ratio: previewParams.aspect_ratio,
       model: IDEOGRAM_MODEL,
-      num_images: 1,
-      magic_prompt_option: 'OFF',
-      style_type: 'REALISTIC',
-      rendering_speed: 'DEFAULT',
+      num_images: previewParams.num_images,
+      magic_prompt_option: previewParams.magic_prompt_option,
+      style_type: previewParams.style_type,
+      rendering_speed: previewParams.rendering_speed,
     },
     'Ideogram portrait preview generation failed',
   );
