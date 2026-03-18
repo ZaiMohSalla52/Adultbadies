@@ -57,7 +57,6 @@ type CreatorState = {
   age: string;
   occupation: string;
   personality: string;
-  sexuality: string;
   archetype: string;
   tone: string;
   affectionStyle: string;
@@ -99,7 +98,6 @@ const initialState: CreatorState = {
   age: '',
   occupation: '',
   personality: '',
-  sexuality: '',
   archetype: VIRTUAL_GIRLFRIEND_ARCHETYPES[0],
   tone: VIRTUAL_GIRLFRIEND_TONES[0],
   affectionStyle: VIRTUAL_GIRLFRIEND_AFFECTION_STYLES[0],
@@ -129,6 +127,7 @@ const originOptions: VisualOption[] = [
   { label: 'Caucasian / White', value: 'white', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80' },
   { label: 'Mixed', value: 'mixed', image: 'https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=900&q=80' },
   { label: 'Middle Eastern', value: 'middle_eastern', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=80' },
+  { label: 'South Asian', value: 'south_asian', image: 'https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&w=900&q=80' },
   { label: 'Random', value: 'random', image: 'https://images.unsplash.com/photo-1615109398623-88346a601842?auto=format&fit=crop&w=900&q=80' },
 ];
 
