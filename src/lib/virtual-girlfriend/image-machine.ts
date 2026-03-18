@@ -231,12 +231,38 @@ const buildStructuredAppearanceContext = (companion: VirtualGirlfriendCompanionR
   const structured = companion.structured_profile;
   if (!structured) return '';
 
+  const normalizedStyleVibe = structured.styleVibe?.trim().toLowerCase();
+  const styleVibeDescriptor = (() => {
+    if (!normalizedStyleVibe || normalizedStyleVibe === 'unknown') return null;
+    if (normalizedStyleVibe === 'casual') return 'casual everyday style';
+    if (normalizedStyleVibe === 'elegant') return 'elegant polished style';
+    if (normalizedStyleVibe === 'edgy') return 'edgy streetwear style';
+    if (normalizedStyleVibe === 'bohemian') return 'relaxed bohemian style';
+    if (normalizedStyleVibe === 'sporty') return 'athletic sporty style';
+    if (normalizedStyleVibe === 'professional') return 'professional composed style';
+    return structured.styleVibe?.trim() ?? null;
+  })();
+
+  const hairDescriptor = (() => {
+    const hairColor = structured.hairColor?.trim();
+    const hairLength = structured.hairLength?.trim();
+    if (hairColor && hairLength) return `${hairColor} ${hairLength} hair`;
+    if (hairColor) return `${hairColor} hair`;
+    if (hairLength) return `${hairLength} hair`;
+    return null;
+  })();
+
+  const bodyDescriptor = structured.bodyType?.trim() || structured.figure?.trim() || null;
+
   const cues = [
     structured.sex ? `sex: ${structured.sex}` : null,
     structured.age ? `age: ${structured.age}` : null,
     structured.origin ? `origin: ${structured.origin}` : null,
-    structured.hairColor ? `hair: ${structured.hairColor}` : null,
-    structured.figure ? `figure: ${structured.figure}` : null,
+    hairDescriptor ? `hair: ${hairDescriptor}` : null,
+    structured.eyeColor ? `eyes: ${structured.eyeColor.trim()} eyes` : null,
+    structured.skinTone ? `complexion: ${structured.skinTone.trim()} skin tone` : null,
+    bodyDescriptor ? `figure: ${bodyDescriptor}` : null,
+    styleVibeDescriptor ? `style vibe: ${styleVibeDescriptor}` : null,
     structured.occupation ? `occupation vibe: ${structured.occupation}` : null,
     structured.personality ? `personality styling signal: ${structured.personality}` : null,
     structured.visualAesthetic ? `visual aesthetic: ${structured.visualAesthetic}` : null,

@@ -67,6 +67,10 @@ export type VirtualGirlfriendStructuredProfile = {
   age?: string | number | null;
   origin?: string | null;
   hairColor?: string | null;
+  hairLength?: string | null;
+  eyeColor?: string | null;
+  skinTone?: string | null;
+  styleVibe?: string | null;
   figure?: string | null;
   bodyType?: string | null;
   occupation?: string | null;
@@ -416,7 +420,12 @@ export type VirtualGirlfriendSetupPayload = {
   age?: string | number;
   origin?: string;
   hairColor?: string;
+  hairLength?: string;
+  eyeColor?: string;
+  skinTone?: string;
+  styleVibe?: string;
   figure?: string;
+  bodyType?: string;
   occupation?: string;
   personality?: string;
   sexuality?: string;
