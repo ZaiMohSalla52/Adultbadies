@@ -132,6 +132,48 @@ export const generatePortraitPreviewImageWithIdeogram = async (prompt: string, s
   return extractGeneratedImage(response, IDEOGRAM_GENERATE_ENDPOINT);
 };
 
+export const generatePreviewWithCharacterReference = async (
+  prompt: string,
+  referenceImageBytes: Buffer,
+  referenceMimeType: string,
+  seed?: number,
+): Promise<IdeogramGeneratedImage> => {
+  const previewParams = SURFACE_PARAMS.preview;
+  const formData = new FormData();
+
+  formData.append('prompt', prompt);
+  formData.append('model', IDEOGRAM_MODEL);
+  formData.append('num_images', String(previewParams.num_images));
+  formData.append('aspect_ratio', String(previewParams.aspect_ratio));
+  formData.append('magic_prompt_option', String(previewParams.magic_prompt_option));
+  formData.append('style_type', String(previewParams.style_type));
+  formData.append('rendering_speed', String(previewParams.rendering_speed));
+  formData.append('negative_prompt', buildPreviewNegativePrompt());
+
+  if (seed !== undefined) {
+    formData.append('seed', String(seed));
+  }
+
+  const imageBlob = new Blob([new Uint8Array(referenceImageBytes)], {
+    type: referenceMimeType || 'image/png',
+  });
+  formData.append('character_reference_images', imageBlob, 'reference.png');
+
+  const response = await fetch(`${IDEOGRAM_BASE_URL}${IDEOGRAM_GENERATE_ENDPOINT}`, {
+    method: 'POST',
+    headers: {
+      'Api-Key': assertApiKey(),
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ideogram character reference generation failed (${response.status}): ${await response.text()}`);
+  }
+
+  return extractGeneratedImage(response, IDEOGRAM_GENERATE_ENDPOINT);
+};
+
 const generateReferenceImageWithIdeogram = async (input: {
   prompt: string;
   referenceImageBytes: Buffer;
