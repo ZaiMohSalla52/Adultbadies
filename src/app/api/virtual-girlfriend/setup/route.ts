@@ -58,6 +58,7 @@ const normalizeSetupInput = (body: Record<string, unknown>, name: string): Virtu
   styleVibe: toOptionalString(body.styleVibe),
   figure: toOptionalString(body.bodyType ?? body.figure),
   bodyType: toOptionalString(body.bodyType ?? body.figure),
+  breastSize: toOptionalString(body.breastSize),
   occupation: toOptionalString(body.occupation),
   personality: toOptionalString(body.personality),
   sexuality: toOptionalString(body.sexuality),

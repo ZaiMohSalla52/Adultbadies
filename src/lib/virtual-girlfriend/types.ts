@@ -73,6 +73,7 @@ export type VirtualGirlfriendStructuredProfile = {
   styleVibe?: string | null;
   figure?: string | null;
   bodyType?: string | null;
+  breastSize?: string | null;
   occupation?: string | null;
   personality?: string | null;
   sexuality?: string | null;
@@ -426,6 +427,7 @@ export type VirtualGirlfriendSetupPayload = {
   styleVibe?: string;
   figure?: string;
   bodyType?: string;
+  breastSize?: string;
   occupation?: string;
   personality?: string;
   sexuality?: string;
