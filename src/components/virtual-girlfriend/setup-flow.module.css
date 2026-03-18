@@ -1,29 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
 .creatorContainer {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  width: min(920px, 100%);
+  width: min(600px, 100%);
   margin: 0 auto;
-  padding: 28px;
-  background: linear-gradient(180deg, #0a0a0a 0%, #141414 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 24px;
+  background: #070b14;
   border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: #f5f5f5;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.48);
+  font-family: Inter, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+}
+
+.topNav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.iconButton {
+  border: 0;
+  background: transparent;
+  color: #999;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.iconButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .progressBar {
   height: 3px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   overflow: hidden;
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, #e8467c 0%, #ff7f95 100%);
-  transition: width 300ms ease;
+  background: linear-gradient(90deg, #ff2e63, #c084fc);
+  transition: width 280ms ease;
 }
 
 .stepTransition {
@@ -35,38 +53,35 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.generatingState {
+.generatingState,
+.loadingState {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 60px 20px;
+  gap: 14px;
   text-align: center;
+  padding: 36px 10px;
 }
 
-.generatingOrb {
-  width: 48px;
-  height: 48px;
+.generatingOrb,
+.loadingOrb {
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #e8467c, #ff7f95);
-  animation: orbPulse 1.4s ease-in-out infinite;
+  background: radial-gradient(circle at 35% 35%, #ff80a0, #ff2e63);
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
-@keyframes orbPulse {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.15); opacity: 1; }
+@keyframes pulse {
+  0%,
+  100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.14); opacity: 1; }
 }
 
-.generatingTitle {
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.generatingSubtext {
+.generatingSubtext,
+.loadingSubtext {
   color: #999;
   margin: 0;
-  font-size: 0.95rem;
 }
 
 .stepContent {
@@ -76,72 +91,54 @@
 }
 
 .stepTitle {
-  font-size: clamp(1.6rem, 3vw, 2rem);
-  line-height: 1.15;
-  font-weight: 700;
   margin: 0;
-}
-
-.fieldGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.fieldLabel {
-  color: #b3b3b3;
-  font-size: 0.9rem;
-  letter-spacing: 0.02em;
-}
-
-.optionGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  color: #f5f5f5;
 }
 
 .genderGrid {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.optionCard {
-  background: linear-gradient(170deg, #1d1d1d 0%, #161616 100%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+.photoOptionCard,
+.photoSquareCard,
+.textOptionCard,
+.traitPresetChip {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
   color: #f5f5f5;
-  border-radius: 14px;
-  padding: 14px;
-  min-height: 56px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  text-align: center;
-  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  cursor: pointer;
+  transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.optionCard:hover {
-  transform: scale(1.02) translateY(-1px);
-  border-color: rgba(232, 70, 124, 0.6);
-  box-shadow: 0 8px 22px rgba(232, 70, 124, 0.14);
+.photoOptionCard:hover,
+.photoSquareCard:hover,
+.textOptionCard:hover,
+.traitPresetChip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.02);
 }
 
 .optionCardSelected {
-  border-color: #e8467c;
-  box-shadow: 0 0 0 1px rgba(232, 70, 124, 0.75), 0 0 22px rgba(232, 70, 124, 0.35);
-  transform: translateY(-1px);
+  border-color: #ff2e63;
+  box-shadow: 0 0 0 1px rgba(255, 46, 99, 0.8), 0 0 20px rgba(255, 46, 99, 0.35);
 }
 
-.sexCard {
+.genderCard {
+  height: 280px;
+  width: 100%;
   position: relative;
-  min-height: 280px;
-  padding: 0;
   overflow: hidden;
-  justify-content: flex-end;
+  padding: 0;
 }
 
-.sexImage {
+.photoImage,
+.squareImage {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -149,131 +146,209 @@
   object-fit: cover;
 }
 
-.sexOverlay {
+.photoOverlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+  background: linear-gradient(180deg, transparent 48%, rgba(0, 0, 0, 0.8) 100%);
 }
 
-.sexLabel {
-  position: relative;
-  z-index: 1;
-  font-size: 1.05rem;
+.photoLabel {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
   font-weight: 600;
-  margin: 0 0 14px;
 }
 
-.colorSwatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
+.photoGridThree {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.photoSquareCard {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.squareLabel {
+  position: absolute;
+  inset-inline: 6px;
+  bottom: 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.62);
+  padding: 6px;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.iconOnly {
+  margin: auto;
+  font-size: 2rem;
+}
+
+.optionGridThree {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.optionGridFour {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.textOptionCard {
+  min-height: 86px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.swatchCircle,
+.dotCircle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
-.iconHint {
-  color: #ff8fb0;
+.dotCircle {
+  width: 22px;
+  height: 22px;
 }
 
-.lengthGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.compactGrid {
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+.cardIcon {
+  font-size: 1.1rem;
 }
 
 .textInput {
   width: 100%;
-  background: #171717;
-  color: #f5f5f5;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 16px;
+  color: #f5f5f5;
   font-size: 1rem;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.textInput::placeholder {
-  color: #888;
 }
 
 .textInput:focus {
   outline: none;
-  border-color: rgba(232, 70, 124, 0.85);
-  box-shadow: 0 0 0 1px rgba(232, 70, 124, 0.5), 0 10px 28px rgba(232, 70, 124, 0.15);
+  border-color: #ff2e63;
+  box-shadow: 0 0 0 1px rgba(255, 46, 99, 0.55);
 }
 
-.portraitGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+.skipButton {
+  border: 0;
+  background: transparent;
+  color: #999;
+  text-decoration: underline;
+  cursor: pointer;
+  width: fit-content;
+  margin-inline: auto;
 }
 
-.portraitCard {
-  background: #161616;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 0;
-  overflow: hidden;
-  min-height: 210px;
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
-}
-
-.portraitCard:hover {
-  transform: translateY(-1px);
-  border-color: rgba(232, 70, 124, 0.7);
-}
-
-.portraitImage {
-  display: block;
+.carouselContainer {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  overflow: hidden;
 }
 
-.portraitSelected {
-  border-color: #e8467c;
-  box-shadow: 0 0 0 1px rgba(232, 70, 124, 0.85), 0 0 24px rgba(232, 70, 124, 0.35);
+.carouselTrack {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 10%;
+  scrollbar-width: none;
 }
 
-.portraitSkeleton {
-  min-height: 210px;
-  border-radius: 14px;
-  background: linear-gradient(90deg, #1a1a1a 0%, #232323 50%, #1a1a1a 100%);
-  background-size: 200% 100%;
-  animation: pulse 1.2s ease-in-out infinite;
+.carouselTrack::-webkit-scrollbar {
+  display: none;
 }
 
-@keyframes pulse {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+.carouselCard {
+  flex: 0 0 70%;
+  scroll-snap-align: center;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: border-color 200ms, box-shadow 200ms;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.loadingText {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: #b2b2b2;
-  text-align: center;
+.carouselCardSelected {
+  border-color: #ff2e63;
+  box-shadow: 0 0 20px rgba(255, 46, 99, 0.4);
 }
 
-.twoColumn {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+.carouselImage {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
-.chipCard {
-  min-height: 44px;
-  font-size: 0.85rem;
-  padding: 10px;
+.carouselDots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.dotActive {
+  background: #ff2e63;
+}
+
+.traitSummary,
+.traitPresetWrap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.traitChip,
+.traitPresetChip {
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.84rem;
+}
+
+.traitChip {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .navArea {
-  margin-top: 24px;
+  margin-top: 22px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.backTextButton {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  color: #999;
+  padding: 0;
 }
 
 .continueButton,
@@ -281,63 +356,44 @@
   width: 100%;
   border: 0;
   border-radius: 12px;
-  background: linear-gradient(90deg, #e8467c 0%, #f7668e 100%);
-  color: #fff;
+  padding: 16px;
   font-size: 1rem;
-  font-weight: 700;
-  min-height: 48px;
-  transition: filter 160ms ease, transform 160ms ease;
-}
-
-.continueButton:hover,
-.createButton:hover {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
+  font-weight: 600;
+  color: #fff;
+  background: #ff2e63;
+  cursor: pointer;
 }
 
 .continueButton:disabled,
-.createButton:disabled {
-  opacity: 0.45;
+.createButton:disabled,
+.backTextButton:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
-}
-
-.backButton {
-  width: fit-content;
-  background: transparent;
-  border: 0;
-  color: #9a9a9a;
-  padding: 0;
-  font-size: 0.92rem;
-}
-
-.backButton:disabled {
-  opacity: 0.4;
 }
 
 .errorText {
-  color: #ff95b6;
-  margin: 12px 0 0;
+  margin-top: 10px;
+  color: #ff8ab0;
 }
 
 .conflictBox {
   margin-top: 12px;
-  border: 1px solid rgba(232, 70, 124, 0.45);
+  border: 1px solid rgba(255, 46, 99, 0.5);
   border-radius: 12px;
   padding: 12px;
-  color: #ffc0d2;
-  background: rgba(232, 70, 124, 0.09);
+  background: rgba(255, 46, 99, 0.08);
+  color: #ffc2d5;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 760px) {
   .creatorContainer { padding: 20px; }
-  .twoColumn { grid-template-columns: 1fr; }
+  .photoGridThree,
+  .optionGridThree { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 560px) {
   .genderGrid,
-  .portraitGrid,
-  .lengthGrid {
+  .optionGridFour {
     grid-template-columns: 1fr;
   }
 }
