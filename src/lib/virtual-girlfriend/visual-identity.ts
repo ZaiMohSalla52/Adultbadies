@@ -31,6 +31,12 @@ type BuildIdentityInput = {
   preferenceHints?: string;
   selectedPortraitPrompt?: string;
   selectedPortraitImage?: string;
+  hairLength?: string;
+  eyeColor?: string;
+  skinTone?: string;
+  styleVibe?: string;
+  bodyType?: string;
+  figure?: string;
   companionName: string;
   persona: PersonaProfile;
   existingCompanionSignatures?: string[];
@@ -49,6 +55,12 @@ const resolveVisualIdentitySemanticInput = (input: {
     preferenceHints?: string;
     selectedPortraitPrompt?: string;
     selectedPortraitImage?: string;
+    hairLength?: string;
+    eyeColor?: string;
+    skinTone?: string;
+    styleVibe?: string;
+    bodyType?: string;
+    figure?: string;
   };
 }): VirtualGirlfriendSetupPayload => {
   const structuredProfile = input.companion.structured_profile;
@@ -71,6 +83,12 @@ const resolveVisualIdentitySemanticInput = (input: {
       preferenceHints: structuredProfile.preferenceHints?.trim() || undefined,
       selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt?.trim() || undefined,
       selectedPortraitImage: structuredProfile.selectedPortraitImage?.trim() || undefined,
+      hairLength: structuredProfile.hairLength?.trim() || undefined,
+      eyeColor: structuredProfile.eyeColor?.trim() || undefined,
+      skinTone: structuredProfile.skinTone?.trim() || undefined,
+      styleVibe: structuredProfile.styleVibe?.trim() || undefined,
+      bodyType: structuredProfile.bodyType?.trim() || undefined,
+      figure: structuredProfile.figure?.trim() || undefined,
     };
   }
 
@@ -84,6 +102,12 @@ const resolveVisualIdentitySemanticInput = (input: {
     preferenceHints: input.fallback.preferenceHints?.trim() || undefined,
     selectedPortraitPrompt: input.fallback.selectedPortraitPrompt?.trim() || undefined,
     selectedPortraitImage: input.fallback.selectedPortraitImage?.trim() || undefined,
+    hairLength: input.fallback.hairLength?.trim() || undefined,
+    eyeColor: input.fallback.eyeColor?.trim() || undefined,
+    skinTone: input.fallback.skinTone?.trim() || undefined,
+    styleVibe: input.fallback.styleVibe?.trim() || undefined,
+    bodyType: input.fallback.bodyType?.trim() || input.fallback.figure?.trim() || undefined,
+    figure: input.fallback.figure?.trim() || undefined,
   };
 };
 
@@ -143,6 +167,17 @@ const sanitizePack = (raw: VirtualGirlfriendVisualIdentityPack, fallback: Virtua
 
 const buildVisualIdentityPack = async (input: BuildIdentityInput): Promise<VirtualGirlfriendVisualIdentityPack> => {
   const fallback = fallbackIdentityPack(input);
+  const appearanceLines = [
+    input.hairLength?.trim() ? `- Hair length: ${input.hairLength.trim()}` : null,
+    input.eyeColor?.trim() ? `- Eye color: ${input.eyeColor.trim()}` : null,
+    input.skinTone?.trim() ? `- Skin tone: ${input.skinTone.trim()}` : null,
+    input.styleVibe?.trim() ? `- Style vibe: ${input.styleVibe.trim()}` : null,
+    (input.bodyType?.trim() || input.figure?.trim())
+      ? `- Body silhouette: ${input.bodyType?.trim() || input.figure?.trim()}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   const prompt = `Return strict JSON with this schema only:
 {
@@ -179,7 +214,8 @@ Input profile:
 - Preference hints: ${input.preferenceHints || 'none'}
 - User-selected portrait seed prompt: ${input.selectedPortraitPrompt || 'none'}
 - User-selected portrait seed image URL/data: ${input.selectedPortraitImage || 'none'}
-- Persona visual DNA coreLook: ${input.persona.visualPromptDNA.coreLook}
+${appearanceLines ? `${appearanceLines}
+` : ''}- Persona visual DNA coreLook: ${input.persona.visualPromptDNA.coreLook}
 - Persona style anchors: ${input.persona.visualPromptDNA.styleAnchors.join(', ')}
 - Existing sibling signatures to avoid overlap: ${(input.existingCompanionSignatures ?? []).join(' || ') || 'none'}
 
@@ -245,6 +281,12 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     preferenceHints?: string;
     selectedPortraitPrompt?: string;
     selectedPortraitImage?: string;
+    hairLength?: string;
+    eyeColor?: string;
+    skinTone?: string;
+    styleVibe?: string;
+    bodyType?: string;
+    figure?: string;
   };
 }) => {
   const semanticSetup = resolveVisualIdentitySemanticInput({ companion: input.companion, fallback: input.setup });
@@ -267,6 +309,12 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     preferenceHints: semanticSetup.preferenceHints,
     selectedPortraitPrompt: semanticSetup.selectedPortraitPrompt,
     selectedPortraitImage: semanticSetup.selectedPortraitImage,
+    hairLength: semanticSetup.hairLength,
+    eyeColor: semanticSetup.eyeColor,
+    skinTone: semanticSetup.skinTone,
+    styleVibe: semanticSetup.styleVibe,
+    bodyType: semanticSetup.bodyType,
+    figure: semanticSetup.figure,
     companionName: semanticSetup.name,
     persona: input.companion.persona_profile,
     existingCompanionSignatures: siblingCompanionSignatures,
