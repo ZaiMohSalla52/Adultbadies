@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {
   generateCanonicalImageFromReferenceWithIdeogram,
   generateCanonicalImageWithIdeogram,
+  generatePortraitPreviewImageWithIdeogram,
   generateGalleryImageFromReferenceWithIdeogram,
   type IdeogramGeneratedImage,
 } from '@/lib/virtual-girlfriend/image-ideogram';
@@ -330,13 +331,19 @@ const buildPortraitPreviewPrompt = (input: {
   figure?: string;
   age?: string;
   variant: number;
-}) => `Premium dating-app portrait, single ${input.sex ?? 'female'} adult, face-forward close-up, natural skin texture, realistic phone-camera photography.
-Origin cue: ${input.origin ?? 'mixed'}.
-Hair cue: ${input.hairColor ?? 'natural'}.
-Body presentation cue: ${input.figure ?? 'balanced'}.
-Age cue: ${input.age ?? 'mid-20s'}.
-Variant mood ${input.variant + 1}: subtle expression change, different wardrobe color, same person continuity.
-No text, no watermark, no explicit nudity.`;
+}) => [
+  `Generate exactly one adult ${resolvePromptSubject(input.sex)} for a dating-profile portrait preview.`,
+  'Strict composition: one woman only, solo portrait only, single subject only, centered in frame.',
+  'Framing: vertical 3:4 head-and-shoulders or bust portrait, eye-level camera, realistic phone-camera photo style.',
+  'Pose: looking at camera or natural portrait pose; clean uncluttered background with no extra faces or people.',
+  `Origin cue: ${input.origin ?? 'mixed'}.`,
+  `Hair cue: ${input.hairColor ?? 'natural'}.`,
+  `Body presentation cue: ${input.figure ?? 'balanced'}.`,
+  `Age cue: ${input.age ?? 'mid-20s'}.`,
+  `Variant mood ${input.variant + 1}: subtle expression change and wardrobe color variation while preserving one-person portrait framing.`,
+  'Hard negatives: no second person, no duplicated subject, no twin, no mirrored composition, no reflection clone, no diptych, no collage, no split screen, no side-by-side layout, no multi-panel frame, no background person, no extra face.',
+  'No text, no watermark, no logos, no explicit nudity.',
+].join(' ');
 
 const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string } | null => {
   const matched = dataUrl.trim().match(/^data:(.+?);base64,(.+)$/);
