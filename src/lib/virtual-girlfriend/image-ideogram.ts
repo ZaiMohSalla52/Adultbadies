@@ -141,23 +141,32 @@ const generateReferenceImageWithIdeogram = async (input: {
   errorLabel: string;
 }): Promise<IdeogramGeneratedImage> => {
   const surfaceParams = SURFACE_PARAMS[input.surface];
+  const formData = new FormData();
+  formData.append('prompt', input.prompt);
+  formData.append('model', IDEOGRAM_MODEL);
+  formData.append('num_images', String(surfaceParams.num_images));
+  formData.append('aspect_ratio', String(surfaceParams.aspect_ratio));
+  formData.append('magic_prompt_option', String(surfaceParams.magic_prompt_option));
+  formData.append('style_type', String(surfaceParams.style_type));
+  formData.append('rendering_speed', String(surfaceParams.rendering_speed));
+  formData.append('image_weight', String(input.imageWeight));
 
-  const response = await fetchIdeogram(
-    IDEOGRAM_REFERENCE_ENDPOINT,
-    {
-      prompt: input.prompt,
-      model: IDEOGRAM_MODEL,
-      num_images: surfaceParams.num_images,
-      aspect_ratio: surfaceParams.aspect_ratio,
-      magic_prompt_option: surfaceParams.magic_prompt_option,
-      style_type: surfaceParams.style_type,
-      rendering_speed: surfaceParams.rendering_speed,
-      image_data: input.referenceImageBytes.toString('base64'),
-      image_mime_type: input.referenceMimeType,
-      image_weight: input.imageWeight,
+  const imageBlob = new Blob([new Uint8Array(input.referenceImageBytes)], {
+    type: input.referenceMimeType || 'image/png',
+  });
+  formData.append('image', imageBlob, 'reference-image');
+
+  const response = await fetch(`${IDEOGRAM_BASE_URL}${IDEOGRAM_REFERENCE_ENDPOINT}`, {
+    method: 'POST',
+    headers: {
+      'Api-Key': assertApiKey(),
     },
-    input.errorLabel,
-  );
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`${input.errorLabel} (${response.status}): ${await response.text()}`);
+  }
 
   return extractGeneratedImage(response, IDEOGRAM_REFERENCE_ENDPOINT);
 };
