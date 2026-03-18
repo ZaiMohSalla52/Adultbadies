@@ -365,17 +365,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const [portraitCandidates, setPortraitCandidates] = useState<PortraitCandidate[]>([]);
   const [recoverableCompanionId, setRecoverableCompanionId] = useState<string | null>(null);
   const [activeDotIndex, setActiveDotIndex] = useState(0);
-  const advanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
   const step = STEPS[stepIndex];
   const progress = useMemo(() => ((stepIndex + 1) / STEPS.length) * 100, [stepIndex]);
-
-  useEffect(() => {
-    return () => {
-      if (advanceTimeoutRef.current) clearTimeout(advanceTimeoutRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     if (step !== 'portrait' || !carouselRef.current) return;
@@ -481,7 +474,6 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
   const goBack = () => {
     if (stepIndex === 0) return;
-    if (advanceTimeoutRef.current) clearTimeout(advanceTimeoutRef.current);
 
     let prev = stepIndex - 1;
     if (STEPS[prev] === 'breastSize' && state.sex !== 'female') {
@@ -495,12 +487,15 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const handleOptionSelect = <K extends keyof CreatorState>(field: K, value: CreatorState[K]) => {
-    setField(field, value);
+    setState((current) => {
+      const updated = { ...current, [field]: value };
+      return updated;
+    });
     setError(null);
-    if (advanceTimeoutRef.current) clearTimeout(advanceTimeoutRef.current);
-    advanceTimeoutRef.current = setTimeout(() => {
+    // Advance immediately on next tick so state is set
+    setTimeout(() => {
       void goNext();
-    }, 400);
+    }, 0);
   };
 
   const appendDetailChip = (chip: string) => {
