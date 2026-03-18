@@ -90,16 +90,18 @@ const extractGeneratedImage = async (response: Response, endpoint: string): Prom
 };
 
 export const generateCanonicalImageWithIdeogram = async (prompt: string): Promise<IdeogramGeneratedImage> => {
+  const canonicalParams = SURFACE_PARAMS.canonical;
+
   const response = await fetchIdeogram(
     IDEOGRAM_GENERATE_ENDPOINT,
     {
       prompt,
-      aspect_ratio: '1x1',
+      aspect_ratio: canonicalParams.aspect_ratio,
       model: IDEOGRAM_MODEL,
-      num_images: 1,
-      magic_prompt_option: 'AUTO',
-      style_type: 'AUTO',
-      rendering_speed: 'DEFAULT',
+      num_images: canonicalParams.num_images,
+      magic_prompt_option: canonicalParams.magic_prompt_option,
+      style_type: canonicalParams.style_type,
+      rendering_speed: canonicalParams.rendering_speed,
     },
     'Ideogram image generation failed',
   );
@@ -127,53 +129,69 @@ export const generatePortraitPreviewImageWithIdeogram = async (prompt: string): 
   return extractGeneratedImage(response, IDEOGRAM_GENERATE_ENDPOINT);
 };
 
+const generateReferenceImageWithIdeogram = async (input: {
+  prompt: string;
+  referenceImageBytes: Buffer;
+  referenceMimeType: string;
+  surface: 'canonical' | 'gallery' | 'chat';
+  imageWeight: number;
+  errorLabel: string;
+}): Promise<IdeogramGeneratedImage> => {
+  const surfaceParams = SURFACE_PARAMS[input.surface];
+
+  const response = await fetchIdeogram(
+    IDEOGRAM_REFERENCE_ENDPOINT,
+    {
+      prompt: input.prompt,
+      model: IDEOGRAM_MODEL,
+      num_images: surfaceParams.num_images,
+      aspect_ratio: surfaceParams.aspect_ratio,
+      magic_prompt_option: surfaceParams.magic_prompt_option,
+      style_type: surfaceParams.style_type,
+      rendering_speed: surfaceParams.rendering_speed,
+      image_data: input.referenceImageBytes.toString('base64'),
+      image_mime_type: input.referenceMimeType,
+      image_weight: input.imageWeight,
+    },
+    input.errorLabel,
+  );
+
+  return extractGeneratedImage(response, IDEOGRAM_REFERENCE_ENDPOINT);
+};
+
 export const generateCanonicalImageFromReferenceWithIdeogram = async (input: {
   prompt: string;
   referenceImageBytes: Buffer;
   referenceMimeType: string;
   imageWeight?: number;
-}): Promise<IdeogramGeneratedImage> => {
-  const response = await fetchIdeogram(
-    IDEOGRAM_REFERENCE_ENDPOINT,
-    {
-      prompt: input.prompt,
-      model: IDEOGRAM_MODEL,
-      num_images: 1,
-      aspect_ratio: '1x1',
-      magic_prompt_option: 'AUTO',
-      style_type: 'AUTO',
-      rendering_speed: 'DEFAULT',
-      image_data: input.referenceImageBytes.toString('base64'),
-      image_mime_type: input.referenceMimeType,
-      image_weight: input.imageWeight ?? 92,
-    },
-    'Ideogram canonical generation with selected portrait reference failed',
-  );
-
-  return extractGeneratedImage(response, IDEOGRAM_REFERENCE_ENDPOINT);
-};
+}): Promise<IdeogramGeneratedImage> =>
+  generateReferenceImageWithIdeogram({
+    ...input,
+    surface: 'canonical',
+    imageWeight: input.imageWeight ?? 92,
+    errorLabel: 'Ideogram canonical generation with selected portrait reference failed',
+  });
 
 export const generateGalleryImageFromReferenceWithIdeogram = async (input: {
   prompt: string;
   referenceImageBytes: Buffer;
   referenceMimeType: string;
-}): Promise<IdeogramGeneratedImage> => {
-  const response = await fetchIdeogram(
-    IDEOGRAM_REFERENCE_ENDPOINT,
-    {
-      prompt: input.prompt,
-      model: IDEOGRAM_MODEL,
-      num_images: 1,
-      aspect_ratio: '1x1',
-      magic_prompt_option: 'AUTO',
-      style_type: 'AUTO',
-      rendering_speed: 'DEFAULT',
-      image_data: input.referenceImageBytes.toString('base64'),
-      image_mime_type: input.referenceMimeType,
-      image_weight: 85,
-    },
-    'Ideogram reference gallery generation failed',
-  );
+}): Promise<IdeogramGeneratedImage> =>
+  generateReferenceImageWithIdeogram({
+    ...input,
+    surface: 'gallery',
+    imageWeight: 85,
+    errorLabel: 'Ideogram reference gallery generation failed',
+  });
 
-  return extractGeneratedImage(response, IDEOGRAM_REFERENCE_ENDPOINT);
-};
+export const generateChatImageFromReferenceWithIdeogram = async (input: {
+  prompt: string;
+  referenceImageBytes: Buffer;
+  referenceMimeType: string;
+}): Promise<IdeogramGeneratedImage> =>
+  generateReferenceImageWithIdeogram({
+    ...input,
+    surface: 'chat',
+    imageWeight: 85,
+    errorLabel: 'Ideogram reference chat generation failed',
+  });

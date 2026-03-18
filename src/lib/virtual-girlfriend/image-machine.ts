@@ -4,6 +4,7 @@ import {
   generateCanonicalImageWithIdeogram,
   generatePortraitPreviewImageWithIdeogram,
   generateGalleryImageFromReferenceWithIdeogram,
+  generateChatImageFromReferenceWithIdeogram,
   type IdeogramGeneratedImage,
 } from '@/lib/virtual-girlfriend/image-ideogram';
 import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
@@ -364,7 +365,7 @@ const downloadReferenceBytes = async (input: {
 
 const runProviderGeneration = async (input: {
   scope: string;
-  mode: 'canonical' | 'canonical_from_reference' | 'gallery_from_reference';
+  mode: 'canonical' | 'canonical_from_reference' | 'gallery_from_reference' | 'chat_from_reference';
   prompt: string;
   referenceImageBytes?: Buffer;
   referenceMimeType?: string;
@@ -392,7 +393,11 @@ const runProviderGeneration = async (input: {
       }));
     }
 
-    return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateGalleryImageFromReferenceWithIdeogram({
+    const generateFromReference = input.mode === 'gallery_from_reference'
+      ? generateGalleryImageFromReferenceWithIdeogram
+      : generateChatImageFromReferenceWithIdeogram;
+
+    return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateFromReference({
       prompt: input.prompt,
       referenceImageBytes,
       referenceMimeType,
@@ -858,7 +863,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     const prompt = buildChatPrompt({ companion: input.companion, visualProfile: input.visualProfile, category: input.category });
     const generated = await runProviderGeneration({
       scope,
-      mode: 'gallery_from_reference',
+      mode: 'chat_from_reference',
       prompt,
       referenceImageBytes: reference.bytes,
       referenceMimeType: reference.mimeType,
