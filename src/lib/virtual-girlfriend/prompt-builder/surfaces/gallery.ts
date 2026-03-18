@@ -1,19 +1,41 @@
-import type { CompanionTraits } from '../../types/traits';
+/*
+ * GALLERY SURFACE — canonical-derived scene variants.
+ * More expressive than canonical.
+ * Must remain identity-anchored.
+ */
+
+import { getCompositionAnchor } from '../primitives/composition';
+import { buildAllNegatives } from '../primitives/negatives';
+import { resolvePhysicalTraitLine } from '../primitives/physical';
+import { resolveSubject } from '../primitives/subject';
+import { PROMPT_VERSION } from '../versions';
 
 export interface GalleryPromptInput {
-  traits: CompanionTraits;
+  sex: string;
+  age: number;
+  origin: string;
+  hairColor: string;
+  hairLength: string;
+  eyeColor: string;
+  bodyType: string;
+  identityAnchors?: string[];
+  sceneHint?: string;
 }
 
-export const GALLERY_PROMPT_VERSION = 'gallery.v1' as const;
+export const buildGalleryPrompt = (input: GalleryPromptInput, variantIndex: number): string => {
+  const identityAnchors = input.identityAnchors?.filter(Boolean).join(', ');
 
-export function buildGalleryPrompt(input: GalleryPromptInput): string {
-  const { traits } = input;
   return [
-    `adult ${traits.sex}`,
-    `${traits.age} years old`,
-    `${traits.origin} origin`,
-    `${traits.hairLength} ${traits.hairColor} hair`,
-    `${traits.eyeColor} eyes`,
-    `${traits.bodyType} body type`,
-  ].join(', ');
-}
+    `Portrait photograph of ${resolveSubject(input.sex)}.`,
+    `${resolvePhysicalTraitLine(input)}.`,
+    identityAnchors ? `Identity anchors: ${identityAnchors}.` : null,
+    input.sceneHint ? `Scene context: ${input.sceneHint}.` : null,
+    `Variant ${variantIndex + 1}.`,
+    getCompositionAnchor('gallery'),
+    buildAllNegatives(),
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
+
+export const galleryPromptVersion: string = PROMPT_VERSION.gallery;

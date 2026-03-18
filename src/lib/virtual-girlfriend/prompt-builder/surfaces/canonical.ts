@@ -1,19 +1,39 @@
-import type { CanonicalTraits } from '../../types/traits';
+/*
+ * CANONICAL SURFACE — identity-locked portrait.
+ * Richer than preview. Derives from identity_pack.
+ * This prompt becomes seed for all future regenerations.
+ */
+
+import { getCompositionAnchor } from '../primitives/composition';
+import { buildAllNegatives } from '../primitives/negatives';
+import { resolvePhysicalTraitLine } from '../primitives/physical';
+import { resolveSubject } from '../primitives/subject';
+import { PROMPT_VERSION } from '../versions';
 
 export interface CanonicalPromptInput {
-  traits: CanonicalTraits;
+  sex: string;
+  age: number;
+  origin: string;
+  hairColor: string;
+  hairLength: string;
+  eyeColor: string;
+  bodyType: string;
+  identityAnchors?: string[];
+  identityInvariants?: string[];
 }
 
-export const CANONICAL_PROMPT_VERSION = 'canonical.v1' as const;
+export const buildCanonicalPrompt = (input: CanonicalPromptInput): string => {
+  const identityInvariants = input.identityInvariants?.filter(Boolean).join(', ');
 
-export function buildCanonicalPrompt(input: CanonicalPromptInput): string {
-  const { traits } = input;
   return [
-    `adult ${traits.sex}`,
-    `${traits.age} years old`,
-    `${traits.origin} origin`,
-    `${traits.hairLength} ${traits.hairColor} hair`,
-    `${traits.eyeColor} eyes`,
-    `${traits.bodyType} body type`,
-  ].join(', ');
-}
+    `Portrait photograph of ${resolveSubject(input.sex)}.`,
+    `${resolvePhysicalTraitLine(input)}.`,
+    identityInvariants ? `${identityInvariants}.` : null,
+    getCompositionAnchor('canonical'),
+    buildAllNegatives(),
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
+
+export const canonicalPromptVersion: string = PROMPT_VERSION.canonical;

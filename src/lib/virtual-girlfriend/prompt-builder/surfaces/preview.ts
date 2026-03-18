@@ -1,19 +1,36 @@
-import type { PreviewTraits } from '../../types/traits';
+/*
+ * PREVIEW SURFACE — intentionally strict and composition-conservative.
+ * Rules:
+ * - No UI/mockup/editorial/presentation/device language
+ * - No contradictory subject constraints
+ * - Positive composition anchor must come first
+ * - Hard negatives must come last
+ * - Variation comes from expression only
+ */
+
+import { getCompositionAnchor, getPreviewExpression } from '../primitives/composition';
+import { buildAllNegatives } from '../primitives/negatives';
+import { resolvePhysicalTraitLine } from '../primitives/physical';
+import { resolveSubjectStrict } from '../primitives/subject';
+import { PROMPT_VERSION } from '../versions';
 
 export interface PreviewPromptInput {
-  traits: PreviewTraits;
+  sex: string;
+  age: number;
+  origin: string;
+  hairColor: string;
+  hairLength: string;
+  eyeColor: string;
+  bodyType: string;
 }
 
-export const PREVIEW_PROMPT_VERSION = 'preview.v1' as const;
+export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: number): string =>
+  [
+    `${resolveSubjectStrict(input.sex)}.`,
+    `${resolvePhysicalTraitLine(input)}.`,
+    getCompositionAnchor('preview'),
+    getPreviewExpression(variantIndex),
+    buildAllNegatives(),
+  ].join(' ');
 
-export function buildPreviewPrompt(input: PreviewPromptInput): string {
-  const { traits } = input;
-  return [
-    `adult ${traits.sex}`,
-    `${traits.age} years old`,
-    `${traits.origin} origin`,
-    `${traits.hairLength} ${traits.hairColor} hair`,
-    `${traits.eyeColor} eyes`,
-    `${traits.bodyType} body type`,
-  ].join(', ');
-}
+export const previewPromptVersion: string = PROMPT_VERSION.preview;

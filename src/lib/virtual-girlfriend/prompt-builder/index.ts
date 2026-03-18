@@ -1,28 +1,8 @@
-import { buildCanonicalPrompt, CANONICAL_PROMPT_VERSION } from './surfaces/canonical';
-import { buildChatPrompt, CHAT_PROMPT_VERSION } from './surfaces/chat';
-import { buildGalleryPrompt, GALLERY_PROMPT_VERSION } from './surfaces/gallery';
-import { buildPreviewPrompt, PREVIEW_PROMPT_VERSION } from './surfaces/preview';
-import { buildRegeneratePrompt, REGENERATE_PROMPT_VERSION } from './surfaces/regenerate';
-
-export type { CompanionTraits, CanonicalTraits, PreviewTraits } from '../types/traits';
-export type { SurfaceType } from '../types/surfaces';
-
-export type PromptVersion =
-  | typeof PREVIEW_PROMPT_VERSION
-  | typeof CANONICAL_PROMPT_VERSION
-  | typeof REGENERATE_PROMPT_VERSION
-  | typeof GALLERY_PROMPT_VERSION
-  | typeof CHAT_PROMPT_VERSION;
-
-export {
-  buildPreviewPrompt,
-  buildCanonicalPrompt,
-  buildRegeneratePrompt,
-  buildGalleryPrompt,
-  buildChatPrompt,
-  PREVIEW_PROMPT_VERSION,
-  CANONICAL_PROMPT_VERSION,
-  REGENERATE_PROMPT_VERSION,
-  GALLERY_PROMPT_VERSION,
-  CHAT_PROMPT_VERSION,
-};
+export { buildNegatives, buildAllNegatives } from './primitives/negatives';
+export { resolveSubject, resolveSubjectStrict } from './primitives/subject';
+export { buildCanonicalPrompt, canonicalPromptVersion, type CanonicalPromptInput } from './surfaces/canonical';
+export { buildChatPrompt, chatPromptVersion, type ChatPromptInput } from './surfaces/chat';
+export { buildGalleryPrompt, galleryPromptVersion, type GalleryPromptInput } from './surfaces/gallery';
+export { buildPreviewPrompt, previewPromptVersion, type PreviewPromptInput } from './surfaces/preview';
+export { buildRegeneratePrompt, regeneratePromptVersion, type RegeneratePromptInput } from './surfaces/regenerate';
+export { PROMPT_VERSION, type SurfaceType, type PromptVersion } from './versions';

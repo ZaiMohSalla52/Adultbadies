@@ -1,19 +1,42 @@
-import type { CompanionTraits } from '../../types/traits';
+/*
+ * CHAT SURFACE — contextual in-chat image generation.
+ * Most creative surface.
+ * Still identity-anchored but allows scene/context variation.
+ */
+
+import { getCompositionAnchor } from '../primitives/composition';
+import { buildNegatives } from '../primitives/negatives';
+import { resolvePhysicalTraitLine } from '../primitives/physical';
+import { resolveSubject } from '../primitives/subject';
+import { PROMPT_VERSION } from '../versions';
 
 export interface ChatPromptInput {
-  traits: CompanionTraits;
+  sex: string;
+  age: number;
+  origin: string;
+  hairColor: string;
+  hairLength: string;
+  eyeColor: string;
+  bodyType: string;
+  identityAnchors?: string[];
+  contextHint?: string;
+  category?: string;
 }
 
-export const CHAT_PROMPT_VERSION = 'chat.v1' as const;
+export const buildChatPrompt = (input: ChatPromptInput): string => {
+  const identityAnchors = input.identityAnchors?.filter(Boolean).join(', ');
 
-export function buildChatPrompt(input: ChatPromptInput): string {
-  const { traits } = input;
   return [
-    `adult ${traits.sex}`,
-    `${traits.age} years old`,
-    `${traits.origin} origin`,
-    `${traits.hairLength} ${traits.hairColor} hair`,
-    `${traits.eyeColor} eyes`,
-    `${traits.bodyType} body type`,
-  ].join(', ');
-}
+    `Portrait photograph of ${resolveSubject(input.sex)}.`,
+    `${resolvePhysicalTraitLine(input)}.`,
+    identityAnchors ? `Identity anchors: ${identityAnchors}.` : null,
+    input.category ? `Category: ${input.category}.` : null,
+    input.contextHint ? `Context: ${input.contextHint}.` : null,
+    getCompositionAnchor('chat'),
+    buildNegatives(['composition', 'content']),
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
+
+export const chatPromptVersion: string = PROMPT_VERSION.chat;
