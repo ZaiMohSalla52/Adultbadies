@@ -233,16 +233,18 @@ const buildPortraitPreviewPrompt = (input: {
   age?: string;
   variant: number;
 }) => [
-  `Generate exactly one adult ${resolvePromptSubject(input.sex)} for a dating-profile portrait preview.`,
-  'Strict composition: one woman only, solo portrait only, single subject only, centered in frame.',
-  'Framing: vertical 3:4 head-and-shoulders or bust portrait, eye-level camera, realistic phone-camera photo style.',
-  'Pose: looking at camera or natural portrait pose; clean uncluttered background with no extra faces or people.',
+  // Portrait preview is intentionally strict and composition-conservative: avoid UI/mockup/editorial wording and contradictory subject constraints.
+  `Generate exactly one adult ${resolvePromptSubject(input.sex)} in a clean solo portrait photograph.`,
+  `Subject rule: exactly one adult ${resolvePromptSubject(input.sex)} only, single subject only, centered in frame.`,
+  'Framing: vertical 3:4 head-and-shoulders or upper-torso portrait, eye-level camera, straightforward realistic portrait photography.',
+  'Pose and expression: natural portrait pose with clear facial visibility and a subtle natural expression.',
+  'Background: simple photographic background, clean and uncluttered, with no extra people or faces.',
   `Origin cue: ${input.origin ?? 'mixed'}.`,
   `Hair cue: ${input.hairColor ?? 'natural'}.`,
   `Body presentation cue: ${input.figure ?? 'balanced'}.`,
   `Age cue: ${input.age ?? 'mid-20s'}.`,
-  `Variant mood ${input.variant + 1}: subtle expression change and wardrobe color variation while preserving one-person portrait framing.`,
-  'Hard negatives: no second person, no duplicated subject, no twin, no mirrored composition, no reflection clone, no diptych, no collage, no split screen, no side-by-side layout, no multi-panel frame, no background person, no extra face.',
+  `Variant ${input.variant + 1}: minor natural variation in expression, micro-pose, and crop while preserving single-subject portrait composition.`,
+  'Hard negatives: no second person, no duplicate person, no twin, no mirrored subject, no repeated face, no side-by-side subjects, no diptych, no triptych, no collage, no split screen, no grid, no carousel, no editorial layout, no presentation board, no phone frame, no mobile app UI, no camera interface, no mockup, no background person, no extra face.',
   'No text, no watermark, no logos, no explicit nudity.',
 ].join(' ');
 
