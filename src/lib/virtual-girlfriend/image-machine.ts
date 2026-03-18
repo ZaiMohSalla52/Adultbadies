@@ -3,6 +3,7 @@ import {
   generateCanonicalImageFromReferenceWithIdeogram,
   generateCanonicalImageWithIdeogram,
   generatePortraitPreviewImageWithIdeogram,
+  generatePreviewWithCharacterReference,
   generateGalleryImageFromReferenceWithIdeogram,
   generateChatImageFromReferenceWithIdeogram,
   type IdeogramGeneratedImage,
@@ -963,6 +964,63 @@ export const runPortraitPreviewImageMachine = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
 ): Promise<VirtualGirlfriendPortraitPreviewResult> => {
   const count = Math.min(Math.max(input.count ?? 4, 1), 8);
+  const leaderPrompt = buildPreviewPrompt(input, 0);
+  const leaderSeed = Math.floor(Math.random() * 2147483647);
+
+  let leaderGenerated: IdeogramGeneratedImage;
+  try {
+    leaderGenerated = await withRetries({
+      attempts: MACHINE_RETRY_ATTEMPTS.providerRequest,
+      scope: 'portrait_preview',
+      stage: 'provider_request',
+      reason: 'provider_error',
+      run: () =>
+        withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
+          generatePortraitPreviewImageWithIdeogram(leaderPrompt, leaderSeed),
+        ),
+    });
+  } catch {
+    const candidates = await fallbackParallelGeneration(input, count);
+    return { kind: 'portrait_preview', status: 'ready', candidates };
+  }
+
+  const leaderCandidate = {
+    id: 'candidate-1',
+    label: 'Candidate 1',
+    prompt: leaderPrompt,
+    promptVersion: PROMPT_VERSION.preview,
+    imageDataUrl: toDataUrl(leaderGenerated.bytes, leaderGenerated.mimeType),
+  } satisfies VirtualGirlfriendPortraitPreviewCandidate;
+
+  const followerIndices = Array.from({ length: Math.max(count - 1, 0) }, (_, i) => i + 1);
+  const followerResults = await Promise.allSettled(
+    followerIndices.map(async (variantIndex) => {
+      const prompt = buildPreviewPrompt(input, variantIndex);
+      const seed = Math.floor(Math.random() * 2147483647);
+      const generated = await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
+        generatePreviewWithCharacterReference(prompt, leaderGenerated.bytes, leaderGenerated.mimeType, seed),
+      );
+      return {
+        id: `candidate-${variantIndex + 1}`,
+        label: `Candidate ${variantIndex + 1}`,
+        prompt,
+        promptVersion: PROMPT_VERSION.preview,
+        imageDataUrl: toDataUrl(generated.bytes, generated.mimeType),
+      } satisfies VirtualGirlfriendPortraitPreviewCandidate;
+    }),
+  );
+
+  const followerCandidates = followerResults
+    .filter((result): result is PromiseFulfilledResult<VirtualGirlfriendPortraitPreviewCandidate> => result.status === 'fulfilled')
+    .map((result) => result.value);
+
+  return { kind: 'portrait_preview', status: 'ready', candidates: [leaderCandidate, ...followerCandidates] };
+};
+
+const fallbackParallelGeneration = async (
+  input: VirtualGirlfriendPortraitPreviewRequest,
+  count: number,
+): Promise<VirtualGirlfriendPortraitPreviewCandidate[]> => {
   const settled = await Promise.allSettled(
     Array.from({ length: count }).map(async (_, index) => {
       const prompt = buildPreviewPrompt(input, index);
@@ -999,5 +1057,5 @@ export const runPortraitPreviewImageMachine = async (
     throw new Error('Not enough portrait preview candidates generated successfully');
   }
 
-  return { kind: 'portrait_preview', status: 'ready', candidates };
+  return candidates;
 };

@@ -2,7 +2,7 @@ import type { SurfaceType } from '../versions';
 
 export const COMPOSITION_ANCHORS: Record<SurfaceType, string> = {
   preview:
-    'Natural head and shoulders portrait. One person only, centered frame. Warm natural lighting. Soft neutral background with gentle depth. Realistic portrait photography with natural skin texture and genuine expression.',
+    'Natural head and shoulders portrait. One person only, centered frame. Warm natural lighting. Soft neutral background with gentle depth. Realistic portrait photography with natural skin texture and genuine expression. Best quality, ultra realistic, intricate facial details, 8k resolution.',
   canonical:
     'Upper body portrait. Centered subject. Realistic portrait photography. Natural lighting. Clear facial features. Simple background.',
   regenerate:
