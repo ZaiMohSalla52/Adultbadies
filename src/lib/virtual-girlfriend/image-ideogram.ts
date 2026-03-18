@@ -1,4 +1,5 @@
 import { env } from '@/lib/env';
+import { buildPreviewNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 
 export type IdeogramGeneratedImage = {
@@ -109,13 +110,15 @@ export const generateCanonicalImageWithIdeogram = async (prompt: string): Promis
   return extractGeneratedImage(response, IDEOGRAM_GENERATE_ENDPOINT);
 };
 
-export const generatePortraitPreviewImageWithIdeogram = async (prompt: string): Promise<IdeogramGeneratedImage> => {
+export const generatePortraitPreviewImageWithIdeogram = async (prompt: string, seed?: number): Promise<IdeogramGeneratedImage> => {
   const previewParams = SURFACE_PARAMS.preview;
 
   const response = await fetchIdeogram(
     IDEOGRAM_GENERATE_ENDPOINT,
     {
       prompt,
+      negative_prompt: buildPreviewNegativePrompt(),
+      ...(seed !== undefined ? { seed } : {}),
       aspect_ratio: previewParams.aspect_ratio,
       model: IDEOGRAM_MODEL,
       num_images: previewParams.num_images,

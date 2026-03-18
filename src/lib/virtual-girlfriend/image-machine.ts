@@ -940,6 +940,7 @@ export const runPortraitPreviewImageMachine = async (
   const settled = await Promise.allSettled(
     Array.from({ length: count }).map(async (_, index) => {
       const prompt = buildPreviewPrompt(input, index);
+      const seed = Math.floor(Math.random() * 2147483647);
       const generated = await withRetries({
         attempts: MACHINE_RETRY_ATTEMPTS.providerRequest,
         scope: 'portrait_preview',
@@ -947,7 +948,7 @@ export const runPortraitPreviewImageMachine = async (
         reason: 'provider_error',
         run: () =>
           withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
-            generatePortraitPreviewImageWithIdeogram(prompt),
+            generatePortraitPreviewImageWithIdeogram(prompt, seed),
           ),
       });
       return {
