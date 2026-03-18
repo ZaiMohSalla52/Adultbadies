@@ -23,10 +23,10 @@ const companionSelect =
 
 
 const visualProfileSelect =
-  'id,user_id,companion_id,profile_version,style_version,prompt_hash,source_setup,identity_pack,canonical_reference_image_id,canonical_reference_metadata,canonical_review_status,reviewed_by,reviewed_at,review_notes,continuity_notes,moderation_status,provenance,created_at,updated_at';
+  'id,user_id,companion_id,profile_version,style_version,prompt_hash,source_setup,identity_pack,canonical_reference_image_id,canonical_reference_metadata,canonical_review_status,reviewed_by,reviewed_at,review_notes,continuity_notes,moderation_status,provenance,seed_prompt,prompt_version,surface_type,created_at,updated_at';
 
 const companionImageSelect =
-  'id,user_id,companion_id,visual_profile_id,image_kind,variant_index,origin_storage_provider,origin_storage_key,origin_mime_type,origin_byte_size,delivery_provider,delivery_public_id,delivery_url,width,height,prompt_hash,style_version,seed_metadata,lineage_metadata,moderation_status,moderation,provenance,quality_score,created_at';
+  'id,user_id,companion_id,visual_profile_id,image_kind,variant_index,origin_storage_provider,origin_storage_key,origin_mime_type,origin_byte_size,delivery_provider,delivery_public_id,delivery_url,width,height,prompt_hash,style_version,seed_metadata,lineage_metadata,moderation_status,moderation,provenance,quality_score,prompt_text,prompt_version,surface_type,created_at';
 
 
 const userStyleSelect =
@@ -257,10 +257,24 @@ export const setCanonicalReferenceImageId = async (
   const latestProfile = await getLatestVisualProfileForCompanion(token, userId, companionId);
   if (!latestProfile) return;
 
+  const rows = await supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+    searchParams: new URLSearchParams({
+      select: companionImageSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      id: `eq.${canonicalReferenceImageId}`,
+      limit: '1',
+    }),
+  });
+  const canonicalImage = rows[0] ?? null;
+
   await setCanonicalReferenceImageForVisualProfile(token, {
     userId,
     visualProfileId: latestProfile.id,
     canonicalReferenceImageId,
+    seedPrompt: canonicalImage?.prompt_text?.trim() || undefined,
+    promptVersion: canonicalImage?.prompt_version?.trim() || undefined,
+    surfaceType: canonicalImage?.surface_type?.trim() || 'canonical',
   });
 };
 
@@ -535,6 +549,9 @@ export const createVisualProfile = async (
     reviewedAt?: string | null;
     reviewNotes?: string | null;
     provenance?: Record<string, unknown>;
+    seedPrompt?: string;
+    promptVersion?: string;
+    surfaceType?: string;
   },
 ): Promise<VirtualGirlfriendVisualProfileRecord> => {
   const rows = await supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
@@ -556,6 +573,9 @@ export const createVisualProfile = async (
       reviewed_at: input.reviewedAt ?? null,
       review_notes: input.reviewNotes ?? null,
       provenance: input.provenance ?? {},
+      seed_prompt: input.seedPrompt ?? null,
+      prompt_version: input.promptVersion ?? null,
+      surface_type: input.surfaceType ?? null,
     },
     prefer: 'return=representation',
   });
@@ -565,11 +585,25 @@ export const createVisualProfile = async (
 
 export const insertCompanionImages = async (
   token: string,
-  images: Array<Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at'>>,
+  images: Array<Omit<VirtualGirlfriendCompanionImageRecord, 'id' | 'created_at' | 'prompt_text' | 'prompt_version' | 'surface_type'> & {
+    promptText?: string;
+    promptVersion?: string;
+    surfaceType?: string;
+  }>,
 ): Promise<VirtualGirlfriendCompanionImageRecord[]> => {
+  const body = images.map((image) => {
+    const { promptText, promptVersion, surfaceType, ...rest } = image;
+    return {
+      ...rest,
+      prompt_text: promptText ?? null,
+      prompt_version: promptVersion ?? null,
+      surface_type: surfaceType ?? null,
+    };
+  });
+
   return supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
     method: 'POST',
-    body: images,
+    body,
     prefer: 'return=representation',
   });
 };
@@ -614,6 +648,9 @@ export const setCanonicalReferenceImageForVisualProfile = async (
     canonicalReferenceImageId: string;
     canonicalReferenceMetadata?: Record<string, unknown>;
     canonicalReviewStatus?: 'pending' | 'approved' | 'rejected';
+    seedPrompt?: string;
+    promptVersion?: string;
+    surfaceType?: string;
   },
 ) => {
   const rows = await supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
@@ -626,6 +663,9 @@ export const setCanonicalReferenceImageForVisualProfile = async (
       reviewed_by: null,
       reviewed_at: null,
       review_notes: null,
+      seed_prompt: input.seedPrompt ?? null,
+      prompt_version: input.promptVersion ?? null,
+      surface_type: input.surfaceType ?? null,
     },
     prefer: 'return=representation',
   });

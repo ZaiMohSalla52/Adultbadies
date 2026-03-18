@@ -68,6 +68,7 @@ export type VirtualGirlfriendStructuredProfile = {
   origin?: string | null;
   hairColor?: string | null;
   figure?: string | null;
+  bodyType?: string | null;
   occupation?: string | null;
   personality?: string | null;
   sexuality?: string | null;
@@ -166,6 +167,9 @@ export type VirtualGirlfriendVisualProfileRecord = {
   continuity_notes: string | null;
   moderation_status: string;
   provenance: Record<string, unknown>;
+  seed_prompt?: string | null;
+  prompt_version?: string | null;
+  surface_type?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -242,6 +246,9 @@ export type VirtualGirlfriendCompanionImageRecord = {
   moderation: Record<string, unknown>;
   provenance: Record<string, unknown>;
   quality_score: number | null;
+  prompt_text?: string | null;
+  prompt_version?: string | null;
+  surface_type?: string | null;
   created_at: string;
 };
 

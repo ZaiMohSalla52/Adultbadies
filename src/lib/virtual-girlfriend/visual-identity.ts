@@ -3,7 +3,9 @@ import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfri
 import {
   createVisualProfile,
   listVirtualGirlfriendCompanions,
+  setCanonicalReferenceImageForVisualProfile,
 } from '@/lib/virtual-girlfriend/data';
+import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import {
   runRegenerateCanonicalOnlyImageMachine,
   runRegenerateCanonicalWithGalleryImageMachine,
@@ -290,5 +292,23 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     visualProfile,
   });
 
-  return { visualProfile, images: [generated.canonicalImage, ...generated.galleryImages], canonicalImage: generated.canonicalImage };
+  const updatedVisualProfile = await setCanonicalReferenceImageForVisualProfile(input.token, {
+    userId: input.userId,
+    visualProfileId: visualProfile.id,
+    canonicalReferenceImageId: generated.canonicalImage.id,
+    canonicalReferenceMetadata: {
+      source: 'setup_generation',
+      canonicalGeneratedAt: generated.canonicalImage.created_at,
+    },
+    canonicalReviewStatus: 'pending',
+    seedPrompt: generated.canonicalImage.prompt_text?.trim() || undefined,
+    promptVersion: PROMPT_VERSION.canonical,
+    surfaceType: 'canonical',
+  });
+
+  return {
+    visualProfile: updatedVisualProfile ?? visualProfile,
+    images: [generated.canonicalImage, ...generated.galleryImages],
+    canonicalImage: generated.canonicalImage,
+  };
 };
