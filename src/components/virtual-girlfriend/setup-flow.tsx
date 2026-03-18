@@ -472,6 +472,22 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     }
   };
 
+  const advanceToNextStep = () => {
+    let next = stepIndex + 1;
+    if (STEPS[next] === 'breastSize' && state.sex !== 'female') {
+      next += 1;
+    }
+    next = Math.min(STEPS.length - 1, next);
+
+    setError(null);
+    setConflictHelp(null);
+    setStepIndex(next);
+
+    if (STEPS[next] === 'portrait') {
+      void maybeGeneratePortraits();
+    }
+  };
+
   const goBack = () => {
     if (stepIndex === 0) return;
 
@@ -487,15 +503,9 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const handleOptionSelect = <K extends keyof CreatorState>(field: K, value: CreatorState[K]) => {
-    setState((current) => {
-      const updated = { ...current, [field]: value };
-      return updated;
-    });
+    setField(field, value);
     setError(null);
-    // Advance immediately on next tick so state is set
-    setTimeout(() => {
-      void goNext();
-    }, 0);
+    advanceToNextStep();
   };
 
   const appendDetailChip = (chip: string) => {
