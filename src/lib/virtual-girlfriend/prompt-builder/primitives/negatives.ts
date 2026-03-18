@@ -51,3 +51,7 @@ export const buildNegatives = (categories: Array<keyof typeof HARD_NEGATIVES>): 
 
 export const buildAllNegatives = (): string =>
   buildNegatives(Object.keys(HARD_NEGATIVES) as Array<keyof typeof HARD_NEGATIVES>);
+
+export function buildPreviewNegativePrompt(): string {
+  return buildAllNegatives();
+}
