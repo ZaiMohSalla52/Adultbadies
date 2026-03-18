@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
   try {
     console.info('[virtual-girlfriend][setup] visual generation started', { userId: auth.user.id, companionId: companion.id });
 
-    const generatedPack = await generateAndPersistVirtualGirlfriendImagePack({
+    await generateAndPersistVirtualGirlfriendImagePack({
       token: auth.accessToken,
       userId: auth.user.id,
       companion,
@@ -232,10 +232,6 @@ export async function POST(request: NextRequest) {
         sex: structuredProfile.sex ?? undefined,
       },
     });
-
-    if (generatedPack.canonicalImage) {
-      await setCanonicalReferenceImageId(auth.accessToken, auth.user.id, companion.id, generatedPack.canonicalImage.id);
-    }
 
     await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
     console.info('[virtual-girlfriend][setup] provider success + persistence complete', { userId: auth.user.id, companionId: companion.id });

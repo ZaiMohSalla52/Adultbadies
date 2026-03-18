@@ -6,6 +6,7 @@ import {
   generateGalleryImageFromReferenceWithIdeogram,
   type IdeogramGeneratedImage,
 } from '@/lib/virtual-girlfriend/image-ideogram';
+import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
@@ -428,6 +429,9 @@ const buildImageRecord = async (input: {
   identityPack: VirtualGirlfriendVisualIdentityPack;
   referenceImageId?: string;
   lineageExtra?: Record<string, unknown>;
+  promptText: string;
+  promptVersion: string;
+  surfaceType: string;
   scope: string;
 }) => {
   const key = `virtual-girlfriend-images/${input.userId}/${input.companionId}/${STYLE_VERSION}/${input.capture.kind}-${input.capture.variantIndex}-${Date.now()}.png`;
@@ -495,6 +499,9 @@ const buildImageRecord = async (input: {
       providerEndpoint: input.generated.endpoint,
     },
     quality_score: 0.92,
+    promptText: input.promptText,
+    promptVersion: input.promptVersion,
+    surfaceType: input.surfaceType,
   }]);
 
   if (!inserted) {
@@ -581,6 +588,9 @@ const generateGalleryFromCanonical = async (input: {
       generated,
       identityPack: input.visualProfile.identity_pack,
       referenceImageId: input.canonicalImage.id,
+      promptText: prompt,
+      promptVersion: PROMPT_VERSION.gallery,
+      surfaceType: 'gallery',
       scope: input.scope,
     });
 
@@ -644,6 +654,9 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
     capture: canonicalCapture,
     generated: canonicalGenerated,
     identityPack: input.visualProfile.identity_pack,
+    promptText: canonicalPrompt,
+    promptVersion: PROMPT_VERSION.canonical,
+    surfaceType: 'canonical',
     scope,
   });
   logImageMachine(scope, 'persistence_success', { canonicalImageId: canonicalImage.id });
@@ -675,7 +688,23 @@ const runRegenerateImageMachine = async (input: VirtualGirlfriendRegenerateMachi
   const canonicalCapture = captures.find((capture) => capture.kind === 'canonical');
   if (!canonicalCapture) throw new VirtualGirlfriendCanonicalRegenerateError('Canonical capture plan is missing.');
 
-  const canonicalPrompt = buildIdentityPrompt({ companion, identityPack: input.visualProfile.identity_pack, capture: canonicalCapture });
+  const fallbackRegeneratePrompt = buildRegeneratePrompt({
+    sex: companion.structured_profile?.sex ?? 'female',
+    age: Number(companion.structured_profile?.age) || 26,
+    origin: companion.structured_profile?.origin ?? 'white',
+    hairColor: companion.structured_profile?.hairColor ?? 'dark brown',
+    hairLength: 'medium',
+    eyeColor: 'brown',
+    bodyType:
+      companion.structured_profile?.bodyType
+      ?? companion.structured_profile?.figure
+      ?? 'slim',
+    identityAnchors: input.visualProfile.identity_pack.continuityAnchors,
+    seedPromptHint: companion.structured_profile?.selectedPortraitPrompt ?? undefined,
+  });
+  const canonicalPrompt = input.visualProfile.seed_prompt?.trim()
+    ? input.visualProfile.seed_prompt.trim()
+    : fallbackRegeneratePrompt;
   const seedPortraitDataUrl = typeof input.visualProfile.source_setup?.selectedPortraitImage === 'string'
     ? input.visualProfile.source_setup.selectedPortraitImage
     : null;
@@ -706,6 +735,9 @@ const runRegenerateImageMachine = async (input: VirtualGirlfriendRegenerateMachi
     capture: canonicalCapture,
     generated: canonicalGenerated,
     identityPack: input.visualProfile.identity_pack,
+    promptText: canonicalPrompt,
+    promptVersion: PROMPT_VERSION.regenerate,
+    surfaceType: 'regenerate',
     scope,
   });
 
@@ -735,6 +767,9 @@ const runRegenerateImageMachine = async (input: VirtualGirlfriendRegenerateMachi
       previousCanonicalReferenceImageId: input.visualProfile.canonical_reference_image_id,
     },
     canonicalReviewStatus: 'pending',
+    seedPrompt: canonicalPrompt,
+    promptVersion: PROMPT_VERSION.canonical,
+    surfaceType: 'canonical',
   });
 
   const status = galleryImages.length > 0 || !input.regenerateGallery ? 'ready' : 'partial_success';
@@ -854,6 +889,9 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         chatCategory: input.category,
         source: 'chat-image-machine',
       },
+      promptText: prompt,
+      promptVersion: PROMPT_VERSION.chat,
+      surfaceType: 'chat',
       scope,
     });
     logImageMachine(scope, 'final_outcome', { status: 'ready', imageId: chatImage.id });

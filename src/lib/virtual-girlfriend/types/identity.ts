@@ -35,9 +35,9 @@ export interface PersistedImage {
   imageId: string;
   storageUrl: string;
   deliveryUrl: string;
-  prompt: string;
+  promptText: string;
   promptVersion: string;
-  surfaceType: SurfaceType;
+  surfaceType: string;
   generatedAt: string;
 }
 
