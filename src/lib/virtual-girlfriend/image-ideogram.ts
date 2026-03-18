@@ -115,7 +115,7 @@ export const generatePortraitPreviewImageWithIdeogram = async (prompt: string): 
       model: IDEOGRAM_MODEL,
       num_images: 1,
       magic_prompt_option: 'OFF',
-      style_type: 'AUTO',
+      style_type: 'REALISTIC',
       rendering_speed: 'DEFAULT',
     },
     'Ideogram portrait preview generation failed',

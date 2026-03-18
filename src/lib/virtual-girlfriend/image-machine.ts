@@ -178,6 +178,8 @@ export type VirtualGirlfriendPortraitPreviewRequest = {
   sex?: string;
   origin?: string;
   hairColor?: string;
+  hairLength?: string;
+  eyeColor?: string;
   figure?: string;
   age?: string;
   count?: number;
@@ -328,24 +330,41 @@ const buildPortraitPreviewPrompt = (input: {
   sex?: string;
   origin?: string;
   hairColor?: string;
+  hairLength?: string;
+  eyeColor?: string;
   figure?: string;
   age?: string;
   variant: number;
-}) => [
-  // Portrait preview is intentionally strict and composition-conservative: avoid UI/mockup/editorial wording and contradictory subject constraints.
-  `Generate exactly one adult ${resolvePromptSubject(input.sex)} in a clean solo portrait photograph.`,
-  `Subject rule: exactly one adult ${resolvePromptSubject(input.sex)} only, single subject only, centered in frame.`,
-  'Framing: vertical 3:4 head-and-shoulders or upper-torso portrait, eye-level camera, straightforward realistic portrait photography.',
-  'Pose and expression: natural portrait pose with clear facial visibility and a subtle natural expression.',
-  'Background: simple photographic background, clean and uncluttered, with no extra people or faces.',
-  `Origin cue: ${input.origin ?? 'mixed'}.`,
-  `Hair cue: ${input.hairColor ?? 'natural'}.`,
-  `Body presentation cue: ${input.figure ?? 'balanced'}.`,
-  `Age cue: ${input.age ?? 'mid-20s'}.`,
-  `Variant ${input.variant + 1}: minor natural variation in expression, micro-pose, and crop while preserving single-subject portrait composition.`,
-  'Hard negatives: no second person, no duplicate person, no twin, no mirrored subject, no repeated face, no side-by-side subjects, no diptych, no triptych, no collage, no split screen, no grid, no carousel, no editorial layout, no presentation board, no phone frame, no mobile app UI, no camera interface, no mockup, no background person, no extra face.',
-  'No text, no watermark, no logos, no explicit nudity.',
-].join(' ');
+}) => {
+  /*
+   * PREVIEW SURFACE — intentionally strict and composition-conservative.
+   * Rules:
+   * - No UI/mockup/editorial/presentation/device language in prompt
+   * - No contradictory subject constraints (never mix variable sex
+   *   with hardcoded gender)
+   * - Positive composition anchor must come first
+   * - Hard negatives must come last
+   * - style_type must be REALISTIC, never AUTO
+   * - Variation comes from expression only, not scene or layout
+   */
+  const normalizedSex = (input.sex ?? '').trim().toLowerCase();
+  const subject = normalizedSex === 'male' ? 'exactly one adult man' : 'exactly one adult woman';
+  const expressionByVariant = [
+    'Neutral relaxed expression.',
+    'Soft natural smile.',
+    'Calm confident expression.',
+    'Gentle thoughtful expression.',
+  ] as const;
+  const expression = expressionByVariant[input.variant % expressionByVariant.length];
+
+  return [
+    `Single centered close-up portrait photograph of ${subject}. One face filling most of the frame. Head and shoulders framing only. Subject occupies the full frame. Plain solid uncluttered background.`,
+    `${input.hairColor ?? 'natural'} ${input.hairLength ?? 'medium length'} hair, ${input.eyeColor ?? 'brown'} eyes, ${input.origin ?? 'mixed origin'}, ${input.figure ?? 'balanced body type'}, approximately ${input.age ?? '24'} years old.`,
+    'Straightforward realistic portrait photography. Natural lighting. Clear facial visibility. Sharp focus on face.',
+    expression,
+    'No second person. No duplicate person. No twin. No mirrored subject. No repeated face. No side-by-side subject. No collage. No diptych. No triptych. No split screen. No grid. No carousel. No editorial layout. No phone frame. No mobile app UI. No camera interface. No extra background faces. No text overlay. No watermark. No logo. No nudity.',
+  ].join(' ');
+};
 
 const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string } | null => {
   const matched = dataUrl.trim().match(/^data:(.+?);base64,(.+)$/);
@@ -916,10 +935,19 @@ export const runPortraitPreviewImageMachine = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
 ): Promise<VirtualGirlfriendPortraitPreviewResult> => {
   const count = Math.min(Math.max(input.count ?? 4, 1), 8);
-  const candidates = await Promise.all(
+  const settled = await Promise.allSettled(
     Array.from({ length: count }).map(async (_, index) => {
       const prompt = buildPortraitPreviewPrompt({ ...input, variant: index });
-      const generated = await runProviderGeneration({ scope: 'portrait_preview', mode: 'canonical', prompt });
+      const generated = await withRetries({
+        attempts: MACHINE_RETRY_ATTEMPTS.providerRequest,
+        scope: 'portrait_preview',
+        stage: 'provider_request',
+        reason: 'provider_error',
+        run: () =>
+          withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
+            generatePortraitPreviewImageWithIdeogram(prompt),
+          ),
+      });
       return {
         id: `candidate-${index + 1}`,
         label: `Candidate ${index + 1}`,
@@ -928,6 +956,22 @@ export const runPortraitPreviewImageMachine = async (
       } satisfies VirtualGirlfriendPortraitPreviewCandidate;
     }),
   );
+
+  const candidates = settled
+    .map((result) => ({ result }))
+    .filter(
+      (entry): entry is { result: PromiseFulfilledResult<VirtualGirlfriendPortraitPreviewCandidate> } =>
+        entry.result.status === 'fulfilled',
+    )
+    .map(({ result }, successIndex) => ({
+      ...result.value,
+      id: `candidate-${successIndex + 1}`,
+      label: `Candidate ${successIndex + 1}`,
+    }));
+
+  if (candidates.length < 2) {
+    throw new Error('Not enough portrait preview candidates generated successfully');
+  }
 
   return { kind: 'portrait_preview', status: 'ready', candidates };
 };
