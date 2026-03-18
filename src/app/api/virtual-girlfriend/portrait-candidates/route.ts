@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     bodyType?: string;
     figure?: string;
     age?: string | number;
+    styleVibe?: string;
+    personality?: string;
   };
 
   try {
@@ -30,6 +32,8 @@ export async function POST(request: NextRequest) {
       bodyType: body.bodyType,
       figure: body.figure,
       age: body.age,
+      styleVibe: body.styleVibe,
+      personality: body.personality,
     });
 
     // Preview-only: this does not persist companion images and is intentionally separate from canonical setup persistence.

@@ -20,6 +20,11 @@ export const HARD_NEGATIVES = {
     'no grid',
     'no carousel',
     'no editorial layout',
+    'no bilateral face split',
+    'no vertical face seam',
+    'no symmetry stitch artifact',
+    'no duplicated facial halves',
+    'no half-face mismatch',
   ],
   mockup: [
     'no phone frame',

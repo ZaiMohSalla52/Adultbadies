@@ -24,7 +24,7 @@ export const SURFACE_PARAMS: Record<SurfaceType, IdeogramSurfaceParams> = {
     num_images: 1,
     magic_prompt_option: 'OFF',
     style_type: 'REALISTIC',
-    rendering_speed: 'DEFAULT',
+    rendering_speed: 'QUALITY',
   },
   canonical: {
     aspect_ratio: '3x4',

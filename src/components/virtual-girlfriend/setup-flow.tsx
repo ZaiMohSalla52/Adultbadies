@@ -298,6 +298,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           skinTone: state.skinTone,
           bodyType: state.bodyType,
           age: state.age,
+          styleVibe: state.styleVibe,
+          personality: state.personality,
         }),
       });
 
