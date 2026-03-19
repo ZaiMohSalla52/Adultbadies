@@ -8,6 +8,7 @@ import type {
   VirtualGirlfriendCompanionStatus,
 } from '@/lib/virtual-girlfriend/types';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
+import styles from './profile-view.module.css';
 
 export const VirtualGirlfriendProfileView = ({
   companion,
@@ -25,46 +26,16 @@ export const VirtualGirlfriendProfileView = ({
   });
   const canonical = curated.canonical;
   const gallery = curated.gallery;
-  const profileDisclosure = companion.disclosure_label;
-  const photoDisclosure = visualProfile ? 'AI-generated photos' : null;
   const structured = companion.structured_profile;
 
   const cleanValue = (value: unknown): string | null => {
     if (typeof value === 'number') return `${value}`;
     if (typeof value !== 'string') return null;
     const trimmed = value.trim();
-    return trimmed ? trimmed : null;
+    return trimmed.length ? trimmed : null;
   };
 
-  const joinUnique = (values: Array<string | null>) => {
-    const parts = values.filter(Boolean) as string[];
-    const deduped = parts.filter((value, idx) => parts.findIndex((item) => item.toLowerCase() === value.toLowerCase()) === idx);
-    return deduped.length ? deduped.join(' • ') : null;
-  };
-
-  const dossierAttributes = [
-    { label: 'Age', value: cleanValue(structured?.age) },
-    {
-      label: 'Origin',
-      value: cleanValue(structured?.origin),
-    },
-    { label: 'Hair color', value: cleanValue(structured?.hairColor) },
-    {
-      label: 'Figure',
-      value: cleanValue(structured?.figure),
-    },
-    { label: 'Occupation', value: cleanValue(structured?.occupation) },
-    { label: 'Personality', value: cleanValue(structured?.personality) ?? companion.archetype },
-    { label: 'Sexuality', value: cleanValue(structured?.sexuality) },
-    {
-      label: 'Relationship vibe',
-      value: joinUnique([cleanValue(structured?.tone) ?? companion.tone, cleanValue(structured?.affectionStyle) ?? companion.affection_style]),
-    },
-    {
-      label: 'Lifestyle',
-      value: cleanValue(structured?.freeformDetails) ?? cleanValue(structured?.visualAesthetic) ?? companion.visual_aesthetic,
-    },
-  ].filter((item) => Boolean(item.value));
+  const vibeDescriptor = cleanValue(structured?.tone) ?? companion.tone ?? 'Magnetic, private, and effortlessly playful.';
 
   const softStatusMessage =
     status === 'generating'
@@ -77,104 +48,105 @@ export const VirtualGirlfriendProfileView = ({
             ? 'Portrait is usable now and currently marked as pending internal review.'
             : null;
 
-  const traitPills = [
-    cleanValue(structured?.personality) ?? companion.archetype,
-    cleanValue(structured?.tone) ?? companion.tone,
-    cleanValue(structured?.occupation),
-    profileDisclosure,
-  ].filter(Boolean) as string[];
+  const hairColor = cleanValue(structured?.hairColor);
+  const personality = cleanValue(structured?.personality) ?? companion.archetype;
 
-  const vibeDescriptor = cleanValue(structured?.tone) ?? companion.tone ?? 'Magnetic, private, and effortlessly playful.';
+  const traits = [
+    { label: 'Sex', value: cleanValue(structured?.sex) },
+    { label: 'Origin', value: cleanValue(structured?.origin) },
+    { label: 'Hair Color', value: hairColor, swatch: hairColor },
+    { label: 'Hair Length', value: cleanValue(structured?.hairLength) },
+    { label: 'Figure/Body', value: cleanValue(structured?.bodyType) ?? cleanValue(structured?.figure) },
+    { label: 'Age', value: cleanValue(structured?.age) },
+    {
+      label: 'Breast Size',
+      value: (cleanValue(structured?.sex) ?? '').toLowerCase() === 'female' ? cleanValue(structured?.breastSize) : null,
+    },
+    { label: 'Occupation', value: cleanValue(structured?.occupation) },
+    { label: 'Personality', value: personality, emoji: '✨' },
+    { label: 'Sexuality', value: cleanValue(structured?.sexuality) },
+  ].filter((trait) => Boolean(trait.value));
 
   return (
-    <div className="app-page-stack vg-profile-page">
-      <section className="vg-profile-hero">
-        <div className="vg-profile-portrait-stack">
+    <div className={styles.page}>
+      <section className={styles.heroCard}>
+        <div className={styles.portraitColumn}>
           {canonical ? (
-            <ProfileMediaFrame className="vg-profile-main-portrait">
-              <Avatar name={companion.name} imageUrl={canonical.delivery_url} kind="ai" size="hero" variant="rounded" className="vg-hero-avatar" />
+            <ProfileMediaFrame className={styles.mainPortrait}>
+              <Avatar
+                name={companion.name}
+                imageUrl={canonical.delivery_url}
+                kind="ai"
+                size="hero"
+                variant="rounded"
+                className={styles.heroAvatar}
+              />
             </ProfileMediaFrame>
           ) : (
-            <div className="vg-profile-main-empty">Her portrait is being prepared. Please check back in a moment.</div>
+            <div className={styles.mainEmpty}>Her portrait is being prepared. Please check back in a moment.</div>
           )}
 
-          {gallery.length ? (
-            <div className="vg-profile-thumbnail-row">
+          {gallery.length > 0 ? (
+            <div className={styles.thumbnailRow}>
               {gallery.slice(0, 3).map((image) => (
-                <div key={image.id} className="vg-profile-thumbnail">
-                  <Image src={image.delivery_url} alt={`${companion.name} alternate portrait`} fill className="object-cover" />
+                <div key={image.id} className={styles.thumbnail}>
+                  <Image src={image.delivery_url} alt={`${companion.name} alternate portrait`} fill className={styles.image} />
                 </div>
               ))}
             </div>
           ) : null}
         </div>
 
-        <div className="vg-profile-identity">
-          <p className="my-0 text-xs text-muted">{photoDisclosure ?? profileDisclosure}</p>
-          <h1 className="my-0 vg-profile-name">{companion.name}</h1>
-          <p className="my-0 text-muted vg-profile-vibe">{vibeDescriptor}</p>
+        <div className={styles.identityColumn}>
+          <p className={styles.disclosure}>{visualProfile ? 'AI-generated photos' : companion.disclosure_label}</p>
+          <h1 className={styles.name}>{companion.name}</h1>
+          <p className={styles.vibe}>{vibeDescriptor}</p>
 
-          {traitPills.length ? (
-            <div className="vg-profile-pill-row" aria-label="Companion traits">
-              {traitPills.slice(0, 4).map((pill) => (
-                <span key={pill} className="vg-profile-pill">
-                  {pill}
-                </span>
-              ))}
-            </div>
-          ) : null}
+          {softStatusMessage ? <p className={styles.statusNote}>{softStatusMessage}</p> : null}
 
-          {softStatusMessage ? <p className="my-0 text-xs text-muted vg-profile-soft-note">{softStatusMessage}</p> : null}
+          <div className={styles.traitsGrid}>
+            {traits.map((trait) => (
+              <article key={trait.label} className={styles.traitCard}>
+                <p className={styles.traitLabel}>{trait.label}</p>
+                <p className={styles.traitValue}>
+                  {trait.swatch ? <span className={styles.swatch} style={{ backgroundColor: trait.swatch }} aria-hidden /> : null}
+                  {trait.emoji ? <span className={styles.emoji}>{trait.emoji}</span> : null}
+                  <span>{trait.value}</span>
+                </p>
+              </article>
+            ))}
+          </div>
 
-          <div className="vg-profile-cta-row">
-            <Link href={`/virtual-girlfriend/chat?companionId=${companion.id}`} className="ui-button ui-button-primary vg-profile-primary-cta">
+          <div className={styles.actions}>
+            <Link href={`/virtual-girlfriend/chat?companionId=${companion.id}`} className={styles.primaryButton}>
               Chat now
             </Link>
-            <Link href="/virtual-girlfriend" className="ui-button ui-button-ghost vg-profile-secondary-cta">
+            <Link href="/virtual-girlfriend" className={styles.secondaryButton}>
               Switch companion
             </Link>
-            <Link href="/virtual-girlfriend/setup?new=1" className="ui-button ui-button-ghost vg-profile-secondary-cta">
+            <Link href="/virtual-girlfriend/setup?new=1" className={styles.secondaryButton}>
               Create another
             </Link>
           </div>
         </div>
       </section>
 
-      {dossierAttributes.length ? (
-        <section className="vg-profile-dossier">
-          <div className="vg-section-heading">
-            <h2 className="my-0 text-base font-semibold">Character dossier</h2>
-            <p className="my-0 text-sm text-muted">The essentials that define her style and chemistry.</p>
-          </div>
-          <dl className="vg-profile-dossier-grid">
-            {dossierAttributes.map((item) => (
-              <div key={item.label} className="vg-profile-dossier-card">
-                <dt className="vg-profile-dossier-label">{item.label}</dt>
-                <dd className="my-0 vg-profile-dossier-value">{item.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      ) : null}
-
-      <section className="vg-profile-gallery">
-        <div className="vg-section-heading">
-          <h2 className="my-0 text-base font-semibold">Gallery moments</h2>
-          <p className="my-0 text-sm text-muted">More moments will appear here as her gallery expands.</p>
+      <section className={styles.gallerySection}>
+        <div className={styles.sectionHeader}>
+          <h2>Gallery moments</h2>
+          <p>More moments will appear here as her gallery expands.</p>
         </div>
 
-        {gallery.length ? (
-          <div className="vg-profile-gallery-grid">
+        {gallery.length > 0 ? (
+          <div className={styles.galleryRow}>
             {gallery.map((image) => (
-              <div key={image.id} className="vg-profile-gallery-item">
-                <Image src={image.delivery_url} alt={`${companion.name} gallery photo`} fill className="object-cover" />
+              <div key={image.id} className={styles.galleryCard}>
+                <Image src={image.delivery_url} alt={`${companion.name} gallery photo`} fill className={styles.image} />
               </div>
             ))}
           </div>
         ) : (
-          <div className="vg-profile-gallery-empty">
-            <p className="my-0">More moments will appear here as her gallery expands.</p>
-          </div>
+          <div className={styles.galleryEmpty}>No extra gallery moments yet.</div>
         )}
       </section>
     </div>

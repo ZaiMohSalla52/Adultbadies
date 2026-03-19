@@ -2629,3 +2629,24 @@ a {
   box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9);
 }
 
+
+.virtual-girlfriend-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #070b14;
+  font-family: Inter, 'SF Pro Display', system-ui, sans-serif;
+  color: #f5f5f5;
+}
+
+.virtual-girlfriend-main {
+  flex: 1;
+  min-width: 0;
+  padding: 24px;
+  padding-bottom: 80px;
+}
+
+@media (min-width: 768px) {
+  .virtual-girlfriend-main {
+    padding-bottom: 24px;
+  }
+}
