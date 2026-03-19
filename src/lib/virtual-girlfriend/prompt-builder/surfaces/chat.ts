@@ -18,6 +18,7 @@ export interface ChatPromptInput {
   hairLength: string;
   eyeColor: string;
   bodyType: string;
+  skinTone?: string;
   identityAnchors?: string[];
   contextHint?: string;
   category?: string;

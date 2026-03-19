@@ -18,6 +18,7 @@ export interface GalleryPromptInput {
   hairLength: string;
   eyeColor: string;
   bodyType: string;
+  skinTone?: string;
   identityAnchors?: string[];
   sceneHint?: string;
 }

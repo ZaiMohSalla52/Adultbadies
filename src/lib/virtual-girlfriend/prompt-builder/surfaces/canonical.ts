@@ -18,6 +18,7 @@ export interface CanonicalPromptInput {
   hairLength: string;
   eyeColor: string;
   bodyType: string;
+  skinTone?: string;
   identityAnchors?: string[];
   identityInvariants?: string[];
 }
