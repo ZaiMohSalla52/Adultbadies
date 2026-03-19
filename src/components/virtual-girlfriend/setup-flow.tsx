@@ -608,6 +608,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
   const isSubmitting = generationStarted || pending;
   const showContinue = step === 'name' || step === 'portrait';
+  const nameOr = (withName: string, withoutName: string) =>
+    state.name.trim() ? withName.replace('{name}', state.name.trim()) : withoutName;
 
   return (
     <div className={styles.creatorContainer}>
@@ -672,7 +674,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'origin' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose ethnicity</h2>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s ethnicity', 'Choose ethnicity')}</h2>
                 <div className={styles.photoGridThree}>
                   {originOptions.map((option) => (
                     <button
@@ -691,7 +693,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'hairColor' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose hair color</h2>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s hair color', 'Choose hair color')}</h2>
                 <div className={styles.optionGridThree}>
                   {hairOptions.map((option) => (
                     <button
@@ -717,7 +719,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'hairLength' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose hair length</h2>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s hair length', 'Choose hair length')}</h2>
                 <div className={styles.optionGridFour}>
                   {hairLengthOptions.map((option) => (
                     <button
@@ -735,7 +737,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'eyeColor' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose eye color</h2>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s eye color', 'Choose eye color')}</h2>
                 <div className={styles.optionGridThree}>
                   {eyeColorOptions.map((option) => (
                     <button
@@ -761,7 +763,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'bodyType' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose body type</h2>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s body type', 'Choose body type')}</h2>
                 <div className={styles.optionGridThree}>
                   {bodyOptions.map((option) => (
                     <button
@@ -780,7 +782,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'breastSize' && state.sex === 'female' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose breast size</h2>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s breast size', 'Choose breast size')}</h2>
                 <div className={styles.optionGridFour}>
                   {breastSizeOptions.map((option) => (
                     <button
@@ -798,7 +800,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'age' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>How old?</h2>
+                <h2 className={styles.stepTitle}>{nameOr('How old is {name}?', 'How old?')}</h2>
                 <div className={styles.optionGridFour}>
                   {ageOptions.map((option) => (
                     <button
@@ -816,7 +818,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'styleVibe' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose style</h2>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s style', 'Choose style')}</h2>
                 <div className={styles.optionGridThree}>
                   {styleVibeOptions.map((option) => (
                     <button
@@ -837,7 +839,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                 {portraitsLoading ? (
                   <div className={styles.loadingState}>
                     <div className={styles.loadingOrb} />
-                    <h2 className={styles.stepTitle}>Creating {state.name || 'your companion'}&apos;s portrait</h2>
+                    <h2 className={styles.stepTitle}>{nameOr('Creating {name}\'s portrait', 'Creating portrait')}</h2>
                     <p className={styles.loadingSubtext}>Picking the perfect look...</p>
                     <div className={styles.traitSummary}>
                       {state.sex ? <span className={styles.traitChip}>{state.sex === 'female' ? 'Female' : 'Male'}</span> : null}
@@ -850,7 +852,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                   </div>
                 ) : (
                   <>
-                    <h2 className={styles.stepTitle}>Pick the portrait</h2>
+                    <h2 className={styles.stepTitle}>{nameOr('Pick {name}\'s portrait', 'Pick the portrait')}</h2>
                     <div className={styles.carouselContainer}>
                       <div className={styles.carouselTrack} ref={carouselRef}>
                         {portraitCandidates.map((candidate) => (
@@ -882,7 +884,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'occupation' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose occupation</h2>
+                <h2 className={styles.stepTitle}>{nameOr('What does {name} do?', 'Choose occupation')}</h2>
                 <div className={styles.photoGridThree}>
                   {occupationOptions.map((option) => (
                     <button
@@ -901,7 +903,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'personality' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose personality</h2>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s personality', 'Choose personality')}</h2>
                 <div className={styles.optionGridThree}>
                   {personalityOptions.map((option) => (
                     <button
@@ -920,7 +922,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'sexuality' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Sexual preference</h2>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s preference', 'Sexual preference')}</h2>
                 <div className={styles.optionGridThree}>
                   {sexualityOptions.map((option) => (
                     <button
@@ -939,7 +941,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'freeformDetails' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Any special details?</h2>
+                <h2 className={styles.stepTitle}>{nameOr('Anything special about {name}?', 'Any special details?')}</h2>
                 <textarea
                   rows={6}
                   maxLength={400}
