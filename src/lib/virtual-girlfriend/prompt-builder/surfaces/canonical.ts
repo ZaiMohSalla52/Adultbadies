@@ -21,17 +21,33 @@ export interface CanonicalPromptInput {
   skinTone?: string;
   identityAnchors?: string[];
   identityInvariants?: string[];
+  coreLook?: string[];
+  wardrobeDirection?: string;
+  lightingMood?: string;
+  cameraPreferences?: string[];
+  realismLevel?: string;
+  negativeConstraints?: string[];
 }
 
 export const buildCanonicalPrompt = (input: CanonicalPromptInput): string => {
   const identityInvariants = input.identityInvariants?.filter(Boolean).join(', ');
+  const coreLook = input.coreLook?.filter(Boolean).join(', ');
+  const cameraPrefs = input.cameraPreferences?.filter(Boolean).join(', ');
+  const negConstraints = input.negativeConstraints?.filter(Boolean).join(', ');
 
   return [
     `Portrait photograph of ${resolveSubject(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
-    identityInvariants ? `${identityInvariants}.` : null,
+    identityInvariants ? `Identity features: ${identityInvariants}.` : null,
+    coreLook ? `Core appearance: ${coreLook}.` : null,
+    input.wardrobeDirection ? `Wardrobe: ${input.wardrobeDirection}.` : null,
+    input.lightingMood ? `Lighting and mood: ${input.lightingMood}.` : null,
+    cameraPrefs ? `Camera: ${cameraPrefs}.` : null,
+    input.realismLevel ? `Realism: ${input.realismLevel}.` : null,
     getCompositionAnchor('canonical'),
+    'Best quality, ultra realistic, intricate facial details, professional photography, 8k.',
     buildAllNegatives(),
+    negConstraints ? `Also avoid: ${negConstraints}.` : null,
   ]
     .filter(Boolean)
     .join(' ');

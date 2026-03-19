@@ -282,8 +282,8 @@ const toCanonicalPromptInput = (
   companion: VirtualGirlfriendCompanionRecord,
   identityPack?: VirtualGirlfriendVisualIdentityPack,
 ): CanonicalPromptInput => {
-  const structured = companion.structured_profile;
-  const age = Number(structured?.age);
+  const sp = companion.structured_profile;
+  const age = Number(sp?.age);
   const identityInvariants = identityPack
     ? Object.values(identityPack.identityInvariants ?? {}).filter(
       (value): value is string => typeof value === 'string' && value.trim().length > 0,
@@ -291,16 +291,22 @@ const toCanonicalPromptInput = (
     : undefined;
 
   return {
-    sex: structured?.sex ?? 'female',
+    sex: sp?.sex ?? 'female',
     age: Number.isFinite(age) && age > 0 ? age : 26,
-    origin: structured?.origin ?? 'white',
-    hairColor: structured?.hairColor ?? 'dark brown',
-    hairLength: structured?.hairLength ?? 'long',
-    eyeColor: structured?.eyeColor ?? 'brown',
-    bodyType: structured?.bodyType ?? structured?.figure ?? 'slim',
-    skinTone: structured?.skinTone ?? undefined,
+    origin: sp?.origin ?? 'white',
+    hairColor: sp?.hairColor ?? 'dark brown',
+    hairLength: sp?.hairLength ?? 'long',
+    eyeColor: sp?.eyeColor ?? 'brown',
+    bodyType: sp?.bodyType ?? sp?.figure ?? 'slim',
+    skinTone: sp?.skinTone ?? undefined,
     identityAnchors: identityPack?.continuityAnchors ?? undefined,
     identityInvariants,
+    coreLook: identityPack?.coreLookDescriptors,
+    wardrobeDirection: identityPack?.wardrobeDirection,
+    lightingMood: identityPack?.lightingMoodDirection,
+    cameraPreferences: identityPack?.cameraCompositionPreferences,
+    realismLevel: identityPack?.realismPolishLevel,
+    negativeConstraints: identityPack?.negativeConstraints,
   };
 };
 
