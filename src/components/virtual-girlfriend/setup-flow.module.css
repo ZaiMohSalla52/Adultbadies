@@ -268,7 +268,7 @@
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-  padding: 0 10%;
+  padding: 0 4%;
   scrollbar-width: none;
 }
 
@@ -277,7 +277,7 @@
 }
 
 .carouselCard {
-  flex: 0 0 70%;
+  flex: 0 0 30%;
   scroll-snap-align: center;
   border-radius: 16px;
   overflow: hidden;
@@ -295,6 +295,9 @@
 .carouselImage {
   width: 100%;
   height: auto;
+  min-height: 280px;
+  object-fit: cover;
+  border-radius: 12px;
   display: block;
 }
 
