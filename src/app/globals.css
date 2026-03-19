@@ -147,6 +147,7 @@ img {
   display: flex;
   min-height: 100vh;
   background: var(--bg);
+  position: relative;
 }
 
 .app-shell-main {

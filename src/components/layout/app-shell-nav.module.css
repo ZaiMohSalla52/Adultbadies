@@ -10,8 +10,9 @@
   display: flex;
   flex-direction: column;
   padding: 20px 14px;
-  z-index: 40;
+  z-index: 100;
   font-family: Inter, 'SF Pro Display', system-ui, sans-serif;
+  overflow-y: auto;
 }
 
 .brand {
@@ -137,7 +138,7 @@
   border-top: 1px solid rgba(255,255,255,0.06);
   padding: 6px 0;
   padding-bottom: env(safe-area-inset-bottom, 6px);
-  z-index: 50;
+  z-index: 100;
 }
 
 .tab {
