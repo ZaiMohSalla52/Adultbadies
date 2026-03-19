@@ -20,20 +20,33 @@ export interface GalleryPromptInput {
   bodyType: string;
   skinTone?: string;
   identityAnchors?: string[];
+  coreLook?: string[];
+  wardrobeDirection?: string;
+  lightingMood?: string;
+  cameraPreferences?: string[];
+  realismLevel?: string;
+  negativeConstraints?: string[];
   sceneHint?: string;
 }
 
 export const buildGalleryPrompt = (input: GalleryPromptInput, variantIndex: number): string => {
   const identityAnchors = input.identityAnchors?.filter(Boolean).join(', ');
+  const coreLook = input.coreLook?.filter(Boolean).join(', ');
+  const negConstraints = input.negativeConstraints?.filter(Boolean).join(', ');
 
   return [
     `Portrait photograph of ${resolveSubject(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
     identityAnchors ? `Identity anchors: ${identityAnchors}.` : null,
-    input.sceneHint ? `Scene context: ${input.sceneHint}.` : null,
-    `Variant ${variantIndex + 1}.`,
+    coreLook ? `Core appearance: ${coreLook}.` : null,
+    input.wardrobeDirection ? `Wardrobe: ${input.wardrobeDirection}.` : null,
+    input.lightingMood ? `Lighting: ${input.lightingMood}.` : null,
+    input.sceneHint ? `Scene: ${input.sceneHint}.` : null,
+    `Gallery variant ${variantIndex + 1}. Vary scene, angle, and outfit while preserving identity.`,
     getCompositionAnchor('gallery'),
+    'Best quality, ultra realistic, intricate details, professional photography, 8k.',
     buildAllNegatives(),
+    negConstraints ? `Also avoid: ${negConstraints}.` : null,
   ]
     .filter(Boolean)
     .join(' ');
