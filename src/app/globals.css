@@ -44,6 +44,11 @@ a {
   text-decoration: none;
 }
 
+img {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Design-system utility tokens (tailwind-like aliases kept centralized) */
 .bg-background { background-color: var(--bg); }
 .bg-surface { background-color: var(--surface); }
@@ -2534,4 +2539,3 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9);
 }
-
