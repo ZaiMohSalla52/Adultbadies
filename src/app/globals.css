@@ -139,98 +139,16 @@ a {
 }
 
 .app-shell {
-  width: min(1240px, 100%);
-  margin: 0 auto;
-  padding: 0.8rem 0.9rem calc(5.8rem + env(safe-area-inset-bottom, 0px));
-  display: grid;
-  gap: 0.8rem;
-}
-
-.app-shell-header {
-  border-radius: var(--radius-lg);
-  padding: 0.75rem 0.9rem;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  position: sticky;
-  top: 0.65rem;
-  z-index: 25;
-}
-
-.app-shell-signout-form {
-  display: none;
-}
-
-.app-shell-nav {
-  display: none;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.app-shell-nav-link,
-.app-shell-mobile-link {
-  min-height: 2.3rem;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 194, 0.2);
-  padding: 0 0.85rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-size: 0.88rem;
-  background: rgba(7, 11, 20, 0.42);
-  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
-}
-
-.app-shell-nav-link:hover,
-.app-shell-mobile-link:hover {
-  color: #fff;
-  border-color: rgba(236, 72, 153, 0.45);
-  background: rgba(19, 31, 58, 0.85);
+  min-height: 100vh;
+  background: var(--bg);
 }
 
 .app-shell-main {
+  flex: 1;
   min-width: 0;
-}
-
-.app-shell-mobile-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 80;
-  border-radius: 1.1rem 1.1rem 0 0;
-  border-left: 0;
-  border-right: 0;
-  border-bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.45rem;
-  padding: 0.55rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, rgba(11, 18, 38, 0.9), rgba(7, 11, 20, 0.98));
-  backdrop-filter: blur(16px);
-  box-shadow: 0 -14px 34px rgba(2, 6, 23, 0.52);
-}
-
-.app-shell-mobile-link {
-  min-height: 2.65rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0 0.35rem;
-}
-
-
-.app-shell-nav-link-active {
-  color: #fff;
-  border-color: rgba(236, 72, 153, 0.58);
-  background: linear-gradient(135deg, rgba(255, 46, 99, 0.28), rgba(139, 92, 246, 0.32));
-}
-
-.app-shell-mobile-link-active {
-  color: #fff;
-  border-color: rgba(236, 72, 153, 0.58);
-  background: linear-gradient(135deg, rgba(255, 46, 99, 0.28), rgba(139, 92, 246, 0.32));
+  padding: 24px;
+  padding-bottom: 80px;
 }
 
 .app-page-stack {
@@ -1858,22 +1776,10 @@ a {
   padding: 1.1rem;
 }
 
-@media (min-width: 900px) {
-  .app-shell {
-    padding: 1.2rem 1.5rem 2rem;
-  }
-
-  .app-shell-signout-form {
-    display: block;
-  }
-
-  .app-shell-nav {
-    display: inline-flex;
-    flex-wrap: nowrap;
-  }
-
-  .app-shell-mobile-nav {
-    display: none;
+@media (min-width: 768px) {
+  .app-shell-main {
+    margin-left: 240px;
+    padding-bottom: 24px;
   }
 
   .encounters-desktop-layout {
@@ -2629,24 +2535,3 @@ a {
   box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9);
 }
 
-
-.virtual-girlfriend-layout {
-  display: flex;
-  min-height: 100vh;
-  background: #070b14;
-  font-family: Inter, 'SF Pro Display', system-ui, sans-serif;
-  color: #f5f5f5;
-}
-
-.virtual-girlfriend-main {
-  flex: 1;
-  min-width: 0;
-  padding: 24px;
-  padding-bottom: 80px;
-}
-
-@media (min-width: 768px) {
-  .virtual-girlfriend-main {
-    padding-bottom: 24px;
-  }
-}
