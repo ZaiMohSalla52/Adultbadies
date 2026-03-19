@@ -8,6 +8,21 @@ import {
   generateChatImageFromReferenceWithIdeogram,
   type IdeogramGeneratedImage,
 } from '@/lib/virtual-girlfriend/image-ideogram';
+import {
+  buildCanonicalPrompt,
+  canonicalPromptVersion,
+  type CanonicalPromptInput,
+} from '@/lib/virtual-girlfriend/prompt-builder/surfaces/canonical';
+import {
+  buildGalleryPrompt,
+  galleryPromptVersion,
+  type GalleryPromptInput,
+} from '@/lib/virtual-girlfriend/prompt-builder/surfaces/gallery';
+import {
+  buildChatPrompt,
+  chatPromptVersion,
+  type ChatPromptInput,
+} from '@/lib/virtual-girlfriend/prompt-builder/surfaces/chat';
 import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
@@ -222,57 +237,6 @@ export type VirtualGirlfriendPortraitPreviewResult = {
   candidates: VirtualGirlfriendPortraitPreviewCandidate[];
 };
 
-const resolvePromptSubject = (sex: string | null | undefined) => {
-  const normalized = (sex ?? '').trim().toLowerCase();
-  if (normalized === 'male' || normalized === 'man') return 'man';
-  return 'woman';
-};
-
-const buildStructuredAppearanceContext = (companion: VirtualGirlfriendCompanionRecord) => {
-  const structured = companion.structured_profile;
-  if (!structured) return '';
-
-  const normalizedStyleVibe = structured.styleVibe?.trim().toLowerCase();
-  const styleVibeDescriptor = (() => {
-    if (!normalizedStyleVibe || normalizedStyleVibe === 'unknown') return null;
-    if (normalizedStyleVibe === 'casual') return 'casual everyday style';
-    if (normalizedStyleVibe === 'elegant') return 'elegant polished style';
-    if (normalizedStyleVibe === 'edgy') return 'edgy streetwear style';
-    if (normalizedStyleVibe === 'bohemian') return 'relaxed bohemian style';
-    if (normalizedStyleVibe === 'sporty') return 'athletic sporty style';
-    if (normalizedStyleVibe === 'professional') return 'professional composed style';
-    return structured.styleVibe?.trim() ?? null;
-  })();
-
-  const hairDescriptor = (() => {
-    const hairColor = structured.hairColor?.trim();
-    const hairLength = structured.hairLength?.trim();
-    if (hairColor && hairLength) return `${hairColor} ${hairLength} hair`;
-    if (hairColor) return `${hairColor} hair`;
-    if (hairLength) return `${hairLength} hair`;
-    return null;
-  })();
-
-  const bodyDescriptor = structured.bodyType?.trim() || structured.figure?.trim() || null;
-
-  const cues = [
-    structured.sex ? `sex: ${structured.sex}` : null,
-    structured.age ? `age: ${structured.age}` : null,
-    structured.origin ? `origin: ${structured.origin}` : null,
-    hairDescriptor ? `hair: ${hairDescriptor}` : null,
-    structured.eyeColor ? `eyes: ${structured.eyeColor.trim()} eyes` : null,
-    structured.skinTone ? `complexion: ${structured.skinTone.trim()} skin tone` : null,
-    bodyDescriptor ? `figure: ${bodyDescriptor}` : null,
-    styleVibeDescriptor ? `style vibe: ${styleVibeDescriptor}` : null,
-    structured.occupation ? `occupation vibe: ${structured.occupation}` : null,
-    structured.personality ? `personality styling signal: ${structured.personality}` : null,
-    structured.visualAesthetic ? `visual aesthetic: ${structured.visualAesthetic}` : null,
-    structured.preferenceHints ? `user preference hints: ${structured.preferenceHints}` : null,
-  ].filter(Boolean);
-
-  return cues.length ? `Structured profile anchors: ${cues.join('; ')}.` : '';
-};
-
 const buildCapturePlan = (companion: VirtualGirlfriendCompanionRecord): CapturePlan[] => {
   const aesthetic = companion.visual_aesthetic?.toLowerCase() ?? '';
   const glam = aesthetic.includes('night') || aesthetic.includes('luxury');
@@ -314,44 +278,57 @@ const buildCapturePlan = (companion: VirtualGirlfriendCompanionRecord): CaptureP
   ];
 };
 
-const buildIdentityPrompt = (input: {
-  companion: VirtualGirlfriendCompanionRecord;
-  identityPack: VirtualGirlfriendVisualIdentityPack;
-  capture: CapturePlan;
-}) => {
-  const structuredAppearanceContext = buildStructuredAppearanceContext(input.companion);
-  return [
-    `Create a premium ${input.capture.label} image of the same single AI-generated ${resolvePromptSubject(input.companion.structured_profile?.sex)} identity named ${input.companion.name}.`,
-    `Identity anchors: ${input.identityPack.continuityAnchors.join(', ')}.`,
-    `Core look: ${input.identityPack.coreLookDescriptors.join(', ')}.`,
-    structuredAppearanceContext,
-    `Identity invariants: age band ${input.identityPack.identityInvariants.ageBand}; face ${input.identityPack.identityInvariants.faceShape}; eyes ${input.identityPack.identityInvariants.eyeShapeColor}; brows ${input.identityPack.identityInvariants.browCharacter}; nose ${input.identityPack.identityInvariants.noseProfile}; lips ${input.identityPack.identityInvariants.lipShape}; skin tone ${input.identityPack.identityInvariants.skinToneBand}; hair ${input.identityPack.identityInvariants.hairSignature}; body presentation ${input.identityPack.identityInvariants.bodyPresentation}; signature motif ${input.identityPack.identityInvariants.signatureAccessoryOrMotif}.`,
-    `Wardrobe direction system-wide: ${input.identityPack.wardrobeDirection}.`,
-    `Camera/composition preferences: ${input.identityPack.cameraCompositionPreferences.join(', ')}.`,
-    `Framing: ${input.capture.framing}. Background/environment: ${input.capture.environment}.`,
-    `Wardrobe: ${input.capture.wardrobe}. Expression and energy: ${input.capture.expression}; mood ${input.capture.mood}.`,
-    `Lighting/mood direction: ${input.identityPack.lightingMoodDirection}. Realism target: ${input.identityPack.realismPolishLevel}.`,
-    `Show exactly one adult ${resolvePromptSubject(input.companion.structured_profile?.sex)}, no extra people, no text overlays, no logos.`,
-    `Avoid: ${input.identityPack.negativeConstraints.join(', ')}.`,
-    `Negative overlap cues: ${input.identityPack.negativeOverlapCues.join(', ')}.`,
-  ].join(' ');
+const toCanonicalPromptInput = (
+  companion: VirtualGirlfriendCompanionRecord,
+  identityPack?: VirtualGirlfriendVisualIdentityPack,
+): CanonicalPromptInput => {
+  const structured = companion.structured_profile;
+  const age = Number(structured?.age);
+  const identityInvariants = identityPack
+    ? Object.values(identityPack.identityInvariants ?? {}).filter(
+      (value): value is string => typeof value === 'string' && value.trim().length > 0,
+    )
+    : undefined;
+
+  return {
+    sex: structured?.sex ?? 'female',
+    age: Number.isFinite(age) && age > 0 ? age : 26,
+    origin: structured?.origin ?? 'white',
+    hairColor: structured?.hairColor ?? 'dark brown',
+    hairLength: structured?.hairLength ?? 'long',
+    eyeColor: structured?.eyeColor ?? 'brown',
+    bodyType: structured?.bodyType ?? structured?.figure ?? 'slim',
+    skinTone: structured?.skinTone ?? undefined,
+    identityAnchors: identityPack?.continuityAnchors ?? undefined,
+    identityInvariants,
+  };
 };
 
-const buildChatPrompt = (input: {
-  companion: VirtualGirlfriendCompanionRecord;
-  visualProfile: VirtualGirlfriendVisualProfileRecord;
-  category: VirtualGirlfriendImageCategory;
-}) => {
-  const identityPack = input.visualProfile.identity_pack;
-  return [
-    `Generate a premium ${input.category} chat photo of the same single AI-generated ${resolvePromptSubject(input.companion.structured_profile?.sex)} identity named ${input.companion.name}.`,
-    `Continuity anchors: ${identityPack.continuityAnchors.join(', ')}.`,
-    `Core look descriptors: ${identityPack.coreLookDescriptors.join(', ')}.`,
-    `Camera/composition preferences: ${identityPack.cameraCompositionPreferences.join(', ')}.`,
-    `Wardrobe direction: ${identityPack.wardrobeDirection}. Lighting direction: ${identityPack.lightingMoodDirection}.`,
-    'Ensure this image is not a near-duplicate of previous images; vary scene, angle, and outfit while preserving identity.',
-    `Avoid: ${identityPack.negativeConstraints.join(', ')}.`,
-  ].join(' ');
+const toGalleryPromptInput = (
+  companion: VirtualGirlfriendCompanionRecord,
+  identityPack: VirtualGirlfriendVisualIdentityPack,
+  capture: CapturePlan,
+): GalleryPromptInput => {
+  const canonicalInput = toCanonicalPromptInput(companion, identityPack);
+  return {
+    ...canonicalInput,
+    identityAnchors: identityPack.continuityAnchors,
+    sceneHint: `${capture.environment}; framing ${capture.framing}; wardrobe ${capture.wardrobe}; expression ${capture.expression}; mood ${capture.mood}`,
+  };
+};
+
+const toChatPromptInput = (
+  companion: VirtualGirlfriendCompanionRecord,
+  identityPack: VirtualGirlfriendVisualIdentityPack,
+  chatCategory?: string,
+): ChatPromptInput => {
+  const canonicalInput = toCanonicalPromptInput(companion, identityPack);
+  return {
+    ...canonicalInput,
+    identityAnchors: identityPack.continuityAnchors,
+    category: chatCategory || undefined,
+    contextHint: 'Preserve same person identity while varying scene naturally from prior images.',
+  };
 };
 
 const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string } | null => {
@@ -601,7 +578,8 @@ const generateGalleryFromCanonical = async (input: {
   const galleryImages: VirtualGirlfriendCompanionImageRecord[] = [];
 
   for (const capture of captures) {
-    const prompt = buildIdentityPrompt({ companion: input.companion, identityPack: input.visualProfile.identity_pack, capture });
+    const galleryPromptInput = toGalleryPromptInput(input.companion, input.visualProfile.identity_pack, capture);
+    const prompt = buildGalleryPrompt(galleryPromptInput, capture.variantIndex);
     const generated = await runProviderGeneration({
       scope: input.scope,
       mode: 'gallery_from_reference',
@@ -621,7 +599,7 @@ const generateGalleryFromCanonical = async (input: {
       identityPack: input.visualProfile.identity_pack,
       referenceImageId: input.canonicalImage.id,
       promptText: prompt,
-      promptVersion: PROMPT_VERSION.gallery,
+      promptVersion: galleryPromptVersion,
       surfaceType: 'gallery',
       scope: input.scope,
     });
@@ -653,7 +631,8 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
   const canonicalCapture = captures.find((capture) => capture.kind === 'canonical');
   if (!canonicalCapture) throw new VirtualGirlfriendImagePackError('Canonical capture plan is missing.');
 
-  const canonicalPrompt = buildIdentityPrompt({ companion: input.companion, identityPack: input.visualProfile.identity_pack, capture: canonicalCapture });
+  const canonicalPromptInput = toCanonicalPromptInput(input.companion, input.visualProfile.identity_pack);
+  const canonicalPrompt = buildCanonicalPrompt(canonicalPromptInput);
   const seedPortraitDataUrl = typeof input.visualProfile.source_setup?.selectedPortraitImage === 'string'
     ? input.visualProfile.source_setup.selectedPortraitImage
     : null;
@@ -687,7 +666,7 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
     generated: canonicalGenerated,
     identityPack: input.visualProfile.identity_pack,
     promptText: canonicalPrompt,
-    promptVersion: PROMPT_VERSION.canonical,
+    promptVersion: canonicalPromptVersion,
     surfaceType: 'canonical',
     scope,
   });
@@ -887,7 +866,8 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     });
     logImageMachine(scope, 'download_success', { canonicalImageId: canonical.id, bytes: reference.bytes.byteLength });
 
-    const prompt = buildChatPrompt({ companion: input.companion, visualProfile: input.visualProfile, category: input.category });
+    const chatPromptInput = toChatPromptInput(input.companion, input.visualProfile.identity_pack, input.category);
+    const prompt = buildChatPrompt(chatPromptInput);
     const generated = await runProviderGeneration({
       scope,
       mode: 'chat_from_reference',
@@ -922,7 +902,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         source: 'chat-image-machine',
       },
       promptText: prompt,
-      promptVersion: PROMPT_VERSION.chat,
+      promptVersion: chatPromptVersion,
       surfaceType: 'chat',
       scope,
     });
