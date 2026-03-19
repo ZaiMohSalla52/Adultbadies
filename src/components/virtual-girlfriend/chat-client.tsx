@@ -3,9 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import type { Entitlements } from '@/lib/subscriptions/types';
 import type {
   VirtualGirlfriendMessageRecord,
@@ -15,6 +12,7 @@ import type {
   VirtualGirlfriendChatImageOutcome,
   VirtualGirlfriendGenerationStatus,
 } from '@/lib/virtual-girlfriend/types';
+import styles from './chat-client.module.css';
 
 type ChatClientProps = {
   companionId: string;
@@ -27,6 +25,9 @@ type ChatClientProps = {
   initialStyleProfile: VirtualGirlfriendUserStyleProfileRecord;
   isPremium: boolean;
   companionGenerationStatus: VirtualGirlfriendGenerationStatus;
+  occupation?: string | null;
+  personality?: string | null;
+  sexuality?: string | null;
 };
 
 const STYLE_PRESETS: Array<{ key: VirtualGirlfriendStyleControlPreset; label: string }> = [
@@ -35,6 +36,12 @@ const STYLE_PRESETS: Array<{ key: VirtualGirlfriendStyleControlPreset; label: st
   { key: 'shorter_replies', label: 'Shorter replies' },
   { key: 'bolder_flirting', label: 'Bolder flirting' },
 ];
+
+const formatTime = (timestamp: string) => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+};
 
 export const VirtualGirlfriendChatClient = ({
   companionId,
@@ -47,11 +54,16 @@ export const VirtualGirlfriendChatClient = ({
   initialStyleProfile,
   isPremium,
   companionGenerationStatus,
+  occupation,
+  personality,
+  sexuality,
 }: ChatClientProps) => {
   const [messages, setMessages] = useState(initialMessages);
   const [styleProfile, setStyleProfile] = useState(initialStyleProfile);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamStarted, setStreamStarted] = useState(false);
   const [stylePending, setStylePending] = useState<VirtualGirlfriendStyleControlPreset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [voicePending, setVoicePending] = useState(false);
@@ -83,15 +95,33 @@ export const VirtualGirlfriendChatClient = ({
   const eventsChannelRef = useRef<RTCDataChannel | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const voiceRunRef = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const limit = entitlements.limits.virtualGirlfriendMessagesPerDay;
   const reachedLimit = limit !== null && usedToday >= limit;
+
+  const scrollToBottom = () => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, []);
 
   const send = async () => {
     const text = draft.trim();
     if (!text || pending || reachedLimit) return;
 
     setPending(true);
+    setIsStreaming(true);
+    setStreamStarted(false);
     setError(null);
 
     const optimisticUser: VirtualGirlfriendMessageRecord = {
@@ -109,7 +139,6 @@ export const VirtualGirlfriendChatClient = ({
     };
 
     setMessages((prev) => [...prev, optimisticUser]);
-    setDraft('');
 
     const response = await fetch('/api/virtual-girlfriend/chat/stream', {
       method: 'POST',
@@ -121,6 +150,7 @@ export const VirtualGirlfriendChatClient = ({
       const body = (await response.json().catch(() => ({}))) as { error?: string };
       setError(body.error ?? 'Unable to send message.');
       setPending(false);
+      setIsStreaming(false);
       return;
     }
 
@@ -171,6 +201,7 @@ export const VirtualGirlfriendChatClient = ({
               };
 
           if (event.type === 'chunk') {
+            setStreamStarted(true);
             setMessages((prev) =>
               prev.map((message) =>
                 message.id === assistantTempId
@@ -209,7 +240,10 @@ export const VirtualGirlfriendChatClient = ({
     }
 
     setPending(false);
-    window.location.reload();
+    setIsStreaming(false);
+    setStreamStarted(false);
+    setDraft('');
+    scrollToBottom();
   };
 
   const applyPreset = async (preset: VirtualGirlfriendStyleControlPreset) => {
@@ -233,7 +267,6 @@ export const VirtualGirlfriendChatClient = ({
     setStyleProfile(body.styleProfile);
     setStylePending(null);
   };
-
 
   const closeCompanionMeter = () => {
     if (companionMeterFrameRef.current !== null) {
@@ -729,12 +762,12 @@ export const VirtualGirlfriendChatClient = ({
 
   const voiceStatusTone =
     voiceStatus === 'connecting' || voiceStatus === 'reconnecting'
-      ? 'connecting'
+      ? styles.voiceToneConnecting
       : voiceStatus === 'ready' && !isVoiceExpired
-        ? 'ready'
+        ? styles.voiceToneReady
         : voiceStatus === 'disconnected' || voiceStatus === 'expired' || isVoiceExpired
-          ? 'warning'
-          : 'idle';
+          ? styles.voiceToneWarning
+          : '';
 
   const helperText = useMemo(() => {
     if (limit === null) {
@@ -745,192 +778,222 @@ export const VirtualGirlfriendChatClient = ({
   }, [limit, usedToday]);
 
   return (
-    <div className="chat-screen">
-      <header className="chat-conversation-header chat-conversation-header-refined vg-chat-identity-header">
-        <div className="chat-title-wrap">
-          <Avatar name={companionName} imageUrl={companionAvatarUrl} kind="ai" size="lg" ring isActive />
-          <div>
-            <h1 className="my-0 chat-title">{companionName}</h1>
-            <p className="my-0 text-xs text-muted">{disclosureLabel} • Identity-locked portrait</p>
+    <div className={styles.chatLayout}>
+      <main className={styles.chatMain}>
+        <header className={styles.chatHeader}>
+          <Link href="/virtual-girlfriend" className={styles.backButton} aria-label="Back to companions">
+            ←
+          </Link>
+          <div className={styles.companionHeaderAvatar}>
+            {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={40} height={40} unoptimized /> : <span>{companionName.charAt(0)}</span>}
           </div>
-        </div>
-        <p className="my-0 text-xs text-muted chat-usage-pill">{helperText}</p>
-      </header>
-
-      <section className="chat-style-controls vg-chat-module">
-        <details>
-          <summary className="chat-style-summary">Tone preferences</summary>
-          <div className="chat-style-controls-grid">
-            {STYLE_PRESETS.map((preset) => (
-              <Button
-                key={preset.key}
-                type="button"
-                variant="secondary"
-                disabled={!isPremium || !!stylePending}
-                onClick={() => applyPreset(preset.key)}
-              >
-                {stylePending === preset.key ? 'Updating…' : preset.label}
-              </Button>
-            ))}
-            {!isPremium ? <p className="my-0 text-xs text-muted">Premium unlocks tone steering.</p> : null}
+          <div className={styles.companionHeaderInfo}>
+            <span className={styles.companionHeaderName}>{companionName}</span>
+            <span className={styles.companionHeaderStatus}>Online • {helperText}</span>
           </div>
-          <p className="my-0 text-xs text-muted">
-            Adaptation {Math.round(styleProfile.adaptation_strength * 100)}% • stability{' '}
-            {Math.round(styleProfile.stability_score * 100)}%
-          </p>
-        </details>
-      </section>
-
-
-      <section className="chat-style-controls vg-chat-module">
-        <details open className="vg-voice-panel">
-          <summary className="chat-style-summary">Voice (Premium)</summary>
-          <div className="vg-voice-header">
-            <div className="vg-voice-avatar" aria-hidden>
-              {companionName.slice(0, 1).toUpperCase()}
+          <details className={styles.headerMenu}>
+            <summary className={styles.menuTrigger}>⋯</summary>
+            <div className={styles.menuPanel}>
+              <p className={styles.menuLabel}>Tone presets</p>
+              <div className={styles.menuButtons}>
+                {STYLE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    className={styles.menuButton}
+                    disabled={!isPremium || !!stylePending}
+                    onClick={() => applyPreset(preset.key)}
+                  >
+                    {stylePending === preset.key ? 'Updating…' : preset.label}
+                  </button>
+                ))}
+              </div>
+              <p className={styles.menuMeta}>
+                Adaptation {Math.round(styleProfile.adaptation_strength * 100)}% • stability {Math.round(styleProfile.stability_score * 100)}%
+              </p>
+              <p className={styles.menuLabel}>Voice (Premium)</p>
+              <p className={styles.menuMeta}>{voiceStatusText}</p>
+              <div className={styles.voiceControls}>
+                <button
+                  type="button"
+                  className={styles.menuButton}
+                  disabled={
+                    !isPremium
+                    || voicePending
+                    || voiceStatus === 'connecting'
+                    || voiceStatus === 'reconnecting'
+                    || !companionId
+                    || companionGenerationStatus !== 'ready'
+                  }
+                  onClick={startVoiceSession}
+                >
+                  {voicePending || voiceStatus === 'connecting' || voiceStatus === 'reconnecting'
+                    ? voiceStatus === 'reconnecting'
+                      ? 'Reconnecting…'
+                      : 'Connecting…'
+                    : voiceSession
+                      ? 'Refresh voice session'
+                      : 'Start voice session'}
+                </button>
+                {voiceSession ? (
+                  <>
+                    <button type="button" className={styles.menuButton} onClick={toggleMicMute}>
+                      {micMuted ? 'Unmute microphone' : 'Mute microphone'}
+                    </button>
+                    <button type="button" className={styles.menuButton} onClick={endVoiceSession}>
+                      End session
+                    </button>
+                  </>
+                ) : null}
+              </div>
+              <div className={styles.voiceIndicators}>
+                <span className={`${styles.voiceIndicator} ${voiceStatusTone}`}>Status</span>
+                <span className={`${styles.voiceIndicator} ${isCompanionSpeaking ? styles.isLive : ''}`}>Companion</span>
+                <span className={`${styles.voiceIndicator} ${isMicActive && !micMuted ? styles.isLive : ''}`}>Mic</span>
+                <span className={`${styles.voiceIndicator} ${isListening && !micMuted ? styles.isLive : ''}`}>Listening</span>
+              </div>
+              <div className={styles.voiceWave} aria-label="Voice activity">
+                {Array.from({ length: 16 }).map((_, idx) => {
+                  const phase = (idx % 4) / 4;
+                  const activity = isCompanionSpeaking ? 0.75 : isMicActive ? 0.58 : isListening && !micMuted ? Math.max(0.16, voiceLevel * 0.5) : 0.12;
+                  const barScale = 0.32 + activity + phase * 0.16;
+                  return <span key={idx} className={styles.voiceWaveBar} style={{ transform: `scaleY(${Math.min(1.8, barScale)})` }} />;
+                })}
+              </div>
             </div>
-            <div className="vg-voice-header-copy">
-              <p className="my-0 vg-voice-title">Live voice with {companionName}</p>
-              <p className="my-0 text-xs text-muted">Low-latency companion session</p>
-            </div>
-            <span className={`vg-voice-status-pill vg-voice-status-pill-${voiceStatusTone}`}>{voiceStatusText}</span>
-          </div>
+          </details>
+        </header>
 
-          <div className="vg-voice-wave" aria-label="Voice activity">
-            {Array.from({ length: 16 }).map((_, idx) => {
-              const phase = (idx % 4) / 4;
-              const activity = isCompanionSpeaking ? 0.75 : isMicActive ? 0.58 : isListening && !micMuted ? Math.max(0.16, voiceLevel * 0.5) : 0.12;
-              const barScale = 0.32 + activity + phase * 0.16;
-              return <span key={idx} className="vg-voice-wave-bar" style={{ transform: `scaleY(${Math.min(1.8, barScale)})` }} />;
-            })}
-          </div>
-
-          <div className="vg-voice-indicators">
-            <span className={`vg-voice-indicator ${isCompanionSpeaking ? 'is-live' : ''}`}>Companion speaking</span>
-            <span className={`vg-voice-indicator ${isMicActive && !micMuted ? 'is-live' : ''}`}>Your mic active</span>
-            <span className={`vg-voice-indicator ${isListening && !micMuted ? 'is-live' : ''}`}>System listening</span>
-          </div>
-
-          <div className="chat-style-controls-grid">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={
-                !isPremium ||
-                voicePending ||
-                voiceStatus === 'connecting' ||
-                voiceStatus === 'reconnecting' ||
-                !companionId ||
-                companionGenerationStatus !== 'ready'
-              }
-              onClick={startVoiceSession}
-            >
-              {voicePending || voiceStatus === 'connecting' || voiceStatus === 'reconnecting'
-                ? voiceStatus === 'reconnecting'
-                  ? 'Reconnecting…'
-                  : 'Connecting…'
-                : voiceSession
-                  ? 'Refresh voice session'
-                  : 'Start voice session'}
-            </Button>
-            {voiceSession ? (
-              <>
-                <Button type="button" variant="ghost" onClick={toggleMicMute}>
-                  {micMuted ? 'Unmute microphone' : 'Mute microphone'}
-                </Button>
-                <Button type="button" variant="ghost" onClick={endVoiceSession}>
-                  End session
-                </Button>
-              </>
-            ) : null}
-            {(voiceStatus === 'disconnected' || isVoiceExpired || voiceStatus === 'expired') && isPremium ? (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={voicePending || voiceStatus === 'connecting' || voiceStatus === 'reconnecting' || !companionId || companionGenerationStatus !== 'ready'}
-                onClick={startVoiceSession}
-              >
-                Restart voice
-              </Button>
-            ) : null}
-            {!isPremium ? (
-              <p className="my-0 text-xs text-muted">Voice is available on Premium. Upgrade to unlock realtime companion calls.</p>
-            ) : null}
-          </div>
-
-          {voiceSession ? (
-            <p className="my-0 text-xs text-muted">
-              {isVoiceExpired ? 'Session expired, refresh to continue.' : `Voice session ready for ${voiceSession.companion.name}.`} • model {voiceSession.model}
-              {voiceSession.expiresAt ? ` • expires ${new Date(voiceSession.expiresAt).toLocaleTimeString()}` : ''} • memories in context{' '}
-              {voiceSession.memoryCount}
-            </p>
-          ) : null}
-        </details>
-      </section>
-
-      <section className="chat-messages-panel chat-messages-panel-refined">
-        <div className="chat-thread">
+        <div className={styles.messagesArea} ref={scrollRef}>
           {messages.map((message) => {
-            const isOwn = message.role === 'user';
+            const isUser = message.role === 'user';
+
+            if (isUser) {
+              return (
+                <div key={message.id} className={styles.messageUser}>
+                  <div className={styles.bubbleUser}>
+                    <p>{message.content}</p>
+                    <span className={styles.timestamp}>{formatTime(message.created_at)}</span>
+                  </div>
+                </div>
+              );
+            }
+
             return (
-              <div key={message.id} className={`chat-bubble-row ${isOwn ? 'chat-bubble-row-own' : ''}`}>
-                <div className={`chat-bubble ${isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}>
-                  {message.content ? <p className="my-0 whitespace-pre-wrap">{message.content}</p> : null}
+              <div key={message.id} className={styles.messageCompanion}>
+                <div className={styles.companionAvatar}>
+                  {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} unoptimized /> : <span>{companionName.charAt(0)}</span>}
+                </div>
+                <div className={styles.bubbleCompanion}>
                   {message.attachments?.map((attachment) =>
                     attachment.kind === 'image' ? (
-                      <div key={attachment.imageId} className="vg-image-card">
+                      <div key={attachment.imageId} className={styles.chatImage}>
                         <Image
                           src={attachment.imageUrl}
-                          alt={`${companionName} ${attachment.category}`}
-                          className="vg-chat-image"
+                          alt="Generated"
                           width={attachment.width ?? 1024}
                           height={attachment.height ?? 1024}
                           unoptimized
                         />
-                        <p className="my-0 text-xs text-muted capitalize">
-                          {attachment.category.replace('-', ' ')} • {attachment.source === 'fresh-generation' ? 'new photo' : 'gallery moment'}
-                        </p>
                       </div>
                     ) : null,
                   )}
-                  <p className="my-0 chat-bubble-meta">{isOwn ? 'You' : companionName}</p>
+                  <p>{message.content}</p>
+                  <div className={styles.messageActions}>
+                    <span className={styles.timestamp}>{formatTime(message.created_at)}</span>
+                    <button type="button" className={styles.likeBtn} aria-label="Like message">👍</button>
+                    <button type="button" className={styles.dislikeBtn} aria-label="Dislike message">👎</button>
+                  </div>
                 </div>
               </div>
             );
           })}
-        </div>
-      </section>
 
-      <section className="chat-composer-shell">
-        {reachedLimit ? (
-          <div className="space-y-3">
-            <p className="my-0 text-sm">You reached today&apos;s free message limit.</p>
-            <div className="flex gap-3">
-              <Link href="/premium" className="ui-button">
-                Upgrade to Premium
-              </Link>
-              <Link href={`/virtual-girlfriend/profile?companionId=${companionId}`} className="ui-button ui-button-ghost">
-                Back to profile
-              </Link>
+          {isStreaming && !streamStarted ? (
+            <div className={styles.messageCompanion}>
+              <div className={styles.companionAvatar}>
+                {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} unoptimized /> : <span>{companionName.charAt(0)}</span>}
+              </div>
+              <div className={styles.typingIndicator}>
+                <span className={styles.typingDot} />
+                <span className={styles.typingDot} />
+                <span className={styles.typingDot} />
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder={`Message ${companionName}...`}
-              rows={3}
-              maxLength={2500}
-              className="chat-composer-input"
-            />
-            {error ? <p className="onboarding-error my-0">{error}</p> : null}
-            <Button type="button" disabled={pending || !draft.trim()} onClick={send} className="chat-send-button">
-              {pending ? 'She is typing…' : 'Send'}
-            </Button>
-          </div>
-        )}
-      </section>
+          ) : null}
+        </div>
+
+        <div className={styles.composerArea}>
+          {reachedLimit ? (
+            <div className={styles.limitBox}>
+              <p>You reached today&apos;s free message limit.</p>
+              <div className={styles.limitActions}>
+                <Link href="/premium" className={styles.linkButton}>
+                  Upgrade to Premium
+                </Link>
+                <Link href={`/virtual-girlfriend/profile?companionId=${companionId}`} className={styles.linkButtonGhost}>
+                  Back to profile
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              <textarea
+                className={styles.composerInput}
+                placeholder={`Message ${companionName}...`}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    void send();
+                  }
+                }}
+                rows={1}
+                maxLength={2500}
+              />
+              <button className={styles.sendButton} onClick={() => void send()} disabled={!draft.trim() || pending}>
+                →
+              </button>
+            </>
+          )}
+        </div>
+        {error ? <p className={styles.errorText}>{error}</p> : null}
+      </main>
+
+      <aside className={styles.infoPanel}>
+        <div className={styles.infoPanelPortrait}>
+          {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={320} height={420} unoptimized /> : null}
+        </div>
+        <h2 className={styles.infoPanelName}>{companionName}</h2>
+        <p className={styles.infoPanelSub}>{disclosureLabel}</p>
+
+        <div className={styles.infoPanelActions}>
+          <button type="button" className={styles.shareBtn}>↑ Share</button>
+          <button type="button" className={styles.resetBtn} onClick={() => setMessages(initialMessages)}>Reset chat</button>
+        </div>
+
+        <div className={styles.infoPanelTraits}>
+          {occupation ? (
+            <div className={styles.traitCard}>
+              <span className={styles.traitLabel}>Occupation</span>
+              <span className={styles.traitValue}>{occupation}</span>
+            </div>
+          ) : null}
+          {personality ? (
+            <div className={styles.traitCard}>
+              <span className={styles.traitLabel}>Personality</span>
+              <span className={styles.traitValue}>{personality}</span>
+            </div>
+          ) : null}
+          {sexuality ? (
+            <div className={styles.traitCard}>
+              <span className={styles.traitLabel}>Sexuality</span>
+              <span className={styles.traitValue}>{sexuality}</span>
+            </div>
+          ) : null}
+        </div>
+      </aside>
     </div>
   );
 };
