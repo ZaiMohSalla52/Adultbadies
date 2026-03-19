@@ -137,6 +137,10 @@
   padding: 0;
 }
 
+.sexCard {
+  min-height: 280px;
+}
+
 .photoImage,
 .squareImage {
   position: absolute;
@@ -317,6 +321,18 @@
 
 .dotActive {
   background: #ff2e63;
+}
+
+@media (max-width: 767px) {
+  .carouselCard {
+    flex: 0 0 70%;
+  }
+
+  .genderCard,
+  .sexCard {
+    min-height: 200px;
+    height: 200px;
+  }
 }
 
 .traitSummary,

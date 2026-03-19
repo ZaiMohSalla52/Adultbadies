@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Fragment } from 'react';
 import { usePathname } from 'next/navigation';
 import { signOutAction } from '@/app/(auth)/actions';
 import styles from './app-shell-nav.module.css';
@@ -62,15 +63,17 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
           const icon = iconByLabel[item.label] ?? '•';
 
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={isActive ? styles.navItemActive : styles.navItem}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <span className={styles.navIcon}>{icon}</span>
-              <span className={styles.navLabel}>{item.label}</span>
-            </Link>
+            <Fragment key={item.href}>
+              {item.label === 'Account' ? <div className={styles.navSpacer} aria-hidden /> : null}
+              <Link
+                href={item.href}
+                className={isActive ? styles.navItemActive : styles.navItem}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <span className={styles.navIcon}>{icon}</span>
+                <span className={styles.navLabel}>{item.label}</span>
+              </Link>
+            </Fragment>
           );
         })}
       </nav>

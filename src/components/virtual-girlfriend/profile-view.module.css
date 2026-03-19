@@ -19,7 +19,23 @@
   align-content: start;
 }
 
+.portraitContainer {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.portrait {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
 .mainPortrait {
+  width: 100%;
+  max-width: 100%;
   aspect-ratio: 3 / 4;
   border-radius: 12px;
   overflow: hidden;
@@ -28,6 +44,7 @@
 .heroAvatar {
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .mainEmpty {
@@ -220,5 +237,17 @@
 
   .traitsGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .heroCard {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .portraitColumn,
+  .identityColumn {
+    width: 100%;
   }
 }
