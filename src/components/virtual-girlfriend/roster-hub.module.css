@@ -52,7 +52,7 @@
 .card {
   position: relative;
   display: block;
-  width: 200px;
+  width: 100%;
   height: 300px;
   border-radius: 16px;
   overflow: hidden;
@@ -215,14 +215,120 @@
   padding: 10px 14px;
 }
 
+.cardWrapper {
+  position: relative;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deleteBtn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.65);
+  color: #ff6b6b;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 150ms ease, background 150ms ease;
+  z-index: 2;
+}
+
+.cardWrapper:hover .deleteBtn {
+  opacity: 1;
+}
+
+.deleteBtn:hover {
+  background: rgba(239, 68, 68, 0.75);
+}
+
+.deleteConfirm {
+  width: 100%;
+  background: rgba(18, 8, 12, 0.96);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deleteConfirmText {
+  font-size: 0.78rem;
+  color: #ddd;
+  text-align: center;
+}
+
+.deleteConfirmActions {
+  display: flex;
+  gap: 6px;
+}
+
+.deleteConfirmYes {
+  flex: 1;
+  background: rgba(239, 68, 68, 0.8);
+  border: none;
+  border-radius: 7px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.deleteConfirmYes:hover:not(:disabled) {
+  background: #ef4444;
+}
+
+.deleteConfirmYes:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.deleteConfirmNo {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  color: #bbb;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.deleteConfirmNo:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.13);
+}
+
 @media (max-width: 767px) {
   .grid {
     justify-content: center;
   }
 
+  .cardWrapper {
+    width: calc(50% - 8px);
+  }
+
   .card,
   .createCard {
-    width: calc(50% - 8px);
+    width: 100%;
     height: 260px;
+  }
+
+  .deleteBtn {
+    opacity: 1;
   }
 }

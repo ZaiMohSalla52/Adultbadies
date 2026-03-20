@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from './roster-hub.module.css';
 import type { Entitlements } from '@/lib/subscriptions/types';
 import type {
@@ -33,6 +35,18 @@ export const VirtualGirlfriendRosterHub = ({
   activeCompanionId: string | null;
   entitlements: Entitlements;
 }) => {
+  const router = useRouter();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const handleDelete = (companionId: string) => {
+    startTransition(async () => {
+      await fetch(`/api/virtual-girlfriend/companion?id=${companionId}`, { method: 'DELETE' });
+      setDeletingId(null);
+      router.refresh();
+    });
+  };
+
   const uniqueItems = Array.from(new Map(items.map((item) => [item.companion.id, item])).values());
 
   if (!uniqueItems.length) {
@@ -73,22 +87,56 @@ export const VirtualGirlfriendRosterHub = ({
           const href = CHAT_READY_STATUSES.includes(item.status)
             ? `/virtual-girlfriend/chat?companionId=${item.companion.id}`
             : `/virtual-girlfriend/profile?companionId=${item.companion.id}`;
+          const isConfirming = deletingId === item.companion.id;
 
           return (
-            <Link href={href} className={styles.card} key={item.companion.id}>
-              <div className={styles.cardImage}>
-                <img src={imageUrl} alt={item.companion.name} className={styles.cardPhoto} loading="lazy" />
-                {isActive ? <span className={styles.activeBadge}>Active</span> : null}
-                {item.status === 'generating' || item.status === 'review_pending' ? (
-                  <span className={styles.generatingBadge}>Generating...</span>
-                ) : null}
-                {item.status === 'failed' ? <span className={styles.failedBadge}>Needs review</span> : null}
-              </div>
-              <div className={styles.cardOverlay}>
-                <h3 className={styles.cardName}>{item.companion.name}</h3>
-                <p className={styles.cardVibe}>{vibeText}</p>
-              </div>
-            </Link>
+            <div key={item.companion.id} className={styles.cardWrapper}>
+              <Link href={href} className={styles.card}>
+                <div className={styles.cardImage}>
+                  <img src={imageUrl} alt={item.companion.name} className={styles.cardPhoto} loading="lazy" />
+                  {isActive ? <span className={styles.activeBadge}>Active</span> : null}
+                  {item.status === 'generating' || item.status === 'review_pending' ? (
+                    <span className={styles.generatingBadge}>Generating...</span>
+                  ) : null}
+                  {item.status === 'failed' ? <span className={styles.failedBadge}>Needs review</span> : null}
+                </div>
+                <div className={styles.cardOverlay}>
+                  <h3 className={styles.cardName}>{item.companion.name}</h3>
+                  <p className={styles.cardVibe}>{vibeText}</p>
+                </div>
+              </Link>
+
+              <button
+                className={styles.deleteBtn}
+                onClick={() => setDeletingId(isConfirming ? null : item.companion.id)}
+                aria-label={`Delete ${item.companion.name}`}
+                title="Delete companion"
+              >
+                🗑
+              </button>
+
+              {isConfirming && (
+                <div className={styles.deleteConfirm}>
+                  <span className={styles.deleteConfirmText}>Delete {item.companion.name}?</span>
+                  <div className={styles.deleteConfirmActions}>
+                    <button
+                      className={styles.deleteConfirmYes}
+                      onClick={() => handleDelete(item.companion.id)}
+                      disabled={isPending}
+                    >
+                      {isPending ? '…' : 'Delete'}
+                    </button>
+                    <button
+                      className={styles.deleteConfirmNo}
+                      onClick={() => setDeletingId(null)}
+                      disabled={isPending}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           );
         })}
 

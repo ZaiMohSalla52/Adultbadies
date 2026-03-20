@@ -231,6 +231,14 @@
   height: 22px;
 }
 
+/* Full-bleed color fill for color-swatch cards (hair color etc.) */
+.swatchFill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .cardIcon {
   font-size: 1.1rem;
 }

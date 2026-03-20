@@ -153,6 +153,18 @@ export const setActiveVirtualGirlfriend = async (token: string, userId: string, 
   });
 };
 
+export const deleteVirtualGirlfriendCompanion = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<void> => {
+  await supabaseRest('ai_companions', token, {
+    method: 'DELETE',
+    searchParams: new URLSearchParams({ id: `eq.${companionId}`, user_id: `eq.${userId}` }),
+    prefer: 'return=minimal',
+  });
+};
+
 export const upsertVirtualGirlfriend = async (
   token: string,
   input: {
