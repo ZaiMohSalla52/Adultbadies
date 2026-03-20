@@ -10,6 +10,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -328,7 +329,8 @@
   border-radius: 20px;
   padding: 10px 16px;
   color: #f5f5f5;
-  font-size: 0.9rem;
+  font-size: 16px;
+  line-height: 1.4;
   resize: none;
   min-height: 40px;
   max-height: 120px;
@@ -493,45 +495,9 @@
 
 @media (max-width: 767px) {
   .chatLayout {
+    display: flex;
+    flex-direction: column;
     height: 100vh;
-    height: var(--chat-vh, 100vh);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-  }
-
-  .chatMain {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .chatHeader {
-    flex-shrink: 0;
-    z-index: 20;
-    background: #0d1117;
-  }
-
-  .messagesArea {
-    flex: 1;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .composerArea {
-    flex-shrink: 0;
-    z-index: 30;
-    background: #070b14;
-    padding: 8px 12px;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .backButton {
