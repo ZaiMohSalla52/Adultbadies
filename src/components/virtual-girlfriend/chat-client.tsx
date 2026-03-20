@@ -123,6 +123,7 @@ export const VirtualGirlfriendChatClient = ({
     setIsStreaming(true);
     setStreamStarted(false);
     setError(null);
+    setDraft('');
 
     const optimisticUser: VirtualGirlfriendMessageRecord = {
       id: `temp-user-${Date.now()}`,
@@ -242,7 +243,6 @@ export const VirtualGirlfriendChatClient = ({
     setPending(false);
     setIsStreaming(false);
     setStreamStarted(false);
-    setDraft('');
     scrollToBottom();
   };
 
