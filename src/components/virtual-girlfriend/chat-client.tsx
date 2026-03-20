@@ -777,18 +777,22 @@ export const VirtualGirlfriendChatClient = ({
     return `${usedToday}/${limit} messages today`;
   }, [limit, usedToday]);
 
+  const avatarUrl = companionAvatarUrl ?? '';
+
   return (
     <div className={styles.chatLayout}>
       <main className={styles.chatMain}>
         <header className={styles.chatHeader}>
           <Link href="/virtual-girlfriend" className={styles.backButton} aria-label="Back to companions">
-            ←
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
           </Link>
-          <div className={styles.companionHeaderAvatar}>
-            {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={40} height={40} unoptimized /> : <span>{companionName.charAt(0)}</span>}
+          <div className={styles.headerAvatar}>
+            {avatarUrl ? <Image src={avatarUrl} alt={companionName} width={36} height={36} unoptimized /> : <span>{companionName.charAt(0)}</span>}
           </div>
           <div className={styles.companionHeaderInfo}>
-            <span className={styles.companionHeaderName}>{companionName}</span>
+            <span className={styles.headerName}>{companionName}</span>
             <span className={styles.companionHeaderStatus}>Online • {helperText}</span>
           </div>
           <details className={styles.headerMenu}>

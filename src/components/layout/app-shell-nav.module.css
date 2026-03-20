@@ -82,10 +82,17 @@
 }
 
 .navIcon {
-  font-size: 1.25rem;
-  width: 28px;
-  text-align: center;
-  line-height: 1;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.navIcon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .navLabel {
@@ -160,7 +167,16 @@
 }
 
 .tabIcon {
-  font-size: 1.25rem;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tabIcon svg {
+  width: 22px;
+  height: 22px;
 }
 
 .tabLabel {
