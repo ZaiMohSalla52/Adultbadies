@@ -186,7 +186,7 @@ const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisua
   const resolvedSkinTone = input.skinTone?.trim() || 'medium';
   const resolvedBody = input.bodyType?.trim() || input.figure?.trim() || 'slim';
   const resolvedArchetype = input.archetype?.trim().toLowerCase() || '';
-  const resolvedPersonality = input.persona?.personality?.trim().toLowerCase() || '';
+  const resolvedPersonality = input.personality?.trim().toLowerCase() || '';
   const resolvedOccupation = input.occupation?.trim() || '';
 
   const wardrobeDirection = WARDROBE_BY_STYLE[resolvedStyle] ?? 'stylish casual clothing';
