@@ -22,6 +22,11 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
   };
 
   if (mobile) {
+    // Hide mobile nav on VG chat page (full screen chat)
+    if (pathname.startsWith('/virtual-girlfriend/chat')) {
+      return null;
+    }
+
     const mobileTabs = items.filter((item) => item.label !== 'Matches');
 
     return (
