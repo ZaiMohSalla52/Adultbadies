@@ -103,7 +103,7 @@ export const VirtualGirlfriendChatClient = ({
   const scrollToBottom = () => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
-      behavior: 'smooth',
+      behavior: 'auto',
     });
   };
 
@@ -113,26 +113,6 @@ export const VirtualGirlfriendChatClient = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, []);
-
-  useEffect(() => {
-    const updateViewportHeight = () => {
-      const vh = window.visualViewport?.height ?? window.innerHeight;
-      document.documentElement.style.setProperty('--chat-vh', `${vh}px`);
-      scrollToBottom();
-    };
-
-    updateViewportHeight();
-
-    window.visualViewport?.addEventListener('resize', updateViewportHeight);
-    window.visualViewport?.addEventListener('scroll', updateViewportHeight);
-    window.addEventListener('resize', updateViewportHeight);
-
-    return () => {
-      window.visualViewport?.removeEventListener('resize', updateViewportHeight);
-      window.visualViewport?.removeEventListener('scroll', updateViewportHeight);
-      window.removeEventListener('resize', updateViewportHeight);
-    };
   }, []);
 
   const send = async () => {
