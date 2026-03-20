@@ -905,8 +905,12 @@ export const VirtualGirlfriendChatClient = ({
                   <p>{message.content}</p>
                   <div className={styles.messageActions}>
                     <span className={styles.timestamp}>{formatTime(message.created_at)}</span>
-                    <button type="button" className={styles.likeBtn} aria-label="Like message">👍</button>
-                    <button type="button" className={styles.dislikeBtn} aria-label="Dislike message">👎</button>
+                    <button type="button" className={styles.likeBtn} aria-label="Like message">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                    </button>
+                    <button type="button" className={styles.dislikeBtn} aria-label="Dislike message">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -942,9 +946,14 @@ export const VirtualGirlfriendChatClient = ({
             </div>
           ) : (
             <>
+              <button type="button" className={styles.attachButton} aria-label="Attachment options">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
               <textarea
                 className={styles.composerInput}
-                placeholder={`Message ${companionName}...`}
+                placeholder={`Message ${companionName}…`}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event) => {
@@ -956,8 +965,11 @@ export const VirtualGirlfriendChatClient = ({
                 rows={1}
                 maxLength={2500}
               />
-              <button className={styles.sendButton} onClick={() => void send()} disabled={!draft.trim() || pending}>
-                →
+              <button className={styles.sendButton} onClick={() => void send()} disabled={!draft.trim() || pending} aria-label="Send message">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 2 11 13" />
+                  <path d="M22 2 15 22 11 13 2 9l20-7z" />
+                </svg>
               </button>
             </>
           )}
