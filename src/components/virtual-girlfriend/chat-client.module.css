@@ -493,12 +493,15 @@
 
 @media (max-width: 767px) {
   .chatLayout {
-    height: 100%;
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
+    height: 100vh;
+    height: var(--chat-vh, 100vh);
     display: flex;
     flex-direction: column;
-    position: relative;
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
   }
 
   .chatMain {
@@ -511,8 +514,6 @@
 
   .chatHeader {
     flex-shrink: 0;
-    position: sticky;
-    top: 0;
     z-index: 20;
     background: #0d1117;
   }
@@ -522,17 +523,14 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 20px;
   }
 
   .composerArea {
     flex-shrink: 0;
-    position: sticky;
-    bottom: 0;
     z-index: 30;
     background: #070b14;
-    padding: 10px 16px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding: 8px 12px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
     border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
 
