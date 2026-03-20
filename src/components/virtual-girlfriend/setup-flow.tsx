@@ -329,8 +329,19 @@ const deriveVisualAesthetic = (styleVibe: string, personality: string): string =
     professional_intellectual: 'Clean minimal',
     professional_confident_bold: 'Corporate power',
   };
+  const vibeFallbacks: Record<string, string> = {
+    casual: 'Natural casual everyday',
+    elegant: 'Sophisticated elegant evening',
+    sporty: 'Athletic active lifestyle',
+    glamorous: 'Glam nightlife luxury',
+    bohemian: 'Boho free-spirited artistic',
+    edgy: 'Edgy urban streetwear',
+    vintage: 'Retro vintage classic',
+    minimalist: 'Clean minimalist modern',
+    professional: 'Polished professional lifestyle',
+  };
   const key = `${styleVibe}_${personality}`.toLowerCase();
-  return map[key] || 'Glam nightlife';
+  return map[key] || vibeFallbacks[styleVibe?.toLowerCase()] || `${styleVibe || 'Natural'} style`;
 };
 
 const deriveSkinTone = (origin: string): string => {

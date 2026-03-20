@@ -14,6 +14,7 @@ import {
 } from '@/lib/virtual-girlfriend/visual-identity';
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
 import { generateVirtualGirlfriendPersona, resolvePersonaSemanticInput } from '@/lib/virtual-girlfriend/persona';
+import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
 import type {
   VirtualGirlfriendSetupPayload,
   VirtualGirlfriendSetupResult,
@@ -45,22 +46,26 @@ const toOptionalString = (value: unknown) => {
   return trimmed ? trimmed : null;
 };
 
-const normalizeSetupInput = (body: Record<string, unknown>, name: string): VirtualGirlfriendStructuredProfile => ({
+const normalizeSetupInput = (
+  body: Record<string, unknown>,
+  name: string,
+  normalizedTraits: ReturnType<typeof resolveSetupTraits>,
+): VirtualGirlfriendStructuredProfile => ({
   schemaVersion: 1,
   name,
-  sex: toOptionalString(body.sex),
-  age: typeof body.age === 'number' || typeof body.age === 'string' ? body.age : null,
-  origin: toOptionalString(body.origin),
-  hairColor: toOptionalString(body.hairColor),
-  hairLength: toOptionalString(body.hairLength),
-  eyeColor: toOptionalString(body.eyeColor),
-  skinTone: toOptionalString(body.skinTone),
-  styleVibe: toOptionalString(body.styleVibe),
-  figure: toOptionalString(body.bodyType ?? body.figure),
-  bodyType: toOptionalString(body.bodyType ?? body.figure),
+  sex: normalizedTraits.sex,
+  age: normalizedTraits.age,
+  origin: normalizedTraits.origin,
+  hairColor: normalizedTraits.hairColor,
+  hairLength: normalizedTraits.hairLength,
+  eyeColor: normalizedTraits.eyeColor,
+  skinTone: normalizedTraits.skinTone ?? null,
+  styleVibe: normalizedTraits.styleVibe ?? toOptionalString(body.styleVibe),
+  figure: normalizedTraits.bodyType,
+  bodyType: normalizedTraits.bodyType,
   breastSize: toOptionalString(body.breastSize),
   occupation: toOptionalString(body.occupation),
-  personality: toOptionalString(body.personality),
+  personality: normalizedTraits.personality ?? toOptionalString(body.personality),
   sexuality: toOptionalString(body.sexuality),
   freeformDetails: toOptionalString(body.freeformDetails),
   archetype: String(body.archetype ?? '').trim(),
@@ -131,11 +136,31 @@ export async function POST(request: NextRequest) {
   }
 
   const setupPayload: VirtualGirlfriendSetupPayload = { ...body, name: baseName };
+  let normalizedTraits: ReturnType<typeof resolveSetupTraits>;
+  try {
+    normalizedTraits = resolveSetupTraits({
+      sex: typeof body.sex === 'string' ? body.sex : undefined,
+      origin: typeof body.origin === 'string' ? body.origin : undefined,
+      hairColor: typeof body.hairColor === 'string' ? body.hairColor : undefined,
+      hairLength: typeof body.hairLength === 'string' ? body.hairLength : undefined,
+      eyeColor: typeof body.eyeColor === 'string' ? body.eyeColor : undefined,
+      bodyType: typeof body.bodyType === 'string' ? body.bodyType : undefined,
+      age: typeof body.age === 'number' || typeof body.age === 'string' ? body.age : undefined,
+      skinTone: typeof body.skinTone === 'string' ? body.skinTone : undefined,
+      styleVibe: typeof body.styleVibe === 'string' ? body.styleVibe : undefined,
+      personality: typeof body.personality === 'string' ? body.personality : undefined,
+    });
+  } catch {
+    return NextResponse.json(
+      { state: 'blocked_pre_gen', message: 'Invalid setup traits. Please review your selections and try again.' } satisfies VirtualGirlfriendSetupResult,
+      { status: 400 },
+    );
+  }
   const companions = await listVirtualGirlfriends(auth.accessToken, auth.user.id);
   const maxDistinctnessAttempts = Boolean(body.createNew) ? 3 : 1;
 
   let chosenName = baseName;
-  let structuredProfile = normalizeSetupInput(body, chosenName);
+  let structuredProfile = normalizeSetupInput(body, chosenName, normalizedTraits);
 
   console.info('[virtual-girlfriend][setup] normalized input built', {
     userId: auth.user.id,
@@ -160,7 +185,7 @@ export async function POST(request: NextRequest) {
     if (!suggestion || suggestion.toLowerCase() === chosenName.toLowerCase()) break;
 
     chosenName = suggestion;
-    structuredProfile = normalizeSetupInput(body, chosenName);
+    structuredProfile = normalizeSetupInput(body, chosenName, normalizedTraits);
     conflict = findDistinctnessConflict({
       candidateProfile: structuredProfile,
       existingCompanions: companions,
@@ -228,10 +253,15 @@ export async function POST(request: NextRequest) {
       userId: auth.user.id,
       companion,
       setup: {
+        origin: structuredProfile.origin ?? undefined,
         archetype: structuredProfile.archetype,
+        age: structuredProfile.age ?? undefined,
+        hairColor: structuredProfile.hairColor ?? undefined,
         tone: structuredProfile.tone,
         affectionStyle: structuredProfile.affectionStyle,
         visualAesthetic: structuredProfile.visualAesthetic,
+        occupation: structuredProfile.occupation ?? undefined,
+        personality: structuredProfile.personality ?? undefined,
         preferenceHints: structuredProfile.preferenceHints ?? undefined,
         selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt ?? undefined,
         selectedPortraitImage: structuredProfile.selectedPortraitImage ?? undefined,

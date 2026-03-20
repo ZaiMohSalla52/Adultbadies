@@ -9,6 +9,10 @@ type NormalizedProfile = {
   ageBand: string;
   origin: string;
   hairColor: string;
+  hairLength: string;
+  eyeColor: string;
+  skinTone: string;
+  styleVibe: string;
   figure: string;
   occupation: string;
   personality: string;
@@ -102,6 +106,10 @@ const toNormalizedProfile = (profile: Record<string, unknown>): NormalizedProfil
     ageBand: parseAgeBand(profile.age),
     origin: normalizeText(profile.origin),
     hairColor: normalizeText(profile.hairColor),
+    hairLength: normalizeText(profile.hairLength),
+    eyeColor: normalizeText(profile.eyeColor),
+    skinTone: normalizeText(profile.skinTone),
+    styleVibe: normalizeText(profile.styleVibe),
     figure: normalizeText(profile.figure),
     occupation: normalizeText(profile.occupation),
     personality: normalizeText(profile.personality),
@@ -137,6 +145,10 @@ type WeightedComparableField =
   | 'ageBand'
   | 'origin'
   | 'hairColor'
+  | 'hairLength'
+  | 'eyeColor'
+  | 'skinTone'
+  | 'styleVibe'
   | 'figure'
   | 'occupation'
   | 'personality'
@@ -150,20 +162,24 @@ type WeightedComparableField =
 
 const weightedStructuredSimilarity = (candidate: NormalizedProfile, existing: NormalizedProfile) => {
   const fieldWeights: Array<{ key: WeightedComparableField; weight: number; category: 'appearance' | 'vibe' | 'profile'; highSignal?: boolean }> = [
-    { key: 'sex', weight: 0.35, category: 'appearance' },
-    { key: 'ageBand', weight: 0.9, category: 'appearance', highSignal: true },
-    { key: 'origin', weight: 0.45, category: 'appearance' },
-    { key: 'hairColor', weight: 0.85, category: 'appearance', highSignal: true },
-    { key: 'figure', weight: 0.75, category: 'appearance' },
-    { key: 'selectedPortraitPrompt', weight: 1.25, category: 'appearance', highSignal: true },
-    { key: 'selectedPortraitImageKey', weight: 1.1, category: 'appearance', highSignal: true },
-    { key: 'occupation', weight: 0.85, category: 'profile' },
-    { key: 'personality', weight: 1.25, category: 'profile', highSignal: true },
-    { key: 'sexuality', weight: 0.95, category: 'profile', highSignal: true },
-    { key: 'archetype', weight: 1.1, category: 'vibe', highSignal: true },
-    { key: 'tone', weight: 0.9, category: 'vibe', highSignal: true },
-    { key: 'affectionStyle', weight: 0.9, category: 'vibe', highSignal: true },
-    { key: 'visualAesthetic', weight: 0.95, category: 'vibe', highSignal: true },
+    { key: 'sex', weight: 0.3, category: 'appearance' },
+    { key: 'ageBand', weight: 0.75, category: 'appearance', highSignal: true },
+    { key: 'origin', weight: 0.8, category: 'appearance', highSignal: true },
+    { key: 'hairColor', weight: 0.8, category: 'appearance', highSignal: true },
+    { key: 'hairLength', weight: 0.5, category: 'appearance' },
+    { key: 'eyeColor', weight: 0.5, category: 'appearance' },
+    { key: 'skinTone', weight: 1.15, category: 'appearance', highSignal: true },
+    { key: 'styleVibe', weight: 0.45, category: 'appearance' },
+    { key: 'figure', weight: 0.65, category: 'appearance' },
+    { key: 'selectedPortraitPrompt', weight: 1.0, category: 'appearance', highSignal: true },
+    { key: 'selectedPortraitImageKey', weight: 0.9, category: 'appearance', highSignal: true },
+    { key: 'occupation', weight: 0.5, category: 'profile' },
+    { key: 'personality', weight: 0.7, category: 'profile', highSignal: true },
+    { key: 'sexuality', weight: 0.45, category: 'profile' },
+    { key: 'archetype', weight: 0.65, category: 'vibe', highSignal: true },
+    { key: 'tone', weight: 0.5, category: 'vibe' },
+    { key: 'affectionStyle', weight: 0.5, category: 'vibe' },
+    { key: 'visualAesthetic', weight: 0.55, category: 'vibe' },
   ];
 
   let totalWeight = 0;

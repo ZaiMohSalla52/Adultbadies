@@ -14,7 +14,7 @@ import {
   getPreviewLightingVariant,
 } from '../primitives/composition';
 import { buildAllNegatives } from '../primitives/negatives';
-import { resolvePhysicalTraitLine } from '../primitives/physical';
+import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubjectStrict } from '../primitives/subject';
 import { PROMPT_VERSION } from '../versions';
 
@@ -80,8 +80,10 @@ export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: numb
   if (styleCue) parts.push(styleCue);
 
   parts.push(buildAllNegatives());
+  const ethnicityNegative = resolveEthnicityNegative(input.origin);
+  if (ethnicityNegative) parts.push(ethnicityNegative);
 
-  return parts.join(' ');
+  return parts.filter(Boolean).join(' ');
 };
 
 export const previewPromptVersion: string = PROMPT_VERSION.preview;

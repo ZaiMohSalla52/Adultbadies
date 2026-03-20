@@ -19,6 +19,17 @@ const ORIGINS: readonly Origin[] = ['asian', 'latina', 'black', 'white', 'mixed'
 const BODY_TYPES: readonly BodyType[] = ['slim', 'athletic', 'curvy', 'petite'];
 const AGES = [18, 21, 24, 27, 30, 35] as const;
 const SKIN_TONES = ['fair', 'light', 'medium', 'tan', 'dark', 'deep'] as const;
+const STYLE_VIBES = ['casual', 'elegant', 'edgy', 'bohemian', 'sporty', 'professional'] as const;
+const PERSONALITIES = [
+  'warm_romantic',
+  'playful_tease',
+  'confident_bold',
+  'intellectual',
+  'sweet_caring',
+  'sarcastic_witty',
+  'mysterious',
+  'bubbly_energetic',
+] as const;
 
 const pickRandom = <T>(pool: readonly T[]): T => pool[Math.floor(Math.random() * pool.length)] as T;
 
@@ -105,6 +116,20 @@ const normalizeSkinTone = (skinTone?: string): string => {
   return normalized;
 };
 
+const normalizeStyleVibe = (styleVibe?: string): string | undefined => {
+  const normalized = (styleVibe ?? '').trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized === 'random') return pickRandom(STYLE_VIBES);
+  return normalized;
+};
+
+const normalizePersonality = (personality?: string): string | undefined => {
+  const normalized = (personality ?? '').trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized === 'random') return pickRandom(PERSONALITIES);
+  return normalized;
+};
+
 export function resolveSetupTraits(raw: RawFormTraits): PreviewTraits & { skinTone?: string; styleVibe?: string; personality?: string } {
   return {
     sex: normalizeSex(raw.sex),
@@ -115,7 +140,7 @@ export function resolveSetupTraits(raw: RawFormTraits): PreviewTraits & { skinTo
     bodyType: normalizeBodyType(raw.bodyType, raw.figure),
     age: normalizeAge(raw.age),
     skinTone: normalizeSkinTone(raw.skinTone),
-    styleVibe: raw.styleVibe?.trim() || undefined,
-    personality: raw.personality?.trim() || undefined,
+    styleVibe: normalizeStyleVibe(raw.styleVibe),
+    personality: normalizePersonality(raw.personality),
   };
 }
