@@ -19,6 +19,8 @@ export interface GalleryPromptInput {
   eyeColor: string;
   bodyType: string;
   skinTone?: string;
+  breastSize?: string;
+  occupation?: string;
   identityAnchors?: string[];
   coreLook?: string[];
   wardrobeDirection?: string;
@@ -37,6 +39,7 @@ export const buildGalleryPrompt = (input: GalleryPromptInput, variantIndex: numb
   return [
     `Portrait photograph of ${resolveSubject(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
+    input.occupation ? `Occupation: ${input.occupation}.` : null,
     identityAnchors ? `Identity anchors: ${identityAnchors}.` : null,
     coreLook ? `Core appearance: ${coreLook}.` : null,
     input.wardrobeDirection ? `Wardrobe: ${input.wardrobeDirection}.` : null,

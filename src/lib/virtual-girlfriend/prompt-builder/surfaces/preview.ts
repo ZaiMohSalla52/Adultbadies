@@ -27,21 +27,53 @@ export interface PreviewPromptInput {
   eyeColor: string;
   bodyType: string;
   skinTone?: string;
+  breastSize?: string;
   styleVibe?: string;
   personality?: string;
+  occupation?: string;
+  freeformDetails?: string;
 }
 
-function resolveStyleCue(styleVibe?: string, personality?: string): string {
+const OCCUPATION_VISUAL_MAP: Record<string, string> = {
+  nurse: 'caring warm presence, light professional clothing',
+  doctor: 'confident professional composure',
+  teacher: 'approachable intellectual look, smart-casual style',
+  lawyer: 'sharp composed professional appearance',
+  artist: 'creative free-spirited look, expressive styling',
+  musician: 'edgy creative energy, relaxed artistic style',
+  model: 'polished editorial confidence, striking presence',
+  'fitness trainer': 'athletic toned look, activewear styling',
+  chef: 'warm energetic presence, casual style',
+  barista: 'laid-back charming look, casual urban style',
+  student: 'youthful relaxed energy, casual everyday style',
+  influencer: 'stylish trendy look, polished casual style',
+  photographer: 'creative cool aesthetic, casual artsy style',
+  writer: 'thoughtful bookish warmth, cozy casual style',
+  psychologist: 'calm composed presence, smart professional style',
+  scientist: 'intelligent focused presence, smart-casual style',
+};
+
+function resolveOccupationCue(occupation?: string): string | null {
+  if (!occupation) return null;
+  const key = occupation.trim().toLowerCase();
+  return OCCUPATION_VISUAL_MAP[key] ?? `${occupation.toLowerCase()} professional appearance`;
+}
+
+function resolveAppearanceCue(styleVibe?: string, personality?: string, occupation?: string): string {
   const parts: string[] = [];
+
+  const occupationCue = resolveOccupationCue(occupation);
+  if (occupationCue) parts.push(occupationCue);
 
   if (styleVibe && styleVibe !== 'random') {
     const styleMap: Record<string, string> = {
-      casual: 'casual everyday style',
-      elegant: 'elegant polished appearance',
-      edgy: 'edgy streetwear style',
-      bohemian: 'relaxed bohemian style',
-      sporty: 'athletic sporty look',
-      professional: 'professional composed appearance',
+      casual: 'relaxed casual everyday style',
+      elegant: 'elegant polished refined look',
+      edgy: 'edgy streetwear confident style',
+      bohemian: 'relaxed bohemian free-spirited style',
+      sporty: 'athletic sporty activewear look',
+      professional: 'sharp composed professional appearance',
+      glamorous: 'glamorous high-fashion sophisticated look',
     };
     const mapped = styleMap[styleVibe.toLowerCase()];
     if (mapped) parts.push(mapped);
@@ -49,24 +81,24 @@ function resolveStyleCue(styleVibe?: string, personality?: string): string {
 
   if (personality && personality !== 'random') {
     const personalityMap: Record<string, string> = {
-      warm_romantic: 'warm approachable energy',
-      playful_tease: 'playful confident energy',
-      confident_bold: 'bold confident presence',
-      intellectual: 'calm intelligent presence',
-      sweet_caring: 'gentle caring expression',
-      sarcastic_witty: 'sharp witty expression',
-      mysterious: 'mysterious intense gaze',
-      bubbly_energetic: 'bright energetic presence',
+      warm_romantic: 'warm gentle approachable energy, soft inviting eyes',
+      playful_tease: 'playful flirtatious confidence, spark in the eyes',
+      confident_bold: 'bold fierce magnetic presence, direct gaze',
+      intellectual: 'calm sharp intelligent presence, thoughtful expression',
+      sweet_caring: 'gentle sweet nurturing expression, kind warm eyes',
+      sarcastic_witty: 'sharp wit in her expression, knowing half-smile',
+      mysterious: 'mysterious intense smoldering gaze, alluring presence',
+      bubbly_energetic: 'bright radiant energetic smile, vibrant presence',
     };
     const mapped = personalityMap[personality.toLowerCase()];
     if (mapped) parts.push(mapped);
   }
 
-  return parts.length > 0 ? `${parts.join(', ')}.` : '';
+  return parts.length > 0 ? parts.join(', ') + '.' : '';
 }
 
 export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: number): string => {
-  const styleCue = resolveStyleCue(input.styleVibe, input.personality);
+  const appearanceCue = resolveAppearanceCue(input.styleVibe, input.personality, input.occupation);
 
   const parts = [
     `${resolveSubjectStrict(input.sex)}.`,
@@ -77,7 +109,11 @@ export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: numb
     getPreviewExpression(variantIndex),
   ];
 
-  if (styleCue) parts.push(styleCue);
+  if (appearanceCue) parts.push(appearanceCue);
+
+  if (input.freeformDetails?.trim()) {
+    parts.push(`Additional details: ${input.freeformDetails.trim()}.`);
+  }
 
   parts.push(buildAllNegatives());
   const ethnicityNegative = resolveEthnicityNegative(input.origin);

@@ -48,11 +48,11 @@ export const SURFACE_PARAMS: Record<SurfaceType, IdeogramSurfaceParams> = {
     rendering_speed: 'DEFAULT',
   },
   chat: {
-    aspect_ratio: '1x1',
+    aspect_ratio: '3x4',
     num_images: 1,
     magic_prompt_option: 'OFF',
-    style_type: 'AUTO',
-    rendering_speed: 'TURBO',
+    style_type: 'REALISTIC',
+    rendering_speed: 'DEFAULT',
   },
 } as const;
 

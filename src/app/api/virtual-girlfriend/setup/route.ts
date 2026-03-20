@@ -100,9 +100,8 @@ Rules:
 
   try {
     const response = await callOpenAIResponses({
-      model: 'gpt-5-mini',
+      model: 'gpt-4o-mini',
       input: [{ role: 'user', content: prompt }],
-      reasoning: { effort: 'medium' },
     });
 
     const parsed = JSON.parse(extractResponsesText(response)) as { name?: string };
@@ -149,6 +148,9 @@ export async function POST(request: NextRequest) {
       skinTone: typeof body.skinTone === 'string' ? body.skinTone : undefined,
       styleVibe: typeof body.styleVibe === 'string' ? body.styleVibe : undefined,
       personality: typeof body.personality === 'string' ? body.personality : undefined,
+      breastSize: typeof body.breastSize === 'string' ? body.breastSize : undefined,
+      occupation: typeof body.occupation === 'string' ? body.occupation : undefined,
+      freeformDetails: typeof body.freeformDetails === 'string' ? body.freeformDetails : undefined,
     });
   } catch {
     return NextResponse.json(
@@ -269,9 +271,11 @@ export async function POST(request: NextRequest) {
         hairLength: structuredProfile.hairLength ?? undefined,
         eyeColor: structuredProfile.eyeColor ?? undefined,
         skinTone: structuredProfile.skinTone ?? undefined,
+        breastSize: structuredProfile.breastSize ?? undefined,
         styleVibe: structuredProfile.styleVibe ?? undefined,
         bodyType: structuredProfile.bodyType ?? structuredProfile.figure ?? undefined,
         figure: structuredProfile.figure ?? undefined,
+        freeformDetails: structuredProfile.freeformDetails ?? undefined,
       },
     });
 

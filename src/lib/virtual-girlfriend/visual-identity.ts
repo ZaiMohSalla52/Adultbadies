@@ -34,11 +34,12 @@ type BuildIdentityInput = {
   occupation?: string;
   personality?: string;
   preferenceHints?: string;
+  freeformDetails?: string;
   selectedPortraitPrompt?: string;
-  selectedPortraitImage?: string;
   hairLength?: string;
   eyeColor?: string;
   skinTone?: string;
+  breastSize?: string;
   styleVibe?: string;
   bodyType?: string;
   figure?: string;
@@ -131,53 +132,106 @@ const resolveVisualIdentitySemanticInput = (input: {
   };
 };
 
+const WARDROBE_BY_STYLE: Record<string, string> = {
+  casual: 'relaxed casual everyday clothing, jeans or simple outfit',
+  elegant: 'elegant refined clothing, polished look with tasteful accessories',
+  edgy: 'edgy streetwear, leather or statement pieces, bold styling',
+  bohemian: 'flowy bohemian clothing, earthy tones, layered textures',
+  sporty: 'athletic activewear, fitted sportswear, clean sneakers',
+  professional: 'sharp professional attire, blazer or tailored clothing',
+  glamorous: 'glamorous evening wear, luxurious fabrics, statement styling',
+};
+
+const LIGHTING_BY_PERSONALITY: Record<string, string> = {
+  warm_romantic: 'warm golden-hour soft lighting, intimate and glowing',
+  playful_tease: 'bright playful lighting with natural warmth',
+  confident_bold: 'dramatic high-contrast cinematic lighting',
+  intellectual: 'clean cool diffused natural lighting',
+  sweet_caring: 'soft warm gentle lighting, cozy atmosphere',
+  sarcastic_witty: 'sharp clean lighting with crisp contrast',
+  mysterious: 'moody low-key cinematic lighting, deep shadows',
+  bubbly_energetic: 'bright vibrant sunny natural lighting',
+};
+
+const FACE_SHAPE_BY_ARCHETYPE: Record<string, string> = {
+  'girl next door': 'approachable oval face shape',
+  'femme fatale': 'sharp defined angular face with strong cheekbones',
+  'intellectual': 'refined oval face, intelligent bright eyes',
+  'free spirit': 'soft rounded face with expressive eyes',
+  'dominant': 'strong defined jawline, intense piercing gaze',
+  'submissive': 'soft delicate features, gentle rounded face',
+  'romantic': 'soft heart-shaped face, warm inviting eyes',
+  'playful': 'bright round face with mischievous sparkling eyes',
+};
+
+const ACCESSORY_BY_STYLE: Record<string, string> = {
+  casual: 'simple stud earrings or delicate necklace',
+  elegant: 'pearl earrings or dainty gold jewelry',
+  edgy: 'bold ear cuffs or layered chain necklace',
+  bohemian: 'hoop earrings or beaded bracelets',
+  sporty: 'minimal accessories, clean look',
+  professional: 'subtle stud earrings, classic watch',
+  glamorous: 'statement drop earrings or diamond jewelry',
+};
+
 const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisualIdentityPack => {
   const ageRange = input.age && Number.isFinite(input.age)
     ? `${Math.max(18, Math.floor(input.age - 2))}-${Math.max(19, Math.floor(input.age + 2))}`
     : '22-28';
-  const resolvedStyle = input.styleVibe?.trim() || 'casual';
-  const resolvedHairColor = input.hairColor?.trim() || 'dark';
+  const resolvedStyle = input.styleVibe?.trim().toLowerCase() || 'casual';
+  const resolvedHairColor = input.hairColor?.trim() || 'dark brown';
   const resolvedHairLength = input.hairLength?.trim() || 'medium';
   const resolvedEyeColor = input.eyeColor?.trim() || 'brown';
   const resolvedOrigin = input.origin?.trim() || 'mixed';
   const resolvedSkinTone = input.skinTone?.trim() || 'medium';
-  const resolvedBody = input.bodyType?.trim() || input.figure?.trim() || 'balanced';
+  const resolvedBody = input.bodyType?.trim() || input.figure?.trim() || 'slim';
+  const resolvedArchetype = input.archetype?.trim().toLowerCase() || '';
+  const resolvedPersonality = input.personality?.trim().toLowerCase() || '';
+  const resolvedOccupation = input.occupation?.trim() || '';
+
+  const wardrobeDirection = WARDROBE_BY_STYLE[resolvedStyle] ?? 'stylish casual clothing';
+  const lightingMood = LIGHTING_BY_PERSONALITY[resolvedPersonality] ?? 'warm cinematic natural lighting with shallow depth of field';
+  const faceShape = FACE_SHAPE_BY_ARCHETYPE[resolvedArchetype] ?? 'symmetrical face with expressive eyes and defined features';
+  const accessory = ACCESSORY_BY_STYLE[resolvedStyle] ?? 'minimal tasteful accessories';
+  const occupationCue = resolvedOccupation ? `${resolvedOccupation} lifestyle visual cues` : null;
 
   return {
     continuityAnchors: [
-      `${resolvedOrigin} person`,
+      `${resolvedOrigin} heritage`,
       `${resolvedHairColor} ${resolvedHairLength} hair`,
       `${resolvedEyeColor} eyes`,
-      ...input.persona.visualPromptDNA.styleAnchors,
-      input.companionName,
-    ],
-    coreLookDescriptors: [
-      `${resolvedOrigin} appearance`,
-      'natural look',
-      `${resolvedStyle} style`,
+      `${resolvedSkinTone} skin tone`,
       `${resolvedBody} build`,
+      ...input.persona.visualPromptDNA.styleAnchors,
+    ].filter(Boolean),
+    coreLookDescriptors: [
+      `${resolvedOrigin} heritage features`,
+      `${resolvedHairColor} ${resolvedHairLength} hair`,
+      `${resolvedEyeColor} eyes`,
+      `${resolvedBody} body`,
+      `${resolvedStyle} aesthetic`,
       input.visualAesthetic,
       input.archetype,
-      input.tone,
-    ],
-    portraitFramingStyle: 'mix of close-up portrait, mirror selfie, and medium lifestyle framing; natural eye-level camera',
-    wardrobeDirection: resolvedStyle === 'glamorous' ? 'elegant evening wear' : 'casual everyday clothing',
-    lightingMoodDirection: 'warm natural lighting',
-    cameraCompositionPreferences: ['medium close-up', 'shallow depth of field'],
-    realismPolishLevel: 'photorealistic editorial',
-    negativeConstraints: ['harsh flash', 'overexposed'],
+      ...(occupationCue ? [occupationCue] : []),
+    ].filter(Boolean),
+    portraitFramingStyle: 'cinematic portrait framing; natural eye-level; environmental context visible',
+    wardrobeDirection,
+    lightingMoodDirection: lightingMood,
+    cameraCompositionPreferences: ['medium close-up to waist-up', 'shallow depth of field bokeh background', 'natural perspective no fisheye'],
+    realismPolishLevel: 'hyper-realistic candid photography, film grain texture, natural imperfections',
+    negativeConstraints: ['harsh flash photography', 'overexposed blown-out skin', 'plastic airbrushed look', 'studio white background'],
     negativeOverlapCues: [],
     identityInvariants: {
       ageBand: ageRange,
-      faceShape: 'natural',
-      eyeShapeColor: `${resolvedEyeColor} eyes`,
-      browCharacter: 'natural brows',
-      noseProfile: 'natural profile',
-      lipShape: 'natural lip shape',
+      faceShape,
+      eyeShapeColor: `${resolvedEyeColor} eyes with natural lashes`,
+      browCharacter: `well-defined ${resolvedHairColor.includes('blonde') || resolvedHairColor.includes('platinum') ? 'light' : 'dark'} brows`,
+      noseProfile: 'defined natural nose profile consistent across angles',
+      lipShape: `full natural lips, ${resolvedPersonality === 'playful_tease' || resolvedPersonality === 'confident_bold' ? 'slightly bold' : 'natural'} lip shape`,
       skinToneBand: resolvedSkinTone,
-      hairSignature: `${resolvedHairColor} ${resolvedHairLength}`,
-      bodyPresentation: `${resolvedBody} build`,
-      signatureAccessoryOrMotif: 'minimal accessory',
+      hairSignature: `${resolvedHairColor} ${resolvedHairLength} hair, consistent style`,
+      bodyPresentation: `${resolvedBody} figure`,
+      signatureAccessoryOrMotif: accessory,
     },
   };
 };
@@ -205,12 +259,14 @@ const buildVisualIdentityPack = async (input: BuildIdentityInput): Promise<Virtu
     input.hairLength?.trim() ? `- Hair length: ${input.hairLength.trim()}` : null,
     input.eyeColor?.trim() ? `- Eye color: ${input.eyeColor.trim()}` : null,
     input.skinTone?.trim() ? `- Skin tone: ${input.skinTone.trim()}` : null,
+    input.breastSize?.trim() ? `- Breast size: ${input.breastSize.trim()}` : null,
     input.styleVibe?.trim() ? `- Style vibe: ${input.styleVibe.trim()}` : null,
     input.occupation?.trim() ? `- Occupation: ${input.occupation.trim()}` : null,
     input.personality?.trim() ? `- Personality: ${input.personality.trim()}` : null,
     (input.bodyType?.trim() || input.figure?.trim())
       ? `- Body silhouette: ${input.bodyType?.trim() || input.figure?.trim()}`
       : null,
+    input.freeformDetails?.trim() ? `- User custom description: ${input.freeformDetails.trim()}` : null,
   ]
     .filter(Boolean)
     .join('\n');
@@ -254,30 +310,28 @@ Input profile:
 - Personality: ${input.personality || 'not specified'}
 - Preference hints: ${input.preferenceHints || 'none'}
 - User-selected portrait seed prompt: ${input.selectedPortraitPrompt || 'none'}
-- User-selected portrait seed image URL/data: ${input.selectedPortraitImage || 'none'}
-${appearanceLines ? `${appearanceLines}
-` : ''}- Persona visual DNA coreLook: ${input.persona.visualPromptDNA.coreLook}
+${appearanceLines ? `${appearanceLines}\n` : ''}- Persona visual DNA coreLook: ${input.persona.visualPromptDNA.coreLook}
 - Persona style anchors: ${input.persona.visualPromptDNA.styleAnchors.join(', ')}
 - Existing sibling signatures to avoid overlap: ${(input.existingCompanionSignatures ?? []).join(' || ') || 'none'}
 
 Rules:
-- Preserve one stable identity across all generated outputs.
-- Enforce high distinctness from sibling companion signatures.
-- Keep descriptors practical and image-model useful.
+- Preserve one highly distinctive stable identity across all generated outputs.
+- Enforce high distinctness from sibling companion signatures listed above.
+- Keep descriptors specific, practical, and image-model useful — avoid generic placeholder words.
 - Encode ethnicity and explicit skin color as top-priority identity anchors.
 - Keep negative constraints explicit for anatomy quality, identity drift, and duplicate-scene drift.
-- Prevent all outputs from collapsing into cozy indoor portraits.
-- Prioritize realistic natural-lighting and believable phone-camera photography.
-- If portrait seed prompt/image are provided, use them as direct identity anchor signals (face/hair/age continuity) while still producing original generated imagery.
+- Generate variety: portraits, lifestyle, outdoor, indoor, bar/restaurant, nature, urban — not just cozy indoor.
+- Prioritize cinematic natural-lighting with shallow depth of field and believable real-world environments.
+- If portrait seed prompt is provided, use it as direct identity anchor for face/hair/age continuity.
 - Maintain same-identity continuity across future images.
-- Dating-app appropriate, premium, and believable.
+- If user custom description is provided, prioritize it as the strongest identity signal.
+- Dating-app appropriate, premium, and believable — hyper-realistic photography style.
 - No explicit sexual content.`;
 
   try {
     const response = await callOpenAIResponses({
-      model: 'gpt-5-mini',
+      model: 'gpt-4o-mini',
       input: [{ role: 'user', content: prompt }],
-      reasoning: { effort: 'medium' },
     });
 
     const parsed = JSON.parse(extractResponsesText(response)) as VirtualGirlfriendVisualIdentityPack;
@@ -326,11 +380,13 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     occupation?: string;
     personality?: string;
     preferenceHints?: string;
+    freeformDetails?: string;
     selectedPortraitPrompt?: string;
     selectedPortraitImage?: string;
     hairLength?: string;
     eyeColor?: string;
     skinTone?: string;
+    breastSize?: string;
     styleVibe?: string;
     bodyType?: string;
     figure?: string;
@@ -359,11 +415,12 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     occupation: semanticSetup.occupation,
     personality: semanticSetup.personality,
     preferenceHints: semanticSetup.preferenceHints,
+    freeformDetails: semanticSetup.freeformDetails ?? input.setup.freeformDetails,
     selectedPortraitPrompt: semanticSetup.selectedPortraitPrompt,
-    selectedPortraitImage: semanticSetup.selectedPortraitImage,
     hairLength: semanticSetup.hairLength,
     eyeColor: semanticSetup.eyeColor,
     skinTone: semanticSetup.skinTone,
+    breastSize: (semanticSetup as { breastSize?: string }).breastSize ?? input.setup.breastSize,
     styleVibe: semanticSetup.styleVibe,
     bodyType: semanticSetup.bodyType,
     figure: semanticSetup.figure,
@@ -381,7 +438,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     identityPack,
     continuityNotes: 'Identity continuity anchored by canonical image machine.',
     moderationStatus: 'pending',
-    provenance: { generatedBy: 'openai:gpt-5-mini', phase: 'image-machine-pass-c' },
+    provenance: { generatedBy: 'openai:gpt-4o-mini', phase: 'image-machine-pass-c' },
   });
 
   const generated = await runSetupImageMachine({

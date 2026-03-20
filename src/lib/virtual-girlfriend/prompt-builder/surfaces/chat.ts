@@ -19,6 +19,8 @@ export interface ChatPromptInput {
   eyeColor: string;
   bodyType: string;
   skinTone?: string;
+  breastSize?: string;
+  occupation?: string;
   identityAnchors?: string[];
   coreLook?: string[];
   wardrobeDirection?: string;
@@ -36,6 +38,7 @@ export const buildChatPrompt = (input: ChatPromptInput): string => {
   return [
     `Photo of ${resolveSubject(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
+    input.occupation ? `Occupation: ${input.occupation}.` : null,
     identityAnchors ? `Identity: ${identityAnchors}.` : null,
     coreLook ? `Look: ${coreLook}.` : null,
     input.wardrobeDirection ? `Wearing: ${input.wardrobeDirection}.` : null,
@@ -43,7 +46,7 @@ export const buildChatPrompt = (input: ChatPromptInput): string => {
     input.category ? `Scene type: ${input.category}.` : null,
     input.contextHint ? `${input.contextHint}.` : null,
     getCompositionAnchor('chat'),
-    'Best quality, realistic, detailed, natural lighting.',
+    'Best quality, ultra realistic, intricate facial details, professional photography, 8k.',
     buildNegatives(['composition', 'content']),
     resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Avoid: ${negConstraints}.` : null,
