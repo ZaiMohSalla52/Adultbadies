@@ -55,28 +55,29 @@ export default async function MatchConversationPage({ params }: { params: Promis
     }
   };
 
+  const otherName = conversation.otherUser.display_name ?? 'Unnamed user';
+
   return (
-    <div className="app-page-stack chat-layout-shell">
+    <div className="chat-layout-shell">
       <MatchesListPanel matches={matches} activeMatchId={matchId} />
 
       <section className="chat-conversation-panel">
         <Card className="chat-conversation-header">
           <div className="chat-title-wrap">
             <Avatar
-              name={conversation.otherUser.display_name ?? 'Unnamed user'}
+              name={otherName}
               imageUrl={conversation.otherUser.avatar_url}
-              size="lg"
+              size="md"
               ring
               isActive
             />
             <div>
-              <p className="chat-label">Conversation</p>
-              <h1 className="my-0">{conversation.otherUser.display_name ?? 'Unnamed user'}</h1>
-              <p className="my-0 text-sm text-muted">Private and encrypted conversation thread.</p>
+              <h2 className="my-0" style={{ fontSize: '1.05rem', fontWeight: 700 }}>{otherName}</h2>
+              <p className="my-0 text-sm text-muted">Private and encrypted</p>
             </div>
           </div>
-          <Link className="ui-button ui-button-ghost chat-mobile-back" href="/matches">
-            Back
+          <Link className="ui-button ui-button-ghost chat-mobile-back" href="/chats">
+            ← Back
           </Link>
         </Card>
 
@@ -92,11 +93,11 @@ export default async function MatchConversationPage({ params }: { params: Promis
                 const isOwn = message.sender_id === auth.user.id;
 
                 return (
-                  <div key={message.id} className={`chat-bubble-row ${isOwn ? 'chat-bubble-row-own' : ''}`}>
-                    <div className={`chat-bubble ${isOwn ? 'chat-bubble-own' : 'chat-bubble-other'}`}>
+                  <div key={message.id} className={`chat-bubble-row${isOwn ? ' chat-bubble-row-own' : ''}`}>
+                    <div className={`chat-bubble${isOwn ? ' chat-bubble-own' : ' chat-bubble-other'}`}>
                       <p className="my-0">{message.body}</p>
                       <p className="my-0 chat-bubble-meta">
-                        {isOwn ? 'You' : conversation.otherUser.display_name ?? 'Match'} · {formatDateTime(message.created_at)}
+                        {isOwn ? 'You' : otherName} · {formatDateTime(message.created_at)}
                       </p>
                     </div>
                   </div>
@@ -106,9 +107,12 @@ export default async function MatchConversationPage({ params }: { params: Promis
           )}
         </Card>
 
-        <Card>
-          <MessageComposer sendMessageAction={sendMessageAction} />
-        </Card>
+        {/* Fixed to bottom on mobile via .chat-composer-wrap */}
+        <div className="chat-composer-wrap">
+          <Card>
+            <MessageComposer sendMessageAction={sendMessageAction} />
+          </Card>
+        </div>
 
         <Card>
           <ConversationSafetyActions otherUserId={conversation.otherUser.id} matchId={conversation.match.id} />
