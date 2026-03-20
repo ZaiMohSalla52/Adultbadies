@@ -1867,3 +1867,310 @@ img {
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9);
 }
+
+/* ========================================================
+   CHAT — SHARED TOKENS
+   ======================================================== */
+
+/* Eyebrow label used in chat headers */
+.chat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-4);
+  margin: 0;
+}
+
+/* Badge marking a thread as AI / Virtual Girlfriend */
+.chat-thread-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.48rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent-1);
+  background: rgba(255, 46, 99, 0.13);
+  border: 1px solid rgba(255, 46, 99, 0.28);
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ========================================================
+   CHATS LIST PAGE  (/chats)
+   ======================================================== */
+
+.chats-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.chats-header {
+  padding: 0 0.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.chats-header h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.chats-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.chats-item {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  color: inherit;
+  text-decoration: none;
+}
+
+.chats-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.chats-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.chats-item-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chats-item-name {
+  font-size: 1rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.chats-item-time {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chats-item-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chats-item-preview {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.chats-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 4rem 1rem;
+  text-align: center;
+}
+
+/* ========================================================
+   CHAT CONVERSATION PAGE  (/matches/[id])
+   ======================================================== */
+
+/* Two-column shell: sidebar list + conversation panel */
+.chat-layout-shell {
+  display: grid;
+  gap: 0.95rem;
+  min-height: calc(100vh - 100px);
+}
+
+@media (min-width: 900px) {
+  .chat-layout-shell {
+    grid-template-columns: 300px 1fr;
+    align-items: start;
+  }
+}
+
+/* Main conversation column */
+.chat-conversation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+/* Sticky conversation header */
+.chat-conversation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(11, 18, 38, 0.88));
+  backdrop-filter: blur(16px);
+}
+
+/* Avatar + name stack inside header */
+.chat-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Back button — hidden on desktop */
+.chat-mobile-back {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+@media (min-width: 900px) {
+  .chat-mobile-back { display: none; }
+}
+
+/* Scrollable messages container */
+.chat-messages-panel {
+  flex: 1;
+  min-height: 220px;
+  overflow-y: auto;
+}
+
+/* On mobile, add bottom padding so content isn't hidden behind fixed composer */
+@media (max-width: 767px) {
+  .chat-messages-panel {
+    padding-bottom: 90px;
+  }
+}
+
+/* Thread of messages */
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+/* Empty thread placeholder */
+.chat-thread-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Message row — wraps one bubble */
+.chat-bubble-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+/* Own messages align right */
+.chat-bubble-row-own {
+  flex-direction: row-reverse;
+}
+
+/* Shared bubble base */
+.chat-bubble {
+  max-width: 72%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 18px;
+  font-size: 0.94rem;
+  line-height: 1.48;
+  word-break: break-word;
+}
+
+/* Other person's bubble */
+.chat-bubble-other {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom-left-radius: 4px;
+  color: var(--text);
+}
+
+/* My bubble — brand pink */
+.chat-bubble-own {
+  background: var(--accent-1);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+/* Timestamp / sender label under a bubble */
+.chat-bubble-meta {
+  font-size: 0.68rem !important;
+  opacity: 0.5;
+  margin-top: 0.22rem !important;
+}
+
+/* ========================================================
+   COMPOSER (message input)
+   ======================================================== */
+
+.chat-composer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.chat-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Wrapper that becomes fixed on mobile */
+.chat-composer-wrap {
+  display: contents; /* no visual effect on desktop */
+}
+
+@media (max-width: 767px) {
+  .chat-composer-wrap {
+    display: block;
+    position: fixed;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: rgba(11, 18, 38, 0.96);
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 0.75rem;
+    backdrop-filter: blur(18px);
+  }
+}

@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Avatar } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
 import { getHumanChatThreads } from '@/lib/matches/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import {
@@ -13,13 +12,20 @@ import {
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import type { ChatThreadItem } from '@/lib/matches/types';
 
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(value));
+const formatDate = (value: string) => {
+  const date = new Date(value);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(date);
+  }
+  if (diffDays < 7) {
+    return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+  }
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
+};
 
 export default async function ChatsPage() {
   const auth = await getAuthenticatedUser();
@@ -61,48 +67,49 @@ export default async function ChatsPage() {
   const threads = [...humanThreads, ...virtualThreads].sort((a, b) => (a.lastActivityAt > b.lastActivityAt ? -1 : 1));
 
   return (
-    <div className="app-page-stack">
-      <Card className="app-page-header">
-        <p className="chat-label">Chats</p>
-        <h1 className="my-0">Conversation history</h1>
-        <p className="my-0 text-muted">All active conversation threads in one place, sorted by latest activity.</p>
-      </Card>
+    <div className="chats-page">
+      <div className="chats-header">
+        <h1 className="my-0">Chats</h1>
+        <p className="my-0 text-muted text-sm">
+          {threads.length > 0
+            ? `${threads.length} active conversation${threads.length !== 1 ? 's' : ''}`
+            : 'No conversations yet'}
+        </p>
+      </div>
 
-      <Card className="matches-list-shell">
-        {threads.length === 0 ? (
-          <div className="matches-empty-state">
-            <p className="my-0">No chat history yet.</p>
-            <p className="my-0 text-sm text-muted">Start a match conversation or chat with your Virtual Girlfriend to see threads here.</p>
-          </div>
-        ) : (
-          <div className="matches-list-items" role="list" aria-label="Chats">
-            {threads.map((thread) => (
-              <Link key={`${thread.kind}-${thread.id}`} href={thread.href} className="matches-list-item" role="listitem">
-                <div className="matches-list-row">
-                  <Avatar
-                    name={thread.title}
-                    imageUrl={thread.avatarUrl}
-                    kind={thread.kind === 'virtual_girlfriend' ? 'ai' : 'human'}
-                    size="lg"
-                    ring
-                    isActive={thread.kind === 'virtual_girlfriend'}
-                  />
-                  <div className="matches-list-main">
-                <div className="matches-list-item-top">
-                  <p className="my-0 matches-list-name">
-                    {thread.title}
-                    {thread.kind === 'virtual_girlfriend' ? <span className="chat-thread-pill">Virtual Girlfriend</span> : null}
-                  </p>
-                  <span className="matches-list-time">{formatDate(thread.lastActivityAt)}</span>
+      {threads.length === 0 ? (
+        <div className="chats-empty">
+          <p className="my-0">No chats yet.</p>
+          <p className="my-0 text-sm text-muted">
+            Start a match conversation or chat with your Virtual Girlfriend to see threads here.
+          </p>
+        </div>
+      ) : (
+        <div className="chats-list">
+          {threads.map((thread) => (
+            <Link key={`${thread.kind}-${thread.id}`} href={thread.href} className="chats-item">
+              <Avatar
+                name={thread.title}
+                imageUrl={thread.avatarUrl}
+                kind={thread.kind === 'virtual_girlfriend' ? 'ai' : 'human'}
+                size="lg"
+                ring
+                isActive={thread.kind === 'virtual_girlfriend'}
+              />
+              <div className="chats-item-body">
+                <div className="chats-item-top">
+                  <span className="chats-item-name">{thread.title}</span>
+                  <span className="chats-item-time">{formatDate(thread.lastActivityAt)}</span>
                 </div>
-                <p className="my-0 matches-list-preview">{thread.preview ?? 'No messages yet.'}</p>
-                  </div>
+                <div className="chats-item-bottom">
+                  <span className="chats-item-preview">{thread.preview ?? 'No messages yet.'}</span>
+                  {thread.kind === 'virtual_girlfriend' && <span className="chat-thread-pill">AI</span>}
                 </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </Card>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
