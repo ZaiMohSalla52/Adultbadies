@@ -6,7 +6,7 @@
 
 import { getCompositionAnchor } from '../primitives/composition';
 import { buildNegatives } from '../primitives/negatives';
-import { resolvePhysicalTraitLine } from '../primitives/physical';
+import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubject } from '../primitives/subject';
 import { PROMPT_VERSION } from '../versions';
 
@@ -45,6 +45,7 @@ export const buildChatPrompt = (input: ChatPromptInput): string => {
     getCompositionAnchor('chat'),
     'Best quality, realistic, detailed, natural lighting.',
     buildNegatives(['composition', 'content']),
+    resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Avoid: ${negConstraints}.` : null,
   ]
     .filter(Boolean)

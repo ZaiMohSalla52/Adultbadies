@@ -6,7 +6,7 @@
 
 import { getCompositionAnchor } from '../primitives/composition';
 import { buildAllNegatives } from '../primitives/negatives';
-import { resolvePhysicalTraitLine } from '../primitives/physical';
+import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubject } from '../primitives/subject';
 import { PROMPT_VERSION } from '../versions';
 
@@ -47,6 +47,7 @@ export const buildCanonicalPrompt = (input: CanonicalPromptInput): string => {
     getCompositionAnchor('canonical'),
     'Best quality, ultra realistic, intricate facial details, professional photography, 8k.',
     buildAllNegatives(),
+    resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Also avoid: ${negConstraints}.` : null,
   ]
     .filter(Boolean)

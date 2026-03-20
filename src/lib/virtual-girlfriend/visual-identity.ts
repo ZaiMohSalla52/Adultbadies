@@ -23,11 +23,16 @@ const STYLE_VERSION = 'vg-image-v3';
 const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
 type BuildIdentityInput = {
+  origin?: string;
   sex?: string;
+  age?: number;
+  hairColor?: string;
   archetype: string;
   tone: string;
   affectionStyle: string;
   visualAesthetic: string;
+  occupation?: string;
+  personality?: string;
   preferenceHints?: string;
   selectedPortraitPrompt?: string;
   selectedPortraitImage?: string;
@@ -47,11 +52,16 @@ const hasSemanticValue = (value: string | null | undefined) => Boolean(value && 
 const resolveVisualIdentitySemanticInput = (input: {
   companion: VirtualGirlfriendCompanionRecord;
   fallback: {
+    origin?: string;
     sex?: string;
+    age?: string | number;
+    hairColor?: string;
     archetype: string;
     tone: string;
     affectionStyle: string;
     visualAesthetic: string;
+    occupation?: string;
+    personality?: string;
     preferenceHints?: string;
     selectedPortraitPrompt?: string;
     selectedPortraitImage?: string;
@@ -75,11 +85,16 @@ const resolveVisualIdentitySemanticInput = (input: {
   ) {
     return {
       name: structuredProfile.name.trim(),
+      origin: structuredProfile.origin?.trim() || undefined,
       sex: structuredProfile.sex?.trim() || undefined,
+      age: structuredProfile.age ? Number(structuredProfile.age) : undefined,
+      hairColor: structuredProfile.hairColor?.trim() || undefined,
       archetype: structuredProfile.archetype.trim(),
       tone: structuredProfile.tone.trim(),
       affectionStyle: structuredProfile.affectionStyle.trim(),
       visualAesthetic: structuredProfile.visualAesthetic.trim(),
+      occupation: structuredProfile.occupation?.trim() || undefined,
+      personality: structuredProfile.personality?.trim() || undefined,
       preferenceHints: structuredProfile.preferenceHints?.trim() || undefined,
       selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt?.trim() || undefined,
       selectedPortraitImage: structuredProfile.selectedPortraitImage?.trim() || undefined,
@@ -94,11 +109,16 @@ const resolveVisualIdentitySemanticInput = (input: {
 
   return {
     name: input.companion.name,
+    origin: input.fallback.origin?.trim() || undefined,
     sex: input.fallback.sex?.trim() || undefined,
+    age: input.fallback.age !== undefined ? Number(input.fallback.age) : undefined,
+    hairColor: input.fallback.hairColor?.trim() || undefined,
     archetype: input.fallback.archetype.trim(),
     tone: input.fallback.tone.trim(),
     affectionStyle: input.fallback.affectionStyle.trim(),
     visualAesthetic: input.fallback.visualAesthetic.trim(),
+    occupation: input.fallback.occupation?.trim() || undefined,
+    personality: input.fallback.personality?.trim() || undefined,
     preferenceHints: input.fallback.preferenceHints?.trim() || undefined,
     selectedPortraitPrompt: input.fallback.selectedPortraitPrompt?.trim() || undefined,
     selectedPortraitImage: input.fallback.selectedPortraitImage?.trim() || undefined,
@@ -111,45 +131,56 @@ const resolveVisualIdentitySemanticInput = (input: {
   };
 };
 
-const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisualIdentityPack => ({
-  coreLookDescriptors: [input.visualAesthetic, input.archetype, input.tone, 'premium dating photography', 'real phone-camera portrait'],
-  portraitFramingStyle: 'mix of close-up portrait, mirror selfie, and medium lifestyle framing; natural eye-level camera',
-  wardrobeDirection: 'wardrobe changes by scene: one polished look, one casual look, one lifestyle look',
-  lightingMoodDirection: 'mostly natural light with scene-true practical lighting; avoid studio flash look',
-  realismPolishLevel: 'high realism with natural skin texture, candid imperfections, and believable phone-camera detail',
-  identityInvariants: {
-    ageBand: 'mid-20s to early-30s adult',
-    faceShape: 'defined oval face with soft jawline',
-    eyeShapeColor: 'almond eyes, warm brown tone',
-    browCharacter: 'naturally full brows with gentle arch',
-    noseProfile: 'straight refined bridge with soft tip',
-    lipShape: 'balanced full lips with clear cupid bow',
-    skinToneBand: 'medium warm skin tone range',
-    hairSignature: 'deep brunette, softly wavy, chest-length',
-    bodyPresentation: 'fit feminine silhouette with natural proportions',
-    signatureAccessoryOrMotif: 'minimal gold jewelry accent',
-  },
-  cameraCompositionPreferences: [
-    'eye-level focal priority on face with natural perspective',
-    'mixed composition plan: close portrait, waist-up candid, half-body environmental',
-    'avoid repeated angle or repeated room layout across variants',
-  ],
-  continuityAnchors: [...input.persona.visualPromptDNA.styleAnchors, input.companionName],
-  negativeConstraints: [
-    'avoid multiple people',
-    'avoid distorted anatomy',
-    'avoid low-resolution',
-    'avoid plastic skin smoothing',
-    'avoid repetitive same room composition',
-    'avoid explicit nudity',
-  ],
-  negativeOverlapCues: [
-    'avoid default bombshell clone look with heavy glam makeup every scene',
-    'avoid long black straight hair + same pout + same bodycon outfit defaults',
-    'avoid repeating polished nightlife-only environments',
-    'avoid same-face-template outputs with only outfit swaps',
-  ],
-});
+const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisualIdentityPack => {
+  const ageRange = input.age && Number.isFinite(input.age)
+    ? `${Math.max(18, Math.floor(input.age - 2))}-${Math.max(19, Math.floor(input.age + 2))}`
+    : '22-28';
+  const resolvedStyle = input.styleVibe?.trim() || 'casual';
+  const resolvedHairColor = input.hairColor?.trim() || 'dark';
+  const resolvedHairLength = input.hairLength?.trim() || 'medium';
+  const resolvedEyeColor = input.eyeColor?.trim() || 'brown';
+  const resolvedOrigin = input.origin?.trim() || 'mixed';
+  const resolvedSkinTone = input.skinTone?.trim() || 'medium';
+  const resolvedBody = input.bodyType?.trim() || input.figure?.trim() || 'balanced';
+
+  return {
+    continuityAnchors: [
+      `${resolvedOrigin} person`,
+      `${resolvedHairColor} ${resolvedHairLength} hair`,
+      `${resolvedEyeColor} eyes`,
+      ...input.persona.visualPromptDNA.styleAnchors,
+      input.companionName,
+    ],
+    coreLookDescriptors: [
+      `${resolvedOrigin} appearance`,
+      'natural look',
+      `${resolvedStyle} style`,
+      `${resolvedBody} build`,
+      input.visualAesthetic,
+      input.archetype,
+      input.tone,
+    ],
+    portraitFramingStyle: 'mix of close-up portrait, mirror selfie, and medium lifestyle framing; natural eye-level camera',
+    wardrobeDirection: resolvedStyle === 'glamorous' ? 'elegant evening wear' : 'casual everyday clothing',
+    lightingMoodDirection: 'warm natural lighting',
+    cameraCompositionPreferences: ['medium close-up', 'shallow depth of field'],
+    realismPolishLevel: 'photorealistic editorial',
+    negativeConstraints: ['harsh flash', 'overexposed'],
+    negativeOverlapCues: [],
+    identityInvariants: {
+      ageBand: ageRange,
+      faceShape: 'natural',
+      eyeShapeColor: `${resolvedEyeColor} eyes`,
+      browCharacter: 'natural brows',
+      noseProfile: 'natural profile',
+      lipShape: 'natural lip shape',
+      skinToneBand: resolvedSkinTone,
+      hairSignature: `${resolvedHairColor} ${resolvedHairLength}`,
+      bodyPresentation: `${resolvedBody} build`,
+      signatureAccessoryOrMotif: 'minimal accessory',
+    },
+  };
+};
 
 const sanitizePack = (raw: VirtualGirlfriendVisualIdentityPack, fallback: VirtualGirlfriendVisualIdentityPack) => ({
   ...fallback,
@@ -168,10 +199,15 @@ const sanitizePack = (raw: VirtualGirlfriendVisualIdentityPack, fallback: Virtua
 const buildVisualIdentityPack = async (input: BuildIdentityInput): Promise<VirtualGirlfriendVisualIdentityPack> => {
   const fallback = fallbackIdentityPack(input);
   const appearanceLines = [
+    input.origin?.trim() ? `- Origin / ethnicity: ${input.origin.trim()}` : null,
+    Number.isFinite(input.age) ? `- Age: ${input.age}` : null,
+    input.hairColor?.trim() ? `- Hair color: ${input.hairColor.trim()}` : null,
     input.hairLength?.trim() ? `- Hair length: ${input.hairLength.trim()}` : null,
     input.eyeColor?.trim() ? `- Eye color: ${input.eyeColor.trim()}` : null,
     input.skinTone?.trim() ? `- Skin tone: ${input.skinTone.trim()}` : null,
     input.styleVibe?.trim() ? `- Style vibe: ${input.styleVibe.trim()}` : null,
+    input.occupation?.trim() ? `- Occupation: ${input.occupation.trim()}` : null,
+    input.personality?.trim() ? `- Personality: ${input.personality.trim()}` : null,
     (input.bodyType?.trim() || input.figure?.trim())
       ? `- Body silhouette: ${input.bodyType?.trim() || input.figure?.trim()}`
       : null,
@@ -207,10 +243,15 @@ const buildVisualIdentityPack = async (input: BuildIdentityInput): Promise<Virtu
 Input profile:
 - Companion name: ${input.companionName}
 - Sex: ${input.sex || 'female'}
+- Ethnicity/origin: ${input.origin || 'mixed'}
+- Age: ${Number.isFinite(input.age) ? input.age : 'mid-20s'}
+- Hair color: ${input.hairColor || 'dark brown'}
 - Archetype: ${input.archetype}
 - Tone: ${input.tone}
 - Affection style: ${input.affectionStyle}
 - Visual aesthetic: ${input.visualAesthetic}
+- Occupation: ${input.occupation || 'not specified'}
+- Personality: ${input.personality || 'not specified'}
 - Preference hints: ${input.preferenceHints || 'none'}
 - User-selected portrait seed prompt: ${input.selectedPortraitPrompt || 'none'}
 - User-selected portrait seed image URL/data: ${input.selectedPortraitImage || 'none'}
@@ -223,6 +264,7 @@ Rules:
 - Preserve one stable identity across all generated outputs.
 - Enforce high distinctness from sibling companion signatures.
 - Keep descriptors practical and image-model useful.
+- Encode ethnicity and explicit skin color as top-priority identity anchors.
 - Keep negative constraints explicit for anatomy quality, identity drift, and duplicate-scene drift.
 - Prevent all outputs from collapsing into cozy indoor portraits.
 - Prioritize realistic natural-lighting and believable phone-camera photography.
@@ -273,11 +315,16 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
   userId: string;
   companion: VirtualGirlfriendCompanionRecord;
   setup: {
+    origin?: string;
     sex?: string;
+    age?: number | string;
+    hairColor?: string;
     archetype: string;
     tone: string;
     affectionStyle: string;
     visualAesthetic: string;
+    occupation?: string;
+    personality?: string;
     preferenceHints?: string;
     selectedPortraitPrompt?: string;
     selectedPortraitImage?: string;
@@ -301,11 +348,16 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     });
 
   const identityPack = await buildVisualIdentityPack({
+    origin: semanticSetup.origin,
     sex: semanticSetup.sex,
+    age: semanticSetup.age ? Number(semanticSetup.age) : undefined,
+    hairColor: semanticSetup.hairColor,
     archetype: semanticSetup.archetype,
     tone: semanticSetup.tone,
     affectionStyle: semanticSetup.affectionStyle,
     visualAesthetic: semanticSetup.visualAesthetic,
+    occupation: semanticSetup.occupation,
+    personality: semanticSetup.personality,
     preferenceHints: semanticSetup.preferenceHints,
     selectedPortraitPrompt: semanticSetup.selectedPortraitPrompt,
     selectedPortraitImage: semanticSetup.selectedPortraitImage,

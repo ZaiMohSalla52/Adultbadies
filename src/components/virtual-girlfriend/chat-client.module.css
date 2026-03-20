@@ -10,6 +10,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  overflow: hidden;
 }
 
 .chatHeader {
@@ -187,6 +188,7 @@
 .messagesArea {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -314,6 +316,9 @@
   padding-bottom: max(10px, env(safe-area-inset-bottom));
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   background: #070b14;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .composerInput {
@@ -490,6 +495,10 @@
   .chatLayout {
     height: 100vh;
     height: 100dvh;
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .backButton {
