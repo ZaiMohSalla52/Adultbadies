@@ -25,6 +25,7 @@ import {
 } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/chat';
 import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
+import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
 import { uploadToR2 } from '@/lib/storage/r2';
@@ -339,7 +340,7 @@ const toChatPromptInput = (
     ...canonicalInput,
     identityAnchors: identityPack.continuityAnchors,
     category: chatCategory || undefined,
-    contextHint: 'Preserve same person identity while varying scene naturally from prior images.',
+    contextHint: `${buildRandomScene()}. Same person, same face.`,
   };
 };
 

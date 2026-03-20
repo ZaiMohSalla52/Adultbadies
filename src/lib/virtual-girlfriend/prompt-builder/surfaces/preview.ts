@@ -115,6 +115,8 @@ export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: numb
     parts.push(`Additional details: ${input.freeformDetails.trim()}.`);
   }
 
+  parts.push('Photorealistic portrait, sharp facial details, natural skin texture, professional photography.');
+
   parts.push(buildAllNegatives());
   const ethnicityNegative = resolveEthnicityNegative(input.origin);
   if (ethnicityNegative) parts.push(ethnicityNegative);
