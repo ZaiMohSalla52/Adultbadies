@@ -197,9 +197,13 @@ export type VirtualGirlfriendChatMachineRequest = {
 export type VirtualGirlfriendPortraitPreviewRequest = {
   kind: 'portrait_preview';
   count?: number;
-} & PreviewTraits & {
-    skinTone?: string;
-  };
+  skinTone?: string;
+  breastSize?: string;
+  styleVibe?: string;
+  personality?: string;
+  occupation?: string;
+  freeformDetails?: string;
+} & PreviewTraits;
 
 export type VirtualGirlfriendSetupMachineResult = {
   kind: 'setup_pack';
@@ -293,12 +297,14 @@ const toCanonicalPromptInput = (
   return {
     sex: sp?.sex ?? 'female',
     age: Number.isFinite(age) && age > 0 ? age : 26,
-    origin: sp?.origin ?? 'white',
+    origin: sp?.origin ?? 'mixed',
     hairColor: sp?.hairColor ?? 'dark brown',
     hairLength: sp?.hairLength ?? 'long',
     eyeColor: sp?.eyeColor ?? 'brown',
     bodyType: sp?.bodyType ?? sp?.figure ?? 'slim',
     skinTone: sp?.skinTone ?? undefined,
+    breastSize: sp?.breastSize ?? undefined,
+    occupation: sp?.occupation ?? undefined,
     identityAnchors: identityPack?.continuityAnchors ?? undefined,
     identityInvariants,
     coreLook: identityPack?.coreLookDescriptors,

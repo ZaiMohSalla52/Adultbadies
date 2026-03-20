@@ -13,6 +13,9 @@ export interface RawFormTraits {
   age?: string | number;
   styleVibe?: string;
   personality?: string;
+  breastSize?: string;
+  occupation?: string;
+  freeformDetails?: string;
 }
 
 const ORIGINS: readonly Origin[] = ['asian', 'latina', 'black', 'white', 'mixed', 'middle_eastern', 'south_asian'];
@@ -130,7 +133,14 @@ const normalizePersonality = (personality?: string): string | undefined => {
   return normalized;
 };
 
-export function resolveSetupTraits(raw: RawFormTraits): PreviewTraits & { skinTone?: string; styleVibe?: string; personality?: string } {
+export function resolveSetupTraits(raw: RawFormTraits): PreviewTraits & {
+  skinTone?: string;
+  styleVibe?: string;
+  personality?: string;
+  breastSize?: string;
+  occupation?: string;
+  freeformDetails?: string;
+} {
   return {
     sex: normalizeSex(raw.sex),
     origin: normalizeOrigin(raw.origin),
@@ -142,5 +152,8 @@ export function resolveSetupTraits(raw: RawFormTraits): PreviewTraits & { skinTo
     skinTone: normalizeSkinTone(raw.skinTone),
     styleVibe: normalizeStyleVibe(raw.styleVibe),
     personality: normalizePersonality(raw.personality),
+    breastSize: raw.breastSize?.trim() || undefined,
+    occupation: raw.occupation?.trim() || undefined,
+    freeformDetails: raw.freeformDetails?.trim() || undefined,
   };
 }

@@ -19,6 +19,8 @@ export interface CanonicalPromptInput {
   eyeColor: string;
   bodyType: string;
   skinTone?: string;
+  breastSize?: string;
+  occupation?: string;
   identityAnchors?: string[];
   identityInvariants?: string[];
   coreLook?: string[];
@@ -38,6 +40,7 @@ export const buildCanonicalPrompt = (input: CanonicalPromptInput): string => {
   return [
     `Portrait photograph of ${resolveSubject(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
+    input.occupation ? `Occupation: ${input.occupation}.` : null,
     identityInvariants ? `Identity features: ${identityInvariants}.` : null,
     coreLook ? `Core appearance: ${coreLook}.` : null,
     input.wardrobeDirection ? `Wardrobe: ${input.wardrobeDirection}.` : null,
