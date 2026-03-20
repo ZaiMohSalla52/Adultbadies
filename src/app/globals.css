@@ -154,7 +154,7 @@ img {
   flex: 1;
   min-width: 0;
   padding: 24px;
-  padding-bottom: 80px;
+  padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
   max-width: 1200px;
 }
 
