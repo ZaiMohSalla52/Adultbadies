@@ -445,9 +445,9 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           eyeColor: state.eyeColor,
           skinTone: deriveSkinTone(state.origin),
           bodyType: state.bodyType,
+          breastSize: state.breastSize,
           age: state.age,
           styleVibe: state.styleVibe,
-          personality: state.personality,
         }),
       });
 
