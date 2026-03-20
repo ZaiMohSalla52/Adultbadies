@@ -493,12 +493,47 @@
 
 @media (max-width: 767px) {
   .chatLayout {
-    height: 100vh;
-    height: 100dvh;
-    position: fixed;
-    inset: 0;
+    height: 100%;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
     display: flex;
     flex-direction: column;
+    position: relative;
+  }
+
+  .chatMain {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .chatHeader {
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #0d1117;
+  }
+
+  .messagesArea {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 20px;
+  }
+
+  .composerArea {
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    background: #070b14;
+    padding: 10px 16px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .backButton {
