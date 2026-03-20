@@ -5,10 +5,10 @@ import { Card } from '@/components/ui/card';
 import { getHumanChatThreads } from '@/lib/matches/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import {
-  getActiveVirtualGirlfriend,
   getLatestVirtualGirlfriendConversation,
   getVirtualGirlfriendCompanionImages,
   getVirtualGirlfriendMessages,
+  listVirtualGirlfriendCompanions,
 } from '@/lib/virtual-girlfriend/data';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import type { ChatThreadItem } from '@/lib/matches/types';
@@ -29,36 +29,36 @@ export default async function ChatsPage() {
   }
 
   const humanThreads = await getHumanChatThreads(auth.accessToken, auth.user.id);
-  const companion = await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
+  const companions = await listVirtualGirlfriendCompanions(auth.accessToken, auth.user.id);
 
-  let virtualThread: ChatThreadItem | null = null;
+  const virtualThreads: ChatThreadItem[] = [];
 
-  if (companion?.setup_completed) {
+  for (const companion of companions) {
+    if (!companion.setup_completed) continue;
+
     const conversation = await getLatestVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
+    if (!conversation) continue;
 
-    if (conversation) {
-      const [messages, companionImages] = await Promise.all([
-        getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
-        getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
-      ]);
-      const curated = curateVirtualGirlfriendImages(companionImages);
-      const latestMessage = messages.at(-1) ?? null;
+    const [messages, companionImages] = await Promise.all([
+      getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
+      getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
+    ]);
 
-      virtualThread = {
-        id: conversation.id,
-        href: '/virtual-girlfriend/chat',
-        title: companion.name,
-        kind: 'virtual_girlfriend',
-        lastActivityAt: latestMessage?.created_at ?? conversation.last_message_at ?? conversation.updated_at,
-        preview: latestMessage?.content ?? null,
-        avatarUrl: curated.canonical?.delivery_url ?? null,
-      };
-    }
+    const curated = curateVirtualGirlfriendImages(companionImages);
+    const latestMessage = messages.at(-1) ?? null;
+
+    virtualThreads.push({
+      id: conversation.id,
+      href: `/virtual-girlfriend/chat?companionId=${companion.id}`,
+      title: companion.name,
+      kind: 'virtual_girlfriend',
+      lastActivityAt: latestMessage?.created_at ?? conversation.last_message_at ?? conversation.updated_at,
+      preview: latestMessage?.content ?? null,
+      avatarUrl: curated.canonical?.delivery_url ?? null,
+    });
   }
 
-  const threads = [...humanThreads, ...(virtualThread ? [virtualThread] : [])].sort((a, b) =>
-    a.lastActivityAt > b.lastActivityAt ? -1 : 1,
-  );
+  const threads = [...humanThreads, ...virtualThreads].sort((a, b) => (a.lastActivityAt > b.lastActivityAt ? -1 : 1));
 
   return (
     <div className="app-page-stack">

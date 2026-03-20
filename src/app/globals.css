@@ -155,6 +155,7 @@ img {
   min-width: 0;
   padding: 24px;
   padding-bottom: 80px;
+  max-width: 1200px;
 }
 
 .app-page-stack {
