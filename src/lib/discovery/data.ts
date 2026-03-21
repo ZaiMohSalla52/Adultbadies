@@ -62,6 +62,60 @@ const isMutualInterest = (
 const toPhotoUrl = (storagePath: string) =>
   `${env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/profile-photos/${storagePath}`;
 
+type VgCompanionRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  display_bio: string | null;
+  disclosure_label: string | null;
+};
+
+type VgImageRow = {
+  companion_id: string;
+  delivery_url: string;
+  image_kind: string;
+};
+
+export const getDiscoverableVirtualGirlfriends = async (token: string, userId: string): Promise<DiscoveryCandidate[]> => {
+  const companions = await supabaseRest<VgCompanionRow[]>('ai_companions', token, {
+    searchParams: new URLSearchParams({
+      select: 'id,user_id,name,display_bio,disclosure_label',
+      is_discoverable: 'eq.true',
+      setup_completed: 'eq.true',
+      user_id: `neq.${userId}`,
+      limit: '20',
+    }),
+  });
+
+  if (companions.length === 0) return [];
+
+  const companionIds = companions.map((c) => c.id);
+  const images = await supabaseRest<VgImageRow[]>('ai_companion_images', token, {
+    searchParams: new URLSearchParams({
+      select: 'companion_id,delivery_url,image_kind',
+      companion_id: `in.(${companionIds.join(',')})`,
+      image_kind: 'eq.canonical',
+      limit: '50',
+    }),
+  });
+
+  const imageByCompanionId = new Map(images.map((img) => [img.companion_id, img.delivery_url]));
+
+  return companions.map((companion) => ({
+    userId: `vg:${companion.id}`,
+    displayName: companion.name,
+    age: null,
+    bio: companion.display_bio?.trim() || 'Your perfect AI companion.',
+    location: 'Virtual',
+    gender: 'female',
+    interestedIn: null,
+    photoUrl: imageByCompanionId.get(companion.id) ?? null,
+    kind: 'virtual_girlfriend',
+    companionId: companion.id,
+    disclosureLabel: companion.disclosure_label ?? 'AI-generated profile',
+  }));
+};
+
 export const getDiscoveryCandidates = async (token: string, userId: string): Promise<DiscoveryCandidate[]> => {
   const [profiles, currentProfileRows, currentPreferenceRows, preferenceRows, photoRows, swipeRows, blockedIds] =
     await Promise.all([
@@ -127,6 +181,7 @@ export const getDiscoveryCandidates = async (token: string, userId: string): Pro
         gender: profile.gender,
         interestedIn: normalizeToken(profile.interested_in) || null,
         photoUrl: photo ? toPhotoUrl(photo.storage_path) : null,
+        kind: 'human',
       } satisfies DiscoveryCandidate;
     });
 };

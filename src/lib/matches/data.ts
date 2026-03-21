@@ -102,6 +102,7 @@ export const getMatchList = async (token: string, userId: string): Promise<Match
         matchCreatedAt: match.created_at,
         lastMessageBody: latestMessage?.body ?? null,
         lastMessageAt,
+        lastMessageSenderId: latestMessage?.sender_id ?? null,
         avatarUrl: profile.avatar_url,
       };
     })
@@ -233,5 +234,38 @@ export const getHumanChatThreads = async (token: string, userId: string): Promis
     lastActivityAt: match.lastMessageAt,
     preview: match.lastMessageBody,
     avatarUrl: match.avatarUrl,
+    lastMessageSenderId: match.lastMessageSenderId,
+    isNew: match.lastMessageBody === null,
   }));
+};
+
+export const getIncomingLikesCount = async (token: string, userId: string): Promise<number> => {
+  // Get all users who liked the current user
+  const incomingLikes = await supabaseRest<{ swiper_id: string }[]>('swipes', token, {
+    searchParams: new URLSearchParams({
+      select: 'swiper_id',
+      target_user_id: `eq.${userId}`,
+      direction: 'eq.like',
+      limit: '500',
+    }),
+  });
+
+  if (incomingLikes.length === 0) return 0;
+
+  // Exclude users we've already matched with
+  const matchQuery = new URLSearchParams({
+    select: 'user_a_id,user_b_id',
+    status: 'eq.active',
+    or: `(user_a_id.eq.${userId},user_b_id.eq.${userId})`,
+  });
+
+  const matches = await supabaseRest<{ user_a_id: string; user_b_id: string }[]>('matches', token, {
+    searchParams: matchQuery,
+  });
+
+  const matchedUserIds = new Set(
+    matches.flatMap((m) => [m.user_a_id, m.user_b_id]).filter((id) => id !== userId),
+  );
+
+  return incomingLikes.filter((like) => !matchedUserIds.has(like.swiper_id)).length;
 };
