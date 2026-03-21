@@ -38,4 +38,7 @@ export type DiscoveryCandidate = {
   gender: string | null;
   interestedIn: string | null;
   photoUrl: string | null;
+  kind: 'human' | 'virtual_girlfriend';
+  companionId?: string;
+  disclosureLabel?: string;
 };

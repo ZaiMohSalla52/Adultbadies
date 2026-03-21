@@ -29,6 +29,7 @@ export type MatchListItem = {
   matchCreatedAt: string;
   lastMessageBody: string | null;
   lastMessageAt: string;
+  lastMessageSenderId: string | null;
   avatarUrl: string | null;
 };
 
@@ -46,4 +47,6 @@ export type ChatThreadItem = {
   lastActivityAt: string;
   preview: string | null;
   avatarUrl?: string | null;
+  lastMessageSenderId?: string | null;
+  isNew?: boolean;
 };

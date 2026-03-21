@@ -1122,6 +1122,12 @@ img {
   gap: 0.75rem;
 }
 
+/* When sidebar variant is active, override to flex layout */
+.encounters-screen.encounters-screen-with-sidebar {
+  display: flex;
+  gap: 0;
+}
+
 .encounters-mobile-top {
   position: sticky;
   top: 4.7rem;
@@ -2173,4 +2179,381 @@ img {
     padding: 0.75rem;
     backdrop-filter: blur(18px);
   }
+}
+
+/* ========================================================
+   DISCOVERY SIDEBAR  (matches grid + messages tab)
+   ======================================================== */
+
+.encounters-screen-with-sidebar {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  min-height: calc(100vh - 9rem);
+}
+
+.encounters-sidebar {
+  display: none; /* hidden on mobile */
+  flex-direction: column;
+  width: 260px;
+  min-width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  min-height: calc(100vh - 9rem);
+  overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .encounters-sidebar {
+    display: flex;
+  }
+
+  .encounters-screen-with-sidebar .encounters-main {
+    flex: 1;
+    min-width: 0;
+    padding: 0.75rem;
+  }
+
+  .encounters-screen-with-sidebar .encounters-mobile-top {
+    display: none;
+  }
+}
+
+.encounters-sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.encounters-sidebar-tab {
+  flex: 1;
+  padding: 0.8rem 0.5rem;
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.encounters-sidebar-tab.active {
+  color: var(--accent-1);
+  border-bottom: 2px solid var(--accent-1);
+}
+
+.encounters-matches-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+  padding: 0.75rem;
+}
+
+.encounters-match-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  text-decoration: none;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  transition: opacity 0.15s ease;
+}
+
+.encounters-match-thumb:hover {
+  opacity: 0.85;
+}
+
+.encounters-match-thumb-img {
+  object-fit: cover;
+}
+
+.encounters-match-thumb-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+}
+
+.encounters-match-thumb-name {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(180deg, transparent, rgba(7, 11, 20, 0.85));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.encounters-likes-sent-card {
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-4));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.encounters-likes-sent-icon {
+  font-size: 1.4rem;
+}
+
+.encounters-likes-sent-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.encounters-sidebar-empty {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.5rem 0;
+  margin: 0;
+}
+
+.encounters-sidebar-messages {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+}
+
+.encounters-sidebar-msg-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease;
+}
+
+.encounters-sidebar-msg-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.encounters-sidebar-msg-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.encounters-sidebar-msg-name {
+  font-size: 0.82rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.encounters-sidebar-msg-preview {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* VG badge on discovery card */
+.encounters-vg-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, var(--accent-3), var(--accent-2));
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  z-index: 2;
+  letter-spacing: 0.04em;
+}
+
+/* VG intent tag variant */
+.encounters-intent-tag-vg {
+  background: linear-gradient(135deg, var(--accent-3), var(--accent-2));
+}
+
+/* Safety inline (collapsed below action row) */
+.encounters-safety-inline {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.encounters-safety-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: center;
+  padding: 0.25rem;
+  width: 100%;
+  transition: color 0.15s ease;
+}
+
+.encounters-safety-toggle:hover {
+  color: var(--text);
+}
+
+/* ========================================================
+   CHATS PAGE REDESIGN — new matches row + YOUR MOVE
+   ======================================================== */
+
+.chats-new-matches-section {
+  padding: 0.75rem 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.25rem;
+}
+
+.chats-new-matches-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.65rem;
+}
+
+.chats-matches-row {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chats-matches-row::-webkit-scrollbar {
+  display: none;
+}
+
+.chats-match-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  width: 68px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.chats-match-bubble-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-1);
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+
+.chats-match-bubble-img {
+  object-fit: cover;
+}
+
+.chats-match-bubble-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+}
+
+.chats-likes-bubble-avatar {
+  border-color: var(--accent-1);
+}
+
+.chats-likes-bubble-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-4));
+  color: #fff;
+  gap: 0.05rem;
+}
+
+.chats-likes-bubble-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.chats-likes-bubble-count {
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.chats-match-bubble-name {
+  font-size: 0.7rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  color: var(--text-muted);
+}
+
+.chats-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.5rem 0.15rem;
+}
+
+.chats-section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.chats-section-filter {
+  font-size: 1rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.chats-your-move-badge {
+  background: rgba(192, 132, 252, 0.15);
+  color: var(--accent-2);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.chats-item-star {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1;
 }
