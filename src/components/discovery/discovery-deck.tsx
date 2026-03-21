@@ -20,14 +20,11 @@ type DiscoveryDeckProps = {
   recentMatches: MatchListItem[];
 };
 
-type SidebarTab = 'matches' | 'messages';
-
 export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday, recentMatches }: DiscoveryDeckProps) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [candidates, setCandidates] = useState(initialCandidates);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('matches');
   const [reportCategory, setReportCategory] = useState<ReportCategory>('harassment');
   const [reportDetails, setReportDetails] = useState('');
   const [showSafety, setShowSafety] = useState(false);
@@ -159,79 +156,46 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday, re
   };
 
   const isHumanCandidate = currentCandidate?.kind === 'human';
-  const messagesWithContent = recentMatches.filter((m) => m.lastMessageBody);
 
   return (
     <div className="encounters-screen encounters-screen-with-sidebar">
       {/* ── Sidebar (desktop only) ── */}
       <aside className="encounters-sidebar">
-        <div className="encounters-sidebar-tabs">
-          <button
-            type="button"
-            className={`encounters-sidebar-tab${sidebarTab === 'matches' ? ' active' : ''}`}
-            onClick={() => setSidebarTab('matches')}
-          >
-            Matches
-          </button>
-          <button
-            type="button"
-            className={`encounters-sidebar-tab${sidebarTab === 'messages' ? ' active' : ''}`}
-            onClick={() => setSidebarTab('messages')}
-          >
-            Messages
-          </button>
+        <div className="encounters-sidebar-header">
+          <span className="encounters-sidebar-title">Matches</span>
+          <Link href="/chats" className="encounters-sidebar-see-all">See all</Link>
         </div>
 
-        {sidebarTab === 'matches' && (
-          <div className="encounters-matches-grid">
-            {/* Likes sent shortcut card */}
-            <Link href="/chats" className="encounters-match-thumb encounters-likes-sent-card">
-              <span className="encounters-likes-sent-icon">💌</span>
-              <span className="encounters-likes-sent-label">Likes sent</span>
+        <div className="encounters-matches-grid">
+          {/* Likes sent shortcut card */}
+          <Link href="/chats" className="encounters-match-thumb encounters-likes-sent-card">
+            <span className="encounters-likes-sent-icon">💌</span>
+            <span className="encounters-likes-sent-label">Likes sent</span>
+          </Link>
+
+          {recentMatches.slice(0, 11).map((match) => (
+            <Link key={match.matchId} href={`/matches/${match.matchId}`} className="encounters-match-thumb">
+              {match.avatarUrl ? (
+                <Image
+                  src={match.avatarUrl}
+                  alt={match.otherUserName}
+                  fill
+                  className="encounters-match-thumb-img"
+                  unoptimized
+                />
+              ) : (
+                <div className="encounters-match-thumb-fallback">
+                  {match.otherUserName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="encounters-match-thumb-name">{match.otherUserName}</span>
             </Link>
+          ))}
 
-            {recentMatches.slice(0, 11).map((match) => (
-              <Link key={match.matchId} href={`/matches/${match.matchId}`} className="encounters-match-thumb">
-                {match.avatarUrl ? (
-                  <Image
-                    src={match.avatarUrl}
-                    alt={match.otherUserName}
-                    fill
-                    className="encounters-match-thumb-img"
-                    unoptimized
-                  />
-                ) : (
-                  <div className="encounters-match-thumb-fallback">
-                    {match.otherUserName.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <span className="encounters-match-thumb-name">{match.otherUserName}</span>
-              </Link>
-            ))}
-
-            {recentMatches.length === 0 && (
-              <p className="encounters-sidebar-empty">No matches yet. Keep swiping!</p>
-            )}
-          </div>
-        )}
-
-        {sidebarTab === 'messages' && (
-          <div className="encounters-sidebar-messages">
-            {messagesWithContent.length === 0 ? (
-              <p className="encounters-sidebar-empty">No messages yet.</p>
-            ) : (
-              messagesWithContent.slice(0, 8).map((match) => (
-                <Link key={match.matchId} href={`/matches/${match.matchId}`} className="encounters-sidebar-msg-item">
-                  <Avatar name={match.otherUserName} imageUrl={match.avatarUrl} size="sm" />
-                  <div className="encounters-sidebar-msg-body">
-                    <span className="encounters-sidebar-msg-name">{match.otherUserName}</span>
-                    <span className="encounters-sidebar-msg-preview">{match.lastMessageBody}</span>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-        )}
+          {recentMatches.length === 0 && (
+            <p className="encounters-sidebar-empty">No matches yet. Keep swiping!</p>
+          )}
+        </div>
       </aside>
 
       {/* ── Main swipe area ── */}
@@ -303,31 +267,33 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday, re
         )}
 
         <div className="encounters-action-row">
-          <Button
+          <button
             type="button"
-            variant="secondary"
-            className="encounters-action-button"
+            className="encounters-btn encounters-btn-pass"
             disabled={isPending || !currentCandidate}
             onClick={() => swipe('dislike', 'pass')}
+            aria-label="Pass"
           >
-            ✕
-          </Button>
-          <Button
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <button
             type="button"
-            className="encounters-action-button encounters-action-super"
+            className="encounters-btn encounters-btn-super"
             disabled={isPending || !currentCandidate}
             onClick={() => swipe('like', 'super')}
+            aria-label="Super like"
           >
             🔥
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
-            className="encounters-action-button"
+            className="encounters-btn encounters-btn-like"
             disabled={isPending || !currentCandidate}
             onClick={() => swipe('like', 'like')}
+            aria-label="Like"
           >
-            ❤
-          </Button>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          </button>
         </div>
 
         {feedback ? <p className="encounters-feedback">{feedback}</p> : null}

@@ -1238,18 +1238,80 @@ img {
 }
 
 .encounters-action-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
 }
 
-.encounters-action-button {
-  height: 3.25rem;
-  font-size: 1.35rem;
+/* Tinder-style circular swipe buttons */
+.encounters-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  flex-shrink: 0;
+  background: var(--surface-2);
 }
 
-.encounters-action-super {
+.encounters-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.encounters-btn:not(:disabled):hover {
+  transform: scale(1.08);
+}
+
+.encounters-btn:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+/* Pass (X) — medium, grey border */
+.encounters-btn-pass {
+  width: 3.5rem;
+  height: 3.5rem;
+  color: #f87171;
+  background: var(--surface-2);
+  border: 2px solid rgba(248, 113, 113, 0.35);
+  box-shadow: 0 4px 14px rgba(248, 113, 113, 0.18);
+  font-size: 1.1rem;
+}
+
+.encounters-btn-pass:not(:disabled):hover {
+  background: rgba(248, 113, 113, 0.12);
+  box-shadow: 0 6px 20px rgba(248, 113, 113, 0.3);
+}
+
+/* Super like (🔥) — smaller, gradient */
+.encounters-btn-super {
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.25rem;
   background: linear-gradient(135deg, #ff2e63, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(255, 46, 99, 0.35);
+}
+
+.encounters-btn-super:not(:disabled):hover {
+  box-shadow: 0 6px 22px rgba(255, 46, 99, 0.5);
+}
+
+/* Like (❤) — largest, gradient */
+.encounters-btn-like {
+  width: 4rem;
+  height: 4rem;
+  font-size: 1.2rem;
+  background: linear-gradient(135deg, #ff2e63, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(255, 46, 99, 0.4);
+}
+
+.encounters-btn-like:not(:disabled):hover {
+  box-shadow: 0 6px 26px rgba(255, 46, 99, 0.6);
 }
 
 .encounters-empty-state {
@@ -2219,28 +2281,30 @@ img {
   }
 }
 
-.encounters-sidebar-tabs {
+.encounters-sidebar-header {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 0.85rem 0.6rem;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
-.encounters-sidebar-tab {
-  flex: 1;
-  padding: 0.8rem 0.5rem;
-  text-align: center;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color 0.15s ease;
+.encounters-sidebar-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.encounters-sidebar-tab.active {
+.encounters-sidebar-see-all {
+  font-size: 0.75rem;
   color: var(--accent-1);
-  border-bottom: 2px solid var(--accent-1);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.encounters-sidebar-see-all:hover {
+  text-decoration: underline;
 }
 
 .encounters-matches-grid {
