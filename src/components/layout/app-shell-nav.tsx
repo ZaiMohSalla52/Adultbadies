@@ -49,7 +49,7 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
             <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
           </svg>
         );
-      case 'Virtual Girlfriend':
+      case 'AI Girlfriend':
         return (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
