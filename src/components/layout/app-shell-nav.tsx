@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment } from 'react';
-import { usePathname } from 'next/navigation';
+import { Fragment, useState, useEffect, useTransition } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { signOutAction } from '@/app/(auth)/actions';
 import styles from './app-shell-nav.module.css';
 
@@ -13,6 +13,21 @@ export type AppNavItem = {
 
 export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavItem[]; mobile?: boolean }) => {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isPending) setPendingHref(null);
+  }, [isPending]);
+
+  const handleNavClick = (href: string) => {
+    setPendingHref(href);
+    startTransition(() => {
+      router.push(href);
+    });
+  };
+
   const NavIcon = ({ label }: { label: string }) => {
     switch (label) {
       case 'Discovery':
@@ -67,19 +82,21 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
       <nav className={styles.mobileNav} aria-label="Authenticated navigation mobile">
         {mobileTabs.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isItemPending = isPending && pendingHref === item.href;
 
           return (
-            <Link
+            <a
               key={item.href}
               href={item.href}
               className={isActive ? styles.tabActive : styles.tab}
               aria-current={isActive ? 'page' : undefined}
+              onClick={(e) => { e.preventDefault(); handleNavClick(item.href); }}
             >
-              <span className={styles.tabIcon}>
-                <NavIcon label={item.label} />
+              <span className={`${styles.tabIcon}${isItemPending ? ` ${styles.tabIconPending}` : ''}`}>
+                {isItemPending ? <span className={styles.navSpinner} aria-hidden /> : <NavIcon label={item.label} />}
               </span>
               <span className={styles.tabLabel}>{item.label}</span>
-            </Link>
+            </a>
           );
         })}
       </nav>
@@ -100,20 +117,22 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
       <nav className={styles.nav} aria-label="Authenticated navigation">
         {items.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isItemPending = isPending && pendingHref === item.href;
 
           return (
             <Fragment key={item.href}>
               {item.label === 'Account' ? <div className={styles.navSpacer} aria-hidden /> : null}
-              <Link
+              <a
                 href={item.href}
-                className={isActive ? styles.navItemActive : styles.navItem}
+                className={isItemPending ? styles.navItemPending : isActive ? styles.navItemActive : styles.navItem}
                 aria-current={isActive ? 'page' : undefined}
+                onClick={(e) => { e.preventDefault(); handleNavClick(item.href); }}
               >
                 <span className={styles.navIcon}>
-                  <NavIcon label={item.label} />
+                  {isItemPending ? <span className={styles.navSpinner} aria-hidden /> : <NavIcon label={item.label} />}
                 </span>
                 <span className={styles.navLabel}>{item.label}</span>
-              </Link>
+              </a>
             </Fragment>
           );
         })}

@@ -191,3 +191,26 @@
 @media (min-width: 768px) {
   .mobileNav { display: none; }
 }
+
+/* --- Nav pending / loading state --- */
+
+.navSpinner {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 46, 99, 0.25);
+  border-top-color: #ff2e63;
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+}
+
+.navItemPending {
+  composes: navItem;
+  background: rgba(255, 46, 99, 0.08);
+  color: rgba(255, 46, 99, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 46, 99, 0.18);
+}
+
+.tabIconPending {
+  opacity: 0.7;
+}
