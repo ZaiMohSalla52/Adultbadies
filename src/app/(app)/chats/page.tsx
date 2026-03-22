@@ -41,7 +41,7 @@ export default async function ChatsPage() {
     getIncomingLikesCount(auth.accessToken, auth.user.id),
   ]);
 
-  const virtualThreads: ChatThreadItem[] = (
+  const virtualThreads = (
     await Promise.all(
       companions
         .filter((c) => c.setup_completed)
@@ -72,7 +72,7 @@ export default async function ChatsPage() {
             avatarUrl: curated.canonical?.delivery_url ?? null,
             lastMessageSenderId: latestMessage?.role === 'user' ? auth.user.id : null,
             isNew: !latestMessage,
-          } satisfies ChatThreadItem;
+          };
         }),
     )
   ).filter((t): t is ChatThreadItem => t !== null);
