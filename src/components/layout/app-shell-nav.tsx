@@ -58,6 +58,13 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
             <path d="M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
         );
+      case 'Create':
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v8M8 12h8" />
+          </svg>
+        );
       case 'Account':
         return (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -81,7 +88,8 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
     return (
       <nav className={styles.mobileNav} aria-label="Authenticated navigation mobile">
         {mobileTabs.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const hrefPath = item.href.split('?')[0];
+          const isActive = pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
           const isItemPending = isPending && pendingHref === item.href;
 
           return (
@@ -116,7 +124,8 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
 
       <nav className={styles.nav} aria-label="Authenticated navigation">
         {items.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const hrefPath = item.href.split('?')[0];
+          const isActive = pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
           const isItemPending = isPending && pendingHref === item.href;
 
           return (
