@@ -39,8 +39,10 @@ export default async function PremiumPage() {
     redirect('/sign-in');
   }
 
-  const entitlements = await getUserEntitlements(auth.accessToken, auth.user.id);
-  const swipesToday = await getSwipeCountForToday(auth.accessToken, auth.user.id);
+  const [entitlements, swipesToday] = await Promise.all([
+    getUserEntitlements(auth.accessToken, auth.user.id),
+    getSwipeCountForToday(auth.accessToken, auth.user.id),
+  ]);
 
   return (
     <div className="app-page-stack">

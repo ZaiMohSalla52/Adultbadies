@@ -5,9 +5,9 @@ import { Avatar } from '@/components/ui/avatar';
 import { getHumanChatThreads, getIncomingLikesCount } from '@/lib/matches/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import {
-  getLatestVirtualGirlfriendConversation,
-  getVirtualGirlfriendCompanionImages,
-  getVirtualGirlfriendMessages,
+  getLatestVirtualGirlfriendConversationBatch,
+  getLatestVirtualGirlfriendMessage,
+  getVirtualGirlfriendCompanionImagesBatch,
   listVirtualGirlfriendCompanions,
 } from '@/lib/virtual-girlfriend/data';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
@@ -41,41 +41,39 @@ export default async function ChatsPage() {
     getIncomingLikesCount(auth.accessToken, auth.user.id),
   ]);
 
-  const virtualThreads = (
-    await Promise.all(
-      companions
-        .filter((c) => c.setup_completed)
-        .map(async (companion) => {
-          const conversation = await getLatestVirtualGirlfriendConversation(
-            auth.accessToken,
-            auth.user.id,
-            companion.id,
-          );
-          if (!conversation) return null;
+  const setupCompanions = companions.filter((c) => c.setup_completed);
+  const setupIds = setupCompanions.map((c) => c.id);
 
-          const [messages, companionImages] = await Promise.all([
-            getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
-            getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
-          ]);
+  const [conversationMap, imageMap] = await Promise.all([
+    getLatestVirtualGirlfriendConversationBatch(auth.accessToken, auth.user.id, setupIds),
+    getVirtualGirlfriendCompanionImagesBatch(auth.accessToken, auth.user.id, setupIds),
+  ]);
 
-          const curated = curateVirtualGirlfriendImages(companionImages);
-          const latestMessage = messages.at(-1) ?? null;
+  const companionsWithConversation = setupCompanions.filter((c) => conversationMap.has(c.id));
+  const latestMessages = await Promise.all(
+    companionsWithConversation.map((c) =>
+      getLatestVirtualGirlfriendMessage(auth.accessToken, conversationMap.get(c.id)!.id),
+    ),
+  );
 
-          return {
-            id: conversation.id,
-            href: `/virtual-girlfriend/chat?companionId=${companion.id}`,
-            title: companion.name,
-            kind: 'virtual_girlfriend',
-            lastActivityAt:
-              latestMessage?.created_at ?? conversation.last_message_at ?? conversation.updated_at,
-            preview: latestMessage?.content ?? null,
-            avatarUrl: curated.canonical?.delivery_url ?? null,
-            lastMessageSenderId: latestMessage?.role === 'user' ? auth.user.id : null,
-            isNew: !latestMessage,
-          };
-        }),
-    )
-  ).filter((t) => t !== null) as ChatThreadItem[];
+  const virtualThreads: ChatThreadItem[] = companionsWithConversation.map((companion, i) => {
+    const conversation = conversationMap.get(companion.id)!;
+    const latestMessage = latestMessages[i];
+    const images = imageMap.get(companion.id) ?? [];
+    const curated = curateVirtualGirlfriendImages(images);
+
+    return {
+      id: conversation.id,
+      href: `/virtual-girlfriend/chat?companionId=${companion.id}`,
+      title: companion.name,
+      kind: 'virtual_girlfriend',
+      lastActivityAt: latestMessage?.created_at ?? conversation.last_message_at ?? conversation.updated_at,
+      preview: latestMessage?.content ?? null,
+      avatarUrl: curated.canonical?.delivery_url ?? null,
+      lastMessageSenderId: latestMessage?.role === 'user' ? auth.user.id : null,
+      isNew: !latestMessage,
+    };
+  });
 
   const allThreads = [...humanThreads, ...virtualThreads].sort((a, b) =>
     a.lastActivityAt > b.lastActivityAt ? -1 : 1,

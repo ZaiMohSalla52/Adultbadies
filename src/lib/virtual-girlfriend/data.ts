@@ -311,6 +311,31 @@ export const getLatestVirtualGirlfriendConversation = async (
   return rows[0] ?? null;
 };
 
+export const getLatestVirtualGirlfriendConversationBatch = async (
+  token: string,
+  userId: string,
+  companionIds: string[],
+): Promise<Map<string, VirtualGirlfriendConversationRecord>> => {
+  const ids = Array.from(new Set(companionIds.filter(Boolean)));
+  if (!ids.length) return new Map();
+
+  const rows = await supabaseRest<VirtualGirlfriendConversationRecord[]>('ai_conversations', token, {
+    searchParams: new URLSearchParams({
+      select: 'id,user_id,companion_id,title,mode,last_message_at,created_at,updated_at',
+      user_id: `eq.${userId}`,
+      companion_id: `in.(${ids.join(',')})`,
+      order: 'updated_at.desc',
+      limit: String(ids.length * 5),
+    }),
+  });
+
+  const map = new Map<string, VirtualGirlfriendConversationRecord>();
+  for (const row of rows) {
+    if (!map.has(row.companion_id)) map.set(row.companion_id, row);
+  }
+  return map;
+};
+
 export const getOrCreateVirtualGirlfriendConversation = async (
   token: string,
   userId: string,
@@ -355,6 +380,21 @@ export const getVirtualGirlfriendMessages = async (
       limit: '250',
     }),
   });
+};
+
+export const getLatestVirtualGirlfriendMessage = async (
+  token: string,
+  conversationId: string,
+): Promise<VirtualGirlfriendMessageRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendMessageRecord[]>('ai_messages', token, {
+    searchParams: new URLSearchParams({
+      select: 'id,conversation_id,user_id,role,content,created_at',
+      conversation_id: `eq.${conversationId}`,
+      order: 'created_at.desc',
+      limit: '1',
+    }),
+  });
+  return rows[0] ?? null;
 };
 
 export const insertVirtualGirlfriendMessage = async (
@@ -622,6 +662,33 @@ export const getVirtualGirlfriendCompanionImages = async (
       limit: '30',
     }),
   });
+};
+
+export const getVirtualGirlfriendCompanionImagesBatch = async (
+  token: string,
+  userId: string,
+  companionIds: string[],
+): Promise<Map<string, VirtualGirlfriendCompanionImageRecord[]>> => {
+  const ids = Array.from(new Set(companionIds.filter(Boolean)));
+  if (!ids.length) return new Map();
+
+  const rows = await supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+    searchParams: new URLSearchParams({
+      select: companionImageSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `in.(${ids.join(',')})`,
+      order: 'image_kind.asc,variant_index.asc,created_at.asc',
+      limit: String(ids.length * 30),
+    }),
+  });
+
+  const map = new Map<string, VirtualGirlfriendCompanionImageRecord[]>();
+  for (const row of rows) {
+    const existing = map.get(row.companion_id) ?? [];
+    existing.push(row);
+    map.set(row.companion_id, existing);
+  }
+  return map;
 };
 
 export const listVirtualGirlfriendCompanionImagesByIds = async (
