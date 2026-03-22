@@ -75,7 +75,7 @@ export default async function ChatsPage() {
           };
         }),
     )
-  ).filter((t): t is ChatThreadItem => t !== null);
+  ).filter((t) => t !== null) as ChatThreadItem[];
 
   const allThreads = [...humanThreads, ...virtualThreads].sort((a, b) =>
     a.lastActivityAt > b.lastActivityAt ? -1 : 1,
