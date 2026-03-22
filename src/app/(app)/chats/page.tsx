@@ -41,34 +41,41 @@ export default async function ChatsPage() {
     getIncomingLikesCount(auth.accessToken, auth.user.id),
   ]);
 
-  const virtualThreads: ChatThreadItem[] = [];
+  const virtualThreads: ChatThreadItem[] = (
+    await Promise.all(
+      companions
+        .filter((c) => c.setup_completed)
+        .map(async (companion) => {
+          const conversation = await getLatestVirtualGirlfriendConversation(
+            auth.accessToken,
+            auth.user.id,
+            companion.id,
+          );
+          if (!conversation) return null;
 
-  for (const companion of companions) {
-    if (!companion.setup_completed) continue;
+          const [messages, companionImages] = await Promise.all([
+            getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
+            getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
+          ]);
 
-    const conversation = await getLatestVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
-    if (!conversation) continue;
+          const curated = curateVirtualGirlfriendImages(companionImages);
+          const latestMessage = messages.at(-1) ?? null;
 
-    const [messages, companionImages] = await Promise.all([
-      getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
-      getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
-    ]);
-
-    const curated = curateVirtualGirlfriendImages(companionImages);
-    const latestMessage = messages.at(-1) ?? null;
-
-    virtualThreads.push({
-      id: conversation.id,
-      href: `/virtual-girlfriend/chat?companionId=${companion.id}`,
-      title: companion.name,
-      kind: 'virtual_girlfriend',
-      lastActivityAt: latestMessage?.created_at ?? conversation.last_message_at ?? conversation.updated_at,
-      preview: latestMessage?.content ?? null,
-      avatarUrl: curated.canonical?.delivery_url ?? null,
-      lastMessageSenderId: latestMessage?.role === 'user' ? auth.user.id : null,
-      isNew: !latestMessage,
-    });
-  }
+          return {
+            id: conversation.id,
+            href: `/virtual-girlfriend/chat?companionId=${companion.id}`,
+            title: companion.name,
+            kind: 'virtual_girlfriend',
+            lastActivityAt:
+              latestMessage?.created_at ?? conversation.last_message_at ?? conversation.updated_at,
+            preview: latestMessage?.content ?? null,
+            avatarUrl: curated.canonical?.delivery_url ?? null,
+            lastMessageSenderId: latestMessage?.role === 'user' ? auth.user.id : null,
+            isNew: !latestMessage,
+          } satisfies ChatThreadItem;
+        }),
+    )
+  ).filter((t): t is ChatThreadItem => t !== null);
 
   const allThreads = [...humanThreads, ...virtualThreads].sort((a, b) =>
     a.lastActivityAt > b.lastActivityAt ? -1 : 1,

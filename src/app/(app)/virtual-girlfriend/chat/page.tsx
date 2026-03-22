@@ -36,23 +36,22 @@ export default async function VirtualGirlfriendChatPage({
     redirect('/virtual-girlfriend/setup');
   }
 
-  await processDueVirtualGirlfriendProactiveEvents({
+  // Fire-and-forget — do not block page render
+  void processDueVirtualGirlfriendProactiveEvents({
     token: auth.accessToken,
     userId: auth.user.id,
     companion,
   });
 
-  const [conversation, entitlements, usedToday, styleProfile] = await Promise.all([
+  const [conversation, entitlements, usedToday, styleProfile, companionImages] = await Promise.all([
     getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id),
     getUserEntitlements(auth.accessToken, auth.user.id),
     getVirtualGirlfriendUserMessageCountForToday(auth.accessToken, auth.user.id),
     getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
-  ]);
-
-  const [messages, companionImages] = await Promise.all([
-    getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
     getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
   ]);
+
+  const messages = await getVirtualGirlfriendMessages(auth.accessToken, conversation.id);
   const curated = curateVirtualGirlfriendImages(companionImages);
 
   return (
