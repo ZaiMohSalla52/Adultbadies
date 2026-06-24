@@ -23,6 +23,11 @@ import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
 const FLUX_BASE_URL = env.FLUX_BASE_URL ?? 'https://fal.run';
 const FLUX_MODEL = env.FLUX_MODEL ?? 'fal-ai/flux/dev';
 const FLUX_KONTEXT_MODEL = env.FLUX_KONTEXT_MODEL ?? 'fal-ai/flux-pro/kontext';
+// Adult chat images use the open-weights Kontext [dev] variant: it honors
+// `enable_safety_checker: false` and has no separate hosted moderation gate, so
+// explicit content renders instead of being blanked to a black image. SFW
+// identity surfaces (preview/canonical/gallery) stay on the pro model above.
+const FLUX_KONTEXT_DEV_MODEL = env.FLUX_KONTEXT_DEV_MODEL ?? 'fal-ai/flux-kontext/dev';
 
 // fal exposes image_size as a named enum for the common ratios; map the
 // aspect_ratio strings used in SURFACE_PARAMS onto those enums.
@@ -121,24 +126,20 @@ const extractGeneratedImage = async (
 const withNegatives = (prompt: string, negatives: string) =>
   negatives.trim() ? `${prompt}\nAvoid: ${negatives}` : prompt;
 
-// Kontext applies two independent moderation gates: `enable_safety_checker`
-// (a boolean post-gen checker) and `safety_tolerance` (1 = strict … 5 =
-// permissive, fal default "2"). Disabling only the checker still leaves the
-// strict default tolerance in place, which blanks flagged/borderline content to
-// a solid black image — so adult chat photos came back black. We raise tolerance
-// alongside disabling the checker so explicit in-chat images render instead of
-// returning black. The value is env-tunable (FLUX_CHAT_SAFETY_TOLERANCE) so it
-// can be dialed toward "6" or pulled back if fal rejects a value with a 422,
-// without a redeploy. Default "5" is the documented permissive max for Kontext.
-const resolveChatSafetyTolerance = () => env.FLUX_CHAT_SAFETY_TOLERANCE?.trim() || '5';
+// The adult chat surface routes to the open-weights Kontext [dev] model with
+// the safety checker off. On the hosted pro model, explicit content was blanked
+// to a solid black image even with `enable_safety_checker: false`, because pro
+// applies a second hosted `safety_tolerance` gate that defaults strict. The dev
+// variant has no such gate, so disabling the checker is sufficient. SFW identity
+// surfaces stay on the pro model with default safety.
+const isAdultChatSurface = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') =>
+  surface === 'chat' && isVirtualGirlfriendAdultContentEnabled();
 
-const falProviderOptions = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') => {
-  if (surface === 'chat' && isVirtualGirlfriendAdultContentEnabled()) {
-    return { enable_safety_checker: false, safety_tolerance: resolveChatSafetyTolerance() };
-  }
+const kontextModelForSurface = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') =>
+  isAdultChatSurface(surface) ? FLUX_KONTEXT_DEV_MODEL : FLUX_KONTEXT_MODEL;
 
-  return {};
-};
+const falProviderOptions = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') =>
+  isAdultChatSurface(surface) ? { enable_safety_checker: false } : {};
 
 export const generateCanonicalImageWithFlux = async (prompt: string): Promise<GeneratedImage> => {
   const canonicalParams = SURFACE_PARAMS.canonical;
@@ -186,12 +187,13 @@ const generateKontextFromReference = async (input: {
   errorLabel: string;
 }): Promise<GeneratedImage> => {
   const surfaceParams = SURFACE_PARAMS[input.surface];
+  const model = kontextModelForSurface(input.surface);
   const prompt = input.withPreviewNegatives
     ? withNegatives(input.prompt, buildPreviewNegativePrompt())
     : input.prompt;
 
   const response = await callFal(
-    FLUX_KONTEXT_MODEL,
+    model,
     {
       prompt,
       image_url: toDataUri(input.referenceImageBytes, input.referenceMimeType),
@@ -204,7 +206,7 @@ const generateKontextFromReference = async (input: {
     input.errorLabel,
   );
 
-  return extractGeneratedImage(response, FLUX_KONTEXT_MODEL);
+  return extractGeneratedImage(response, model);
 };
 
 export const generatePreviewWithCharacterReferenceFlux = async (

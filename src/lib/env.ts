@@ -19,10 +19,10 @@ export const env = {
   FLUX_BASE_URL: process.env.FLUX_BASE_URL,
   FLUX_MODEL: process.env.FLUX_MODEL,
   FLUX_KONTEXT_MODEL: process.env.FLUX_KONTEXT_MODEL,
-  // Kontext safety_tolerance for adult chat images (1 = strict … 5 = permissive,
-  // fal default "2"). Tune toward "5"/"6" to stop borderline content being
-  // blanked to black, or lower if fal rejects the value with a 422.
-  FLUX_CHAT_SAFETY_TOLERANCE: process.env.FLUX_CHAT_SAFETY_TOLERANCE,
+  // Kontext model for adult chat images. Defaults to the open-weights
+  // fal-ai/flux-kontext/dev, which honors enable_safety_checker:false and has no
+  // hosted moderation gate (so explicit content is not blanked to black).
+  FLUX_KONTEXT_DEV_MODEL: process.env.FLUX_KONTEXT_DEV_MODEL,
   // Adult Badies chat images default to fully explicit-capable generation.
   VG_ALLOW_ADULT_CONTENT: process.env.VG_ALLOW_ADULT_CONTENT,
   R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
