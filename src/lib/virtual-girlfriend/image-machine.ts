@@ -378,7 +378,9 @@ const toChatPromptInput = (
   visualSceneHint?: string,
 ): ChatPromptInput => {
   const canonicalInput = toCanonicalPromptInput(companion, identityPack);
-  const explicitIntent = userMessage ? detectExplicitImageIntent(userMessage) : false;
+  const explicitIntent =
+    (userMessage ? detectExplicitImageIntent(userMessage) : false)
+    || (visualSceneHint ? detectExplicitImageIntent(visualSceneHint) : false);
   const scene = buildRandomScene();
   const sceneDirective = visualSceneHint?.trim() || (explicitIntent ? userMessage?.trim() : undefined);
   const contextHint = sceneDirective
@@ -584,7 +586,12 @@ const buildImageRecord = async (input: {
   return inserted;
 };
 
-const pickReusableImage = (category: VirtualGirlfriendImageCategory, images: VirtualGirlfriendCompanionImageRecord[]) => {
+const pickReusableImage = (
+  category: VirtualGirlfriendImageCategory,
+  images: VirtualGirlfriendCompanionImageRecord[],
+  options: { allowCanonicalReuse?: boolean } = {},
+) => {
+  const allowCanonicalReuse = options.allowCanonicalReuse ?? true;
   const eligible = images.filter((image) => image.delivery_url && (image.image_kind === 'gallery' || image.image_kind === 'canonical'));
   if (!eligible.length) {
     return { image: null, reason: 'no_reusable_image' as const };
@@ -593,7 +600,10 @@ const pickReusableImage = (category: VirtualGirlfriendImageCategory, images: Vir
   // Prefer varied gallery shots over always returning the canonical portrait,
   // and pick randomly so repeated selfie requests don't return the same photo.
   const gallery = eligible.filter((image) => image.image_kind === 'gallery');
-  const pool = gallery.length > 0 ? gallery : eligible;
+  const pool = gallery.length > 0 ? gallery : allowCanonicalReuse ? eligible : [];
+  if (!pool.length) {
+    return { image: null, reason: 'no_reusable_image' as const };
+  }
   const categoryMatches = pool.filter((image) => image.lineage_metadata?.chatCategory === category);
   const choices = categoryMatches.length > 0 ? categoryMatches : pool;
   const image = choices[Math.floor(Math.random() * choices.length)] ?? null;
@@ -942,10 +952,19 @@ export const runRegenerateCanonicalWithGalleryImageMachine = async (
 
 export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineRequest): Promise<VirtualGirlfriendChatMachineResult> => {
   const scope = 'chat_image';
-  logImageMachine(scope, 'request_start', { companionId: input.companion.id, category: input.category, allowFreshGeneration: input.allowFreshGeneration });
+  const explicitRequest = input.userMessage ? detectExplicitImageIntent(input.userMessage) : false;
+  logImageMachine(scope, 'request_start', {
+    companionId: input.companion.id,
+    category: input.category,
+    allowFreshGeneration: input.allowFreshGeneration,
+    explicitRequest,
+    preferFreshGeneration: input.preferFreshGeneration,
+  });
 
-  if (!input.preferFreshGeneration) {
-    const reusableSelection = pickReusableImage(input.category, input.existingImages);
+  if (!input.preferFreshGeneration && !explicitRequest) {
+    const reusableSelection = pickReusableImage(input.category, input.existingImages, {
+      allowCanonicalReuse: !explicitRequest,
+    });
     const reusable = reusableSelection.image;
     if (!reusableSelection.image && reusableSelection.reason) {
       logImageMachine(scope, 'reuse_unavailable', { reason: reusableSelection.reason, category: input.category });

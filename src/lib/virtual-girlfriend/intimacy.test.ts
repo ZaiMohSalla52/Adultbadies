@@ -60,6 +60,36 @@ describe('resolveImageMomentFromIntent', () => {
     expect(decision.trigger).toBe('compliance-reward');
   });
 
+  it('bypasses rate limit for explicit photo requests', () => {
+    const recentImageMessage = {
+      id: 'msg-1',
+      conversation_id: 'conv-1',
+      user_id: 'user-1',
+      role: 'assistant' as const,
+      content: 'here you go',
+      model: null,
+      token_count: null,
+      moderation: {},
+      content_type: 'mixed' as const,
+      created_at: new Date().toISOString(),
+      attachments: [{ kind: 'image' as const, category: 'selfie', imageUrl: 'https://example.com/a.jpg' }],
+    };
+
+    const decision = resolveImageMomentFromIntent({
+      intent: intent({
+        wantsPhoto: true,
+        photoDelivery: 'send_now',
+      }),
+      history: [recentImageMessage],
+      isPremium: false,
+      userMessage: 'send me photo of your tits',
+    });
+
+    expect(decision.shouldSendImage).toBe(true);
+    expect(decision.teaseOnly).toBe(false);
+    expect(decision.preferFreshGeneration).toBe(true);
+  });
+
   it('does not send when the model says no photo fits this beat', () => {
     const decision = resolveImageMomentFromIntent({
       intent: intent({

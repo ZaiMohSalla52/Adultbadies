@@ -22,6 +22,7 @@ import { resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat
 import { streamVirtualGirlfriendChatTurn } from '@/lib/virtual-girlfriend/chat-turn';
 import { resolveImageMomentFromIntent } from '@/lib/virtual-girlfriend/intimacy';
 import { sanitizeIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
+import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
@@ -114,10 +115,13 @@ export async function POST(request: NextRequest) {
   ]);
 
   const heuristicIntent = looksLikePhotoRequest(message) ? buildHeuristicPhotoIntent(message) : null;
+  const explicitPhotoRequest = detectExplicitImageIntent(message);
+
   let imageMoment: IntimateImageMoment = resolveImageMomentFromIntent({
     intent: heuristicIntent ?? sanitizeIntent({}, message),
     history,
     isPremium: entitlements.isPremium,
+    userMessage: message,
   });
 
   const premiumGuidance =
@@ -134,7 +138,10 @@ export async function POST(request: NextRequest) {
         if (imageStarted || !moment.shouldSendImage || moment.teaseOnly) return;
 
         const moderation = moderateVirtualGirlfriendImageRequest(message);
-        if (!moderation.allowed) return;
+        if (!moderation.allowed) {
+          console.warn('[virtual-girlfriend] image request blocked by moderation', moderation.reason);
+          return;
+        }
 
         imageStarted = true;
         imageTask = resolveVirtualGirlfriendChatImage({
@@ -144,7 +151,7 @@ export async function POST(request: NextRequest) {
           category: moment.category,
           existingImages: companionImages,
           visualProfile,
-          allowFreshGeneration: entitlements.isPremium,
+          allowFreshGeneration: entitlements.isPremium || explicitPhotoRequest,
           userMessage: message,
           visualSceneHint: moment.visualSceneHint,
           preferFreshGeneration: moment.preferFreshGeneration,
@@ -187,6 +194,7 @@ export async function POST(request: NextRequest) {
                 intent,
                 history,
                 isPremium: entitlements.isPremium,
+                userMessage: message,
               });
               startImageIfNeeded(imageMoment);
             },

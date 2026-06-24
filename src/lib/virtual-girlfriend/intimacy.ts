@@ -1,3 +1,4 @@
+import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import { classifyChatTurnIntent, type ChatTurnIntent, type PhotoDeliveryIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import type {
@@ -33,8 +34,10 @@ export const resolveImageMomentFromIntent = (input: {
   intent: ChatTurnIntent;
   history: VirtualGirlfriendMessageRecord[];
   isPremium: boolean;
+  userMessage?: string;
 }): IntimateImageMoment => {
   const { intent } = input;
+  const explicitRequest = input.userMessage ? detectExplicitImageIntent(input.userMessage) : false;
   const rateLimitMinutes = intent.intimacyActive ? 5 : 12;
   const rateLimited = minutesSinceLastImage(input.history) < rateLimitMinutes;
 
@@ -64,7 +67,7 @@ export const resolveImageMomentFromIntent = (input: {
     };
   }
 
-  if (rateLimited) {
+  if (rateLimited && !explicitRequest) {
     return {
       ...base,
       shouldSendImage: false,
@@ -75,7 +78,9 @@ export const resolveImageMomentFromIntent = (input: {
   }
 
   const preferFreshGeneration =
-    intent.photoDelivery === 'send_now' || intent.photoDelivery === 'reward_compliance';
+    explicitRequest
+    || intent.photoDelivery === 'send_now'
+    || intent.photoDelivery === 'reward_compliance';
 
   const trigger =
     intent.photoDelivery === 'reward_compliance'
@@ -90,7 +95,7 @@ export const resolveImageMomentFromIntent = (input: {
     teaseOnly: false,
     trigger,
     visualSceneHint: intent.visualSceneHint ?? undefined,
-    preferFreshGeneration: input.isPremium && preferFreshGeneration,
+    preferFreshGeneration: explicitRequest || (input.isPremium && preferFreshGeneration),
   };
 };
 
@@ -110,6 +115,7 @@ export const decideIntimateImageMoment = async (input: {
     intent,
     history: input.history,
     isPremium: input.isPremium,
+    userMessage: input.userMessage,
   });
 };
 
