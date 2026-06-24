@@ -12,6 +12,7 @@ import type {
   VirtualGirlfriendChatImageOutcome,
   VirtualGirlfriendGenerationStatus,
 } from '@/lib/virtual-girlfriend/types';
+import { UnlockableGallery } from './unlockable-gallery';
 import styles from './chat-client.module.css';
 
 type ChatClientProps = {
@@ -28,6 +29,10 @@ type ChatClientProps = {
   occupation?: string | null;
   personality?: string | null;
   sexuality?: string | null;
+  galleryImages: Array<{ id: string; url: string }>;
+  unlockedImageIds: string[];
+  pointBalance: number;
+  unblurCost: number;
 };
 
 const STYLE_PRESETS: Array<{ key: VirtualGirlfriendStyleControlPreset; label: string }> = [
@@ -57,9 +62,14 @@ export const VirtualGirlfriendChatClient = ({
   occupation,
   personality,
   sexuality,
+  galleryImages,
+  unlockedImageIds,
+  pointBalance,
+  unblurCost,
 }: ChatClientProps) => {
   const [messages, setMessages] = useState(initialMessages);
   const [styleProfile, setStyleProfile] = useState(initialStyleProfile);
+  const [infoTab, setInfoTab] = useState<'photos' | 'profile'>('photos');
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -115,8 +125,8 @@ export const VirtualGirlfriendChatClient = ({
     scrollToBottom();
   }, []);
 
-  const send = async () => {
-    const text = draft.trim();
+  const send = async (override?: string) => {
+    const text = (override ?? draft).trim();
     if (!text || pending || reachedLimit) return;
 
     setPending(true);
@@ -946,6 +956,14 @@ export const VirtualGirlfriendChatClient = ({
             </div>
           ) : (
             <>
+              <button
+                type="button"
+                className={styles.quickChip}
+                onClick={() => void send('Send me a selfie 😊')}
+                disabled={pending}
+              >
+                <span aria-hidden>📷</span> Send me picture
+              </button>
               <button type="button" className={styles.attachButton} aria-label="Attachment options">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 5v14M5 12h14" />
@@ -989,26 +1007,60 @@ export const VirtualGirlfriendChatClient = ({
           <button type="button" className={styles.resetBtn} onClick={() => setMessages(initialMessages)}>Reset chat</button>
         </div>
 
-        <div className={styles.infoPanelTraits}>
-          {occupation ? (
-            <div className={styles.traitCard}>
-              <span className={styles.traitLabel}>Occupation</span>
-              <span className={styles.traitValue}>{occupation}</span>
-            </div>
-          ) : null}
-          {personality ? (
-            <div className={styles.traitCard}>
-              <span className={styles.traitLabel}>Personality</span>
-              <span className={styles.traitValue}>{personality}</span>
-            </div>
-          ) : null}
-          {sexuality ? (
-            <div className={styles.traitCard}>
-              <span className={styles.traitLabel}>Sexuality</span>
-              <span className={styles.traitValue}>{sexuality}</span>
-            </div>
-          ) : null}
+        <div className={styles.infoTabs}>
+          <button
+            type="button"
+            className={`${styles.infoTab} ${infoTab === 'photos' ? styles.infoTabActive : ''}`}
+            onClick={() => setInfoTab('photos')}
+          >
+            Photos
+          </button>
+          <button
+            type="button"
+            className={`${styles.infoTab} ${infoTab === 'profile' ? styles.infoTabActive : ''}`}
+            onClick={() => setInfoTab('profile')}
+          >
+            Profile
+          </button>
         </div>
+
+        {infoTab === 'photos' ? (
+          galleryImages.length > 0 ? (
+            <div className={styles.photosWrap}>
+              <UnlockableGallery
+                companionName={companionName}
+                images={galleryImages}
+                initialUnlockedIds={unlockedImageIds}
+                balance={pointBalance}
+                cost={unblurCost}
+                isPremium={isPremium}
+              />
+            </div>
+          ) : (
+            <p className={styles.infoPanelSub}>No photos yet — ask her for a selfie.</p>
+          )
+        ) : (
+          <div className={styles.infoPanelTraits}>
+            {occupation ? (
+              <div className={styles.traitCard}>
+                <span className={styles.traitLabel}>Occupation</span>
+                <span className={styles.traitValue}>{occupation}</span>
+              </div>
+            ) : null}
+            {personality ? (
+              <div className={styles.traitCard}>
+                <span className={styles.traitLabel}>Personality</span>
+                <span className={styles.traitValue}>{personality}</span>
+              </div>
+            ) : null}
+            {sexuality ? (
+              <div className={styles.traitCard}>
+                <span className={styles.traitLabel}>Sexuality</span>
+                <span className={styles.traitValue}>{sexuality}</span>
+              </div>
+            ) : null}
+          </div>
+        )}
       </aside>
     </div>
   );

@@ -162,7 +162,9 @@ export const generateVirtualGirlfriendReply = async (input: {
       ...toModelInput(contextHistory),
       { role: 'user', content: input.userMessage },
     ],
-    reasoning: { effort: 'medium' },
+    // Chat is latency-sensitive: a companion that takes 15s to reply kills the
+    // intimacy. Minimal reasoning keeps replies fast and conversational.
+    reasoning: { effort: 'minimal' },
   });
 
   const assistantText = extractResponsesText(response).trim();
