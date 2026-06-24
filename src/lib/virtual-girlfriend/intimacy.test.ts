@@ -43,6 +43,7 @@ describe('resolveImageMomentFromIntent', () => {
     expect(decision.shouldSendImage).toBe(true);
     expect(decision.teaseOnly).toBe(false);
     expect(decision.visualSceneHint).toContain('unbuttoned');
+    expect(decision.preferFreshGeneration).toBe(true);
   });
 
   it('rewards compliance when the model reads the scene that way', () => {

@@ -197,6 +197,7 @@ export type VirtualGirlfriendChatMachineRequest = {
   allowFreshGeneration: boolean;
   userMessage?: string;
   visualSceneHint?: string;
+  preferFreshGeneration?: boolean;
 };
 
 export type VirtualGirlfriendPortraitPreviewRequest = {
@@ -943,12 +944,13 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
   const scope = 'chat_image';
   logImageMachine(scope, 'request_start', { companionId: input.companion.id, category: input.category, allowFreshGeneration: input.allowFreshGeneration });
 
-  const reusableSelection = pickReusableImage(input.category, input.existingImages);
-  const reusable = reusableSelection.image;
-  if (!reusableSelection.image && reusableSelection.reason) {
-    logImageMachine(scope, 'reuse_unavailable', { reason: reusableSelection.reason, category: input.category });
-  }
-  if (reusable) {
+  if (!input.preferFreshGeneration) {
+    const reusableSelection = pickReusableImage(input.category, input.existingImages);
+    const reusable = reusableSelection.image;
+    if (!reusableSelection.image && reusableSelection.reason) {
+      logImageMachine(scope, 'reuse_unavailable', { reason: reusableSelection.reason, category: input.category });
+    }
+    if (reusable) {
     logImageMachine(scope, 'reused_existing_image', { imageId: reusable.id, category: input.category });
     return {
       kind: 'chat_image',
@@ -966,6 +968,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       },
       reason: undefined,
     };
+    }
   }
 
   if (!input.allowFreshGeneration || !input.visualProfile) {

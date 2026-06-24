@@ -21,20 +21,15 @@ import { generateVirtualGirlfriendReply } from '@/lib/virtual-girlfriend/orchest
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
 import { decideVirtualGirlfriendImageMoment, resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
 import { buildIntimacyResponseGuidance } from '@/lib/virtual-girlfriend/intimacy';
+import { looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
 
-// Image generation + model reply can exceed the platform default function
-// limit. 60s is the safe ceiling across Vercel plans; Pro/Enterprise can raise
-// this to 300.
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const encoder = new TextEncoder();
 
-// Split a reply into 1-3 short "texting" bubbles. The model is prompted to
-// separate messages with a blank line; fall back to single newlines, then to a
-// sentence split for an over-long single block.
 const splitIntoMessages = (text: string): string[] => {
   const trimmed = text.trim();
   if (!trimmed) return [];
@@ -112,6 +107,8 @@ export async function POST(request: NextRequest) {
     isPremium: entitlements.isPremium,
   });
 
+  const photoRequested = imageMoment.shouldSendImage || imageMoment.teaseOnly || looksLikePhotoRequest(message);
+
   if (imageMoment.shouldSendImage) {
     const moderation = moderateVirtualGirlfriendImageRequest(message);
     if (!moderation.allowed) {
@@ -119,13 +116,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let imageAttachment = null;
-  let imageOutcome: 'not_requested' | 'reused_existing' | 'generated_new' | 'skipped_prerequisites' | 'failed_generation' = 'not_requested';
-  let imageOutcomeReason: string | null = null;
+  const intimacyGuidance = buildIntimacyResponseGuidance({
+    imageMoment,
+    imageAttached: false,
+  });
 
-  if (imageMoment.shouldSendImage && !imageMoment.teaseOnly) {
-    try {
-      const resolvedImage = await resolveVirtualGirlfriendChatImage({
+  const premiumGuidance =
+    imageMoment.shouldSendImage && !imageMoment.teaseOnly && !entitlements.isPremium
+      ? 'Fresh custom photos need Premium — flirt and invite upgrade in-character, but NEVER say you cannot send photos or offer text descriptions instead. Gallery photos may still appear.'
+      : '';
+
+  const imageTask = imageMoment.shouldSendImage && !imageMoment.teaseOnly
+    ? resolveVirtualGirlfriendChatImage({
         token: auth.accessToken,
         userId: auth.user.id,
         companion,
@@ -135,48 +137,81 @@ export async function POST(request: NextRequest) {
         allowFreshGeneration: entitlements.isPremium,
         userMessage: message,
         visualSceneHint: imageMoment.visualSceneHint,
-      });
-      imageAttachment = resolvedImage.attachment;
-      imageOutcome = resolvedImage.outcome;
-      imageOutcomeReason = resolvedImage.reason ?? null;
-    } catch (error) {
-      console.error('[virtual-girlfriend] image resolve failed', error);
-      imageAttachment = null;
-      imageOutcome = 'failed_generation';
-      imageOutcomeReason = error instanceof Error ? error.message : 'image_resolve_failed';
-    }
-  }
+        preferFreshGeneration: imageMoment.preferFreshGeneration,
+      }).catch((error) => {
+        console.error('[virtual-girlfriend] image resolve failed', error);
+        return {
+          outcome: 'failed_generation' as const,
+          attachment: null,
+          reason: error instanceof Error ? error.message : 'image_resolve_failed',
+        };
+      })
+    : Promise.resolve({ outcome: 'not_requested' as const, attachment: null, reason: null });
 
-  const intimacyGuidance = buildIntimacyResponseGuidance({
-    imageMoment,
-    imageAttached: Boolean(imageAttachment),
-  });
-
-  const premiumGuidance =
-    imageMoment.shouldSendImage && !imageMoment.teaseOnly && !imageAttachment && !entitlements.isPremium
-      ? 'User requested a new photo. Respond warmly in-character: premium unlocks fresh photo moments, invite them elegantly, and keep the vibe going in text.'
-      : imageMoment.shouldSendImage && !imageMoment.teaseOnly && !imageAttachment && entitlements.isPremium
-        ? 'User asked for a photo but one could not be attached this turn. Keep it natural and non-technical: acknowledge briefly, suggest a playful retry, and continue chatting.'
-        : '';
-
-  const reply = await generateVirtualGirlfriendReply({
+  const replyTask = generateVirtualGirlfriendReply({
     companion,
     history,
     memories: retrievedMemories,
     styleProfile,
     userMessage: message,
-    imageContext: imageAttachment
-      ? {
-          category: imageAttachment.category,
-          source: imageAttachment.source,
-          trigger: imageMoment.trigger === 'contextual-initiative' ? 'contextual-initiative' : 'user-request',
-        }
-      : null,
+    photoRequested,
+    teaseOnly: imageMoment.teaseOnly,
     responseGuidance: [intimacyGuidance, premiumGuidance].filter(Boolean).join(' ') || undefined,
   });
 
+  const [imageResult, reply] = await Promise.all([imageTask, replyTask]);
+
   if (!reply.ok) {
     return new Response(JSON.stringify({ error: reply.reason }), { status: 400 });
+  }
+
+  const imageAttachment = imageResult.attachment;
+
+  let assistantText = reply.assistantText;
+  if (imageAttachment) {
+    const captioned = await generateVirtualGirlfriendReply({
+      companion,
+      history,
+      memories: retrievedMemories,
+      styleProfile,
+      userMessage: message,
+      imageContext: {
+        category: imageAttachment.category,
+        source: imageAttachment.source,
+        trigger: imageMoment.trigger === 'contextual-initiative' ? 'contextual-initiative' : 'user-request',
+      },
+      photoRequested: true,
+      teaseOnly: false,
+      responseGuidance: 'Photo is attached and visible. Write a short flirty caption only. Never disclaim photos.',
+    });
+    if (captioned.ok) assistantText = captioned.assistantText;
+  }
+  const imageOutcome =
+    imageResult.outcome === 'not_requested'
+      ? 'not_requested'
+      : imageResult.outcome;
+  const imageOutcomeReason = imageResult.reason ?? null;
+
+  const failureGuidance =
+    photoRequested && !imageAttachment && !imageMoment.teaseOnly
+      ? entitlements.isPremium
+        ? 'Photo could not attach — stay flirty, say you\'ll try again, NEVER disclaim photos or offer descriptions.'
+        : 'Invite Premium for fresh custom photos in-character — NEVER say you cannot send photos.'
+      : '';
+
+  if (failureGuidance && imageAttachment === null) {
+    const retry = await generateVirtualGirlfriendReply({
+      companion,
+      history,
+      memories: retrievedMemories,
+      styleProfile,
+      userMessage: message,
+      imageContext: null,
+      photoRequested: true,
+      teaseOnly: false,
+      responseGuidance: failureGuidance,
+    });
+    if (retry.ok) assistantText = retry.assistantText;
   }
 
   await insertVirtualGirlfriendMessage(auth.accessToken, {
@@ -187,8 +222,8 @@ export async function POST(request: NextRequest) {
     moderation: reply.moderation,
   });
 
-  const segments = splitIntoMessages(reply.assistantText);
-  const combinedContent = segments.join('\n\n') || reply.assistantText;
+  const segments = splitIntoMessages(assistantText);
+  const combinedContent = segments.join('\n\n') || assistantText;
 
   await insertVirtualGirlfriendMessage(auth.accessToken, {
     conversationId: conversation.id,
@@ -213,13 +248,13 @@ export async function POST(request: NextRequest) {
       companionId: companion.id,
       current: styleProfile,
       userMessage: message,
-      assistantMessage: reply.assistantText,
+      assistantMessage: assistantText,
     }),
   ]);
 
   const candidates = extractVirtualGirlfriendMemoryCandidates({
     userMessage: message,
-    assistantMessage: reply.assistantText,
+    assistantMessage: assistantText,
   });
 
   if (candidates.length > 0) {
@@ -252,7 +287,7 @@ export async function POST(request: NextRequest) {
               attachments: imageAttachment ? [imageAttachment] : [],
               generationMode: imageAttachment?.source ?? null,
               imageGeneration: {
-                requested: imageMoment.shouldSendImage || imageMoment.teaseOnly,
+                requested: photoRequested,
                 outcome: imageMoment.teaseOnly ? 'not_requested' : imageOutcome,
                 reason: imageMoment.teaseOnly ? 'tease_before_photo' : imageOutcomeReason,
               },

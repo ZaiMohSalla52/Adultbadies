@@ -47,7 +47,7 @@ export const buildEntitlements = (subscription: SubscriptionRecord | null): Enti
     },
     limits: {
       swipesPerDay: hasPremium ? null : FREE_DAILY_SWIPE_LIMIT,
-      virtualGirlfriendMessagesPerDay: hasPremium ? 500 : FREE_VIRTUAL_GIRLFRIEND_MESSAGES_PER_DAY,
+      virtualGirlfriendMessagesPerDay: hasPremium ? null : FREE_VIRTUAL_GIRLFRIEND_MESSAGES_PER_DAY,
     },
   };
 };

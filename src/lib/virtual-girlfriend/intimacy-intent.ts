@@ -1,4 +1,5 @@
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
+import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendImageCategory,
@@ -99,7 +100,8 @@ export const classifyChatTurnIntent = async (input: {
             'Photo policy:',
             '- wantsPhoto=true when the user is asking to see her, wants another image, or the scene naturally calls for a visual reward.',
             '- photoDelivery=tease_first when they want a photo but have not earned it yet in the current beat (companion should flirt/command first).',
-            '- photoDelivery=send_now when they describe a specific look/pose/outfit state OR the moment clearly deserves an immediate image.',
+            '- photoDelivery=send_now when they ask for a selfie/photo/pic, describe a specific look/pose/outfit, OR the moment clearly deserves an immediate image. Direct selfie requests are almost always send_now.',
+            '- NEVER instruct the companion to offer text descriptions, "stylized images", or disclaim real photos — this app sends real in-app photos.',
             '- photoDelivery=reward_compliance when they followed the companion\'s prior request and deserve a reward photo.',
             '- photoDelivery=none when no photo fits this beat.',
             'visualSceneHint: natural-language direction for the image generator based on user intent (null if no photo).',
@@ -154,6 +156,9 @@ export const classifyChatTurnIntent = async (input: {
     const parsed = JSON.parse(extractResponsesText(response)) as Partial<ChatTurnIntent>;
     return sanitizeIntent(parsed, input.userMessage);
   } catch {
+    if (looksLikePhotoRequest(input.userMessage)) {
+      return buildHeuristicPhotoIntent(input.userMessage);
+    }
     return defaultIntent(input.userMessage);
   }
 };

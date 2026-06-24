@@ -1,4 +1,5 @@
 import { classifyChatTurnIntent, type ChatTurnIntent, type PhotoDeliveryIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
+import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendImageCategory,
@@ -14,6 +15,7 @@ export type IntimateImageMoment = {
   trigger: 'user-request' | 'contextual-initiative' | 'compliance-reward' | 'none';
   intimacyMode: boolean;
   visualSceneHint?: string;
+  preferFreshGeneration: boolean;
   intent: ChatTurnIntent;
 };
 
@@ -48,6 +50,7 @@ export const resolveImageMomentFromIntent = (input: {
       shouldSendImage: false,
       teaseOnly: false,
       trigger: 'none',
+      preferFreshGeneration: false,
     };
   }
 
@@ -57,6 +60,7 @@ export const resolveImageMomentFromIntent = (input: {
       shouldSendImage: false,
       teaseOnly: true,
       trigger: 'user-request',
+      preferFreshGeneration: false,
     };
   }
 
@@ -64,10 +68,14 @@ export const resolveImageMomentFromIntent = (input: {
     return {
       ...base,
       shouldSendImage: false,
-      teaseOnly: false,
-      trigger: 'none',
+      teaseOnly: true,
+      trigger: 'user-request',
+      preferFreshGeneration: false,
     };
   }
+
+  const preferFreshGeneration =
+    intent.photoDelivery === 'send_now' || intent.photoDelivery === 'reward_compliance';
 
   const trigger =
     intent.photoDelivery === 'reward_compliance'
@@ -82,6 +90,7 @@ export const resolveImageMomentFromIntent = (input: {
     teaseOnly: false,
     trigger,
     visualSceneHint: intent.visualSceneHint ?? undefined,
+    preferFreshGeneration: input.isPremium && preferFreshGeneration,
   };
 };
 
@@ -91,7 +100,9 @@ export const decideIntimateImageMoment = async (input: {
   history: VirtualGirlfriendMessageRecord[];
   isPremium: boolean;
 }): Promise<IntimateImageMoment> => {
-  const intent = await classifyChatTurnIntent(input);
+  const intent = looksLikePhotoRequest(input.userMessage)
+    ? buildHeuristicPhotoIntent(input.userMessage)
+    : await classifyChatTurnIntent(input);
   return resolveImageMomentFromIntent({
     intent,
     history: input.history,
@@ -118,15 +129,19 @@ export const buildIntimacyResponseGuidance = (input: {
     lines.push('Let the user lead; respond eagerly and match their requested dynamic.');
   }
 
+  lines.push(
+    'FORBIDDEN: never say you cannot send photos, never offer text descriptions instead of photos, never say "stylized image", never mention being AI/virtual unless user explicitly asks.',
+  );
+
   if (input.imageMoment.teaseOnly) {
     lines.push(
-      'No photo is attached this turn. Tease and set one clear next step before promising a photo — do not claim you are sending one right now.',
+      'No photo is attached this turn. Tease and set one clear next step — flirt in-character, do NOT offer descriptions or disclaim photos.',
     );
   }
 
   if (input.imageAttached) {
     lines.push(
-      'A photo of you is visible now. Describe the vibe in-character as if they can see it. Never mention unlock/premium/AI.',
+      'A photo of you IS attached and visible right now. Caption it flirtily in-character. NEVER say you cannot send photos or offer alternatives.',
     );
     if (input.imageMoment.visualSceneHint) {
       lines.push(`Visual intent: ${input.imageMoment.visualSceneHint}`);

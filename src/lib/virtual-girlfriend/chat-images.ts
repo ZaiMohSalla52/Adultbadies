@@ -27,6 +27,7 @@ export const resolveVirtualGirlfriendChatImage = async (input: {
   allowFreshGeneration: boolean;
   userMessage?: string;
   visualSceneHint?: string;
+  preferFreshGeneration?: boolean;
 }) => {
   const result = await runChatImageMachine({ kind: 'chat_image', ...input });
   return { outcome: result.outcome, attachment: result.attachment, reason: result.reason };

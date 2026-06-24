@@ -159,6 +159,7 @@ export const VirtualGirlfriendChatClient = ({
 
     if (!response.ok || !response.body) {
       const body = (await response.json().catch(() => ({}))) as { error?: string };
+      setMessages((prev) => prev.filter((message) => message.id !== optimisticUser.id));
       setError(body.error ?? 'Unable to send message.');
       setPending(false);
       setIsStreaming(false);
@@ -195,6 +196,7 @@ export const VirtualGirlfriendChatClient = ({
     }
 
     if (!payload) {
+      setMessages((prev) => prev.filter((message) => message.id !== optimisticUser.id));
       setError('Unable to receive a reply right now.');
       setPending(false);
       setIsStreaming(false);
@@ -203,9 +205,10 @@ export const VirtualGirlfriendChatClient = ({
 
     if (
       payload.imageGeneration?.requested
+      && !payload.attachments?.some((attachment) => attachment.kind === 'image')
       && (payload.imageGeneration.outcome === 'failed_generation' || payload.imageGeneration.outcome === 'skipped_prerequisites')
     ) {
-      setError('Photo request received, but we could not attach an image this turn. Try again in a moment.');
+      setError('Could not attach a photo this turn — she\'ll still reply in chat. Try again in a moment.');
     }
 
     const segments = payload.segments && payload.segments.length > 0 ? payload.segments : [payload.content];

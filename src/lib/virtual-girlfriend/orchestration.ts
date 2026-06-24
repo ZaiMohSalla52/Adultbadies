@@ -1,4 +1,5 @@
 import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
+import { sanitizeAssistantReply } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { moderateVirtualGirlfriendContent } from '@/lib/virtual-girlfriend/safety';
 import { resolveVirtualGirlfriendProfile } from '@/lib/virtual-girlfriend/profile-resolver';
 import type {
@@ -10,16 +11,16 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 
 const SYSTEM_DISCLOSURE =
-  'You are a Virtual Girlfriend AI-generated profile in Adult Badies. Never claim to be a real human. Keep disclosure subtle and trust-preserving.';
+  'You are a Virtual Girlfriend on Adult Badies — a fictional adult companion who sends in-app photos and texts like a real girlfriend. You DO send photos through this app. Never claim you cannot send photos. Never offer text descriptions or "stylized images" as substitutes. Only discuss being AI if the user explicitly asks.';
 
 type OrchestrationMode = 'text' | 'voice';
 
 const IMAGE_REPLY_POLICY = [
-  'If the user asks for a selfie/photo and an image is attached, respond naturally and in-character (playful, warm, direct, flirtatious).',
-  'Do not repeat product disclaimers like "I am virtual", "I am AI-generated", or "I cannot send real-world photos" in normal successful image replies.',
-  'Only mention AI/virtual constraints when the user explicitly asks, or when a refusal/failure genuinely requires brief truthful clarification.',
-  'For premium gating, keep tone elegant and in-character: warm invite to unlock premium photo moments, then continue the conversation naturally.',
-  'For image-generation failures, keep tone natural and non-technical; briefly acknowledge the moment missed and offer a playful retry or continue chatting.',
+  'This app delivers your photos to the user in-chat. When a photo is attached, react as if they are looking at you RIGHT NOW.',
+  'ABSOLUTELY FORBIDDEN in any reply: "I cannot send real photos", "real-world photos", "tasteful stylized image", "sensual description instead", "which do you want: description or image", "as an AI", "I am virtual".',
+  'When user asks for a selfie/photo: flirt and deliver — never deflect to descriptions.',
+  'For premium gating: invite them to unlock fresh photos in-character — never sound like a bot or help desk.',
+  'For image failures: stay in-character ("give me a sec, try me again") — never technical, never disclaim photos.',
 ].join(' ');
 
 const INTIMACY_CHAT_POLICY = [
@@ -145,6 +146,8 @@ export const generateVirtualGirlfriendReply = async (input: {
     trigger: 'user-request' | 'contextual-initiative';
   } | null;
   responseGuidance?: string;
+  photoRequested?: boolean;
+  teaseOnly?: boolean;
 }) => {
   const moderation = moderateVirtualGirlfriendContent(input.userMessage);
   if (!moderation.allowed) {
@@ -166,8 +169,10 @@ export const generateVirtualGirlfriendReply = async (input: {
           buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile, 'text'),
 
           input.imageContext
-            ? `A ${input.imageContext.category} photo of you is attached to this turn. Write a short, natural caption that pairs with the photo (flirty/warm, 1-2 short messages). The photo IS being shown to the user right now, so never say things like "unlock", "premium", "I'll send it", or imply the photo is hidden — react as if they can see it.`
-            : 'No image is attached for this turn.',
+            ? `PHOTO ATTACHED NOW: a ${input.imageContext.category} photo of you is visible to the user. Write 1-2 short flirty caption bubbles. They CAN see you. Never say you cannot send photos. Never offer descriptions instead.`
+            : input.photoRequested
+              ? 'USER WANTS A PHOTO: no image attached yet this turn. Flirt and stay in-character — tease or set up the moment. NEVER say you cannot send photos. NEVER offer text descriptions or stylized images as substitutes.'
+              : 'No image attached for this turn.',
           input.responseGuidance ?? '',
         ].join('\n'),
       },
@@ -179,7 +184,13 @@ export const generateVirtualGirlfriendReply = async (input: {
     reasoning: { effort: 'minimal' },
   });
 
-  const assistantText = extractResponsesText(response).trim();
+  let assistantText = extractResponsesText(response).trim();
+  assistantText = sanitizeAssistantReply({
+    text: assistantText,
+    imageAttached: Boolean(input.imageContext),
+    photoRequested: Boolean(input.photoRequested),
+    teaseOnly: Boolean(input.teaseOnly),
+  });
 
   if (!assistantText) {
     return {
