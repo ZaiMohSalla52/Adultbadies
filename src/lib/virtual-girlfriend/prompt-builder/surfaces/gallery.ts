@@ -4,7 +4,7 @@
  * Must remain identity-anchored.
  */
 
-import { getCompositionAnchor } from '../primitives/composition';
+import { getCompositionAnchor, PHOTO_REALISM_TAIL } from '../primitives/composition';
 import { buildAllNegatives } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubject } from '../primitives/subject';
@@ -47,7 +47,7 @@ export const buildGalleryPrompt = (input: GalleryPromptInput, variantIndex: numb
     input.sceneHint ? `Scene: ${input.sceneHint}.` : null,
     `Gallery variant ${variantIndex + 1}. Vary scene, angle, and outfit while preserving identity.`,
     getCompositionAnchor('gallery'),
-    'Best quality, ultra realistic, intricate details, professional photography, 8k.',
+    PHOTO_REALISM_TAIL,
     buildAllNegatives(),
     resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Also avoid: ${negConstraints}.` : null,

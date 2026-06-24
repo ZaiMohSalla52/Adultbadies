@@ -13,6 +13,8 @@ import {
 import { VirtualGirlfriendChatClient } from '@/components/virtual-girlfriend/chat-client';
 import { processDueVirtualGirlfriendProactiveEvents } from '@/lib/virtual-girlfriend/proactive';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
+import { claimPointStipend, getPointBalance, getUnlockedImageIds } from '@/lib/points/data';
+import { POINTS } from '@/lib/points/constants';
 
 export default async function VirtualGirlfriendChatPage({
   searchParams,
@@ -54,6 +56,14 @@ export default async function VirtualGirlfriendChatPage({
   const messages = await getVirtualGirlfriendMessages(auth.accessToken, conversation.id);
   const curated = curateVirtualGirlfriendImages(companionImages);
 
+  if (entitlements.isPremium) {
+    await claimPointStipend(auth.accessToken);
+  }
+  const [pointBalance, unlockedImageIds] = await Promise.all([
+    getPointBalance(auth.accessToken, auth.user.id),
+    getUnlockedImageIds(auth.accessToken, auth.user.id, companion.id),
+  ]);
+
   return (
     <VirtualGirlfriendChatClient
       companionId={companion.id}
@@ -69,6 +79,10 @@ export default async function VirtualGirlfriendChatPage({
       occupation={companion.structured_profile?.occupation ?? null}
       personality={companion.structured_profile?.personality ?? null}
       sexuality={companion.structured_profile?.sexuality ?? null}
+      galleryImages={curated.gallery.map((image) => ({ id: image.id, url: image.delivery_url }))}
+      unlockedImageIds={unlockedImageIds}
+      pointBalance={pointBalance}
+      unblurCost={POINTS.unblurCost}
     />
   );
 }

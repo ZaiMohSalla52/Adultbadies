@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
+import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import { runPortraitPreviewImageMachine } from '@/lib/virtual-girlfriend/image-machine';
 import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
+
+// Portrait preview generates several candidate images; raise the function
+// ceiling so it is not killed mid-generation (Pro/Enterprise can raise to 300).
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
+
+  const ageGate = await requireAgeVerifiedApi(auth);
+  if (ageGate) return ageGate;
 
   const body = (await request.json()) as {
     sex?: string;

@@ -9,6 +9,12 @@ import {
 } from '@/lib/virtual-girlfriend/data';
 import { resolveCompanionImageState } from '@/lib/virtual-girlfriend/generation-state';
 import { VirtualGirlfriendProfileView } from '@/components/virtual-girlfriend/profile-view';
+import { GenerationPoller } from '@/components/virtual-girlfriend/generation-poller';
+import { GalleryFiller } from '@/components/virtual-girlfriend/gallery-filler';
+import { getUserEntitlements } from '@/lib/subscriptions/data';
+import { claimPointStipend, getPointBalance, getUnlockedImageIds } from '@/lib/points/data';
+import { POINTS } from '@/lib/points/constants';
+import { VIRTUAL_GIRLFRIEND_GALLERY_TARGET } from '@/lib/virtual-girlfriend/gallery';
 
 export default async function VirtualGirlfriendProfilePage({
   searchParams,
@@ -47,5 +53,34 @@ export default async function VirtualGirlfriendProfilePage({
 
   const status = resolveCompanionImageState({ companion, images, visualProfile });
 
-  return <VirtualGirlfriendProfileView companion={companion} visualProfile={visualProfile} images={images} status={status} />;
+  const entitlements = await getUserEntitlements(auth.accessToken, auth.user.id);
+  // Premium members receive their monthly points stipend (idempotent per period).
+  if (entitlements.isPremium) {
+    await claimPointStipend(auth.accessToken);
+  }
+  const [pointBalance, unlockedImageIds] = await Promise.all([
+    getPointBalance(auth.accessToken, auth.user.id),
+    getUnlockedImageIds(auth.accessToken, auth.user.id, companion.id),
+  ]);
+
+  const galleryCount = images.filter((image) => image.image_kind === 'gallery').length;
+
+  return (
+    <>
+      <GenerationPoller companionId={companion.id} status={status} />
+      {status !== 'generating' ? (
+        <GalleryFiller companionId={companion.id} galleryCount={galleryCount} target={VIRTUAL_GIRLFRIEND_GALLERY_TARGET} />
+      ) : null}
+      <VirtualGirlfriendProfileView
+        companion={companion}
+        visualProfile={visualProfile}
+        images={images}
+        status={status}
+        pointBalance={pointBalance}
+        unlockedImageIds={unlockedImageIds}
+        unblurCost={POINTS.unblurCost}
+        isPremium={entitlements.isPremium}
+      />
+    </>
+  );
 }

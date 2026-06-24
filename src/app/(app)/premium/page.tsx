@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { getSwipeCountForToday, getUserEntitlements } from '@/lib/subscriptions/data';
+import { claimPointStipend, getPointBalance } from '@/lib/points/data';
+import { POINTS } from '@/lib/points/constants';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 
 const featureRows = [
@@ -30,6 +32,11 @@ const featureRows = [
     free: 'Not available',
     premium: 'Coming soon',
   },
+  {
+    name: 'Gallery photo unlocks',
+    free: 'No points',
+    premium: `${POINTS.premiumMonthlyStipend} points/mo (~${Math.floor(POINTS.premiumMonthlyStipend / POINTS.unblurCost)} unblurs)`,
+  },
 ];
 
 export default async function PremiumPage() {
@@ -43,6 +50,11 @@ export default async function PremiumPage() {
     getUserEntitlements(auth.accessToken, auth.user.id),
     getSwipeCountForToday(auth.accessToken, auth.user.id),
   ]);
+
+  if (entitlements.isPremium) {
+    await claimPointStipend(auth.accessToken);
+  }
+  const pointBalance = await getPointBalance(auth.accessToken, auth.user.id);
 
   return (
     <div className="app-page-stack">
@@ -60,6 +72,18 @@ export default async function PremiumPage() {
           </p>
           <p className="text-sm text-muted">
             Subscription state: <strong>{entitlements.membershipState.replace('_', ' ')}</strong>
+          </p>
+        </Card>
+
+        <Card className="app-surface-card space-y-2">
+          <h2 className="my-0 text-base font-semibold">Points</h2>
+          <p className="text-sm text-muted">
+            Balance: <strong>💜 {pointBalance}</strong>
+          </p>
+          <p className="text-sm text-muted">
+            {entitlements.isPremium
+              ? `Premium grants ${POINTS.premiumMonthlyStipend} points each billing period. Unblur a gallery photo for ${POINTS.unblurCost} points.`
+              : `Premium members get ${POINTS.premiumMonthlyStipend} points/month to unblur gallery photos (${POINTS.unblurCost} points each).`}
           </p>
         </Card>
 

@@ -2,18 +2,30 @@ import type { SurfaceType } from '../versions';
 
 export const COMPOSITION_ANCHORS: Record<SurfaceType, string> = {
   preview:
-    'Single person portrait, centered frame. Natural real-world environment, shallow depth of field, bokeh background. Cinematic natural lighting with directional warmth. Ultra-sharp facial detail, realistic skin texture with natural pores, genuine authentic expression. Hyper-realistic photography, 8k resolution, film-quality.',
+    'Single person portrait, centered frame. Real-world setting with soft shallow depth of field and a gently blurred background. Flattering natural light. Sharp eyes, lifelike skin texture, genuine relaxed expression.',
   canonical:
-    'Upper body to waist portrait. Subject centered, natural perspective. Cinematic lighting, shallow depth of field. Realistic environment background. Ultra-sharp face, natural skin detail, professional photography quality.',
+    'Upper body to waist portrait. Subject centered at natural eye-level. Flattering natural light, soft shallow depth of field, real-world background. Sharp lifelike face with natural skin texture.',
   regenerate:
-    'Upper body portrait. Centered subject, natural perspective. Cinematic lighting consistent with established identity. Realistic environment. Ultra-sharp facial features.',
+    'Upper body portrait. Centered subject at natural eye-level. Natural light consistent with established identity. Real-world background, sharp lifelike facial features.',
   gallery:
-    'Three-quarter body or waist-up framing. Natural real-world environment with depth and context — outdoors, café, bar, bedroom, urban setting. Cinematic shallow depth of field. Realistic candid photography.',
+    'Three-quarter or waist-up framing. Real-world environment with depth and context — outdoors, café, bar, bedroom, urban street. Soft shallow depth of field, candid real-photo feel.',
   chat:
-    'Natural candid portrait, waist-up or upper body. Contextual environment visible and appropriate to scene. Cinematic depth of field. Realistic photography, sharp subject, atmospheric background.',
+    'Natural candid portrait, waist-up or upper body. Contextual real-world environment suited to the scene. Soft depth of field, authentic phone-photo feel, sharp subject.',
 };
 
 export const getCompositionAnchor = (surface: SurfaceType): string => COMPOSITION_ANCHORS[surface];
+
+/*
+ * Shared photographic-realism tail.
+ *
+ * Replaces the older "8k / hyper-realistic / film-quality / professional
+ * photography" keyword spam, which biases modern diffusion models (Flux in
+ * particular) toward a glossy stock-photo / CGI finish. Candid camera-real
+ * language reads as more authentic and attractive. Centralized here so the
+ * realism aesthetic can be tuned in one place.
+ */
+export const PHOTO_REALISM_TAIL =
+  'Candid amateur photo, shot on a full-frame 35mm camera, natural available light, true-to-life skin tones with realistic texture and subtle natural imperfections, soft shallow depth of field, authentic unposed feel.';
 
 export const PREVIEW_EXPRESSIONS: string[] = [
   'Direct confident gaze into camera, relaxed natural presence.',

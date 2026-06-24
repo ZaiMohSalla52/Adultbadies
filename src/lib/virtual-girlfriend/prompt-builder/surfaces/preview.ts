@@ -12,6 +12,7 @@ import {
   getPreviewExpression,
   getPreviewFramingVariant,
   getPreviewLightingVariant,
+  PHOTO_REALISM_TAIL,
 } from '../primitives/composition';
 import { buildAllNegatives } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
@@ -115,7 +116,7 @@ export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: numb
     parts.push(`Additional details: ${input.freeformDetails.trim()}.`);
   }
 
-  parts.push('Photorealistic portrait, sharp facial details, natural skin texture, professional photography.');
+  parts.push(PHOTO_REALISM_TAIL);
 
   parts.push(buildAllNegatives());
   const ethnicityNegative = resolveEthnicityNegative(input.origin);
