@@ -583,43 +583,61 @@ const generateGalleryFromCanonical = async (input: {
   scope: string;
 }) => {
   const captures = buildCapturePlan(input.companion).filter((entry) => entry.kind === 'gallery');
-  const canonicalRef = await downloadReferenceBytes({
-    scope: input.scope,
-    deliveryUrl: input.canonicalImage.delivery_url,
-    fallbackMimeType: input.canonicalImage.origin_mime_type,
-  });
 
-  // Generate gallery variants concurrently. Serial generation is the dominant
-  // cost in setup and pushes the request past the serverless function limit.
-  const galleryImages = await Promise.all(
-    captures.map((capture) => {
+  let canonicalRef: { bytes: Buffer; mimeType: string };
+  try {
+    canonicalRef = await downloadReferenceBytes({
+      scope: input.scope,
+      deliveryUrl: input.canonicalImage.delivery_url,
+      fallbackMimeType: input.canonicalImage.origin_mime_type,
+    });
+  } catch (error) {
+    logImageMachine(input.scope, 'gallery_reference_unavailable', {
+      reason: error instanceof Error ? error.message : 'reference_download_failed',
+    });
+    return [];
+  }
+
+  // Generate gallery variants sequentially and resiliently: a single variant
+  // failure (e.g. a transient provider/rate-limit error) must not discard the
+  // others. Sequential avoids tripping provider concurrency limits.
+  const galleryImages: VirtualGirlfriendCompanionImageRecord[] = [];
+  for (const capture of captures) {
+    try {
       const galleryPromptInput = toGalleryPromptInput(input.companion, input.visualProfile.identity_pack, capture);
       const prompt = buildGalleryPrompt(galleryPromptInput, capture.variantIndex);
-      return runProviderGeneration({
+      const generated = await runProviderGeneration({
         scope: input.scope,
         mode: 'gallery_from_reference',
         prompt,
         referenceImageBytes: canonicalRef.bytes,
         referenceMimeType: canonicalRef.mimeType,
-      }).then((generated) =>
-        buildImageRecord({
-          token: input.token,
-          userId: input.userId,
-          companionId: input.companion.id,
-          visualProfileId: input.visualProfile.id,
-          promptHash: sha(`${input.visualProfile.prompt_hash}:gallery:${capture.variantIndex}:${prompt}`),
-          capture,
-          generated,
-          identityPack: input.visualProfile.identity_pack,
-          referenceImageId: input.canonicalImage.id,
-          promptText: prompt,
-          promptVersion: galleryPromptVersion,
-          surfaceType: 'gallery',
-          scope: input.scope,
-        }),
-      );
-    }),
-  );
+      });
+
+      const galleryImage = await buildImageRecord({
+        token: input.token,
+        userId: input.userId,
+        companionId: input.companion.id,
+        visualProfileId: input.visualProfile.id,
+        promptHash: sha(`${input.visualProfile.prompt_hash}:gallery:${capture.variantIndex}:${prompt}`),
+        capture,
+        generated,
+        identityPack: input.visualProfile.identity_pack,
+        referenceImageId: input.canonicalImage.id,
+        promptText: prompt,
+        promptVersion: galleryPromptVersion,
+        surfaceType: 'gallery',
+        scope: input.scope,
+      });
+
+      galleryImages.push(galleryImage);
+    } catch (error) {
+      logImageMachine(input.scope, 'gallery_variant_failed', {
+        variantIndex: capture.variantIndex,
+        reason: error instanceof Error ? error.message : 'gallery_variant_failed',
+      });
+    }
+  }
 
   return galleryImages;
 };
@@ -686,21 +704,17 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
   });
   logImageMachine(scope, 'persistence_success', { canonicalImageId: canonicalImage.id });
 
-  try {
-    const galleryImages = await generateGalleryFromCanonical({
-      token: input.token,
-      userId: input.userId,
-      companion: input.companion,
-      visualProfile: input.visualProfile,
-      canonicalImage,
-      scope,
-    });
-    logImageMachine(scope, 'final_outcome', { status: 'ready', canonicalImageId: canonicalImage.id, galleryCount: galleryImages.length });
-    return { kind: 'setup_pack', status: 'ready', canonicalImage, galleryImages };
-  } catch (error) {
-    logImageMachine(scope, 'final_outcome', { status: 'partial_success', reason: error instanceof Error ? error.message : 'gallery_generation_failed' });
-    throw new VirtualGirlfriendImagePackError('Gallery generation from canonical reference failed.', canonicalImage.id, { cause: error });
-  }
+  const galleryImages = await generateGalleryFromCanonical({
+    token: input.token,
+    userId: input.userId,
+    companion: input.companion,
+    visualProfile: input.visualProfile,
+    canonicalImage,
+    scope,
+  });
+  const status = galleryImages.length > 0 ? 'ready' : 'partial_success';
+  logImageMachine(scope, 'final_outcome', { status, canonicalImageId: canonicalImage.id, galleryCount: galleryImages.length });
+  return { kind: 'setup_pack', status, canonicalImage, galleryImages };
 };
 
 const runRegenerateImageMachine = async (input: VirtualGirlfriendRegenerateMachineRequest): Promise<VirtualGirlfriendRegenerateMachineResult> => {
