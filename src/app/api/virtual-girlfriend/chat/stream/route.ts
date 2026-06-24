@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
         existingImages: companionImages,
         visualProfile,
         allowFreshGeneration: entitlements.isPremium,
+        userMessage: message,
       });
       imageAttachment = resolvedImage.attachment;
       imageOutcome = resolvedImage.outcome;

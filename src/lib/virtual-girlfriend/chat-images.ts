@@ -1,3 +1,4 @@
+import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import { runChatImageMachine } from '@/lib/virtual-girlfriend/image-machine';
 import type {
   VirtualGirlfriendCompanionImageRecord,
@@ -18,7 +19,8 @@ const CATEGORY_KEYWORDS: Record<VirtualGirlfriendImageCategory, RegExp> = {
   lifestyle: /\blifestyle|day|daily|vibe\b/i,
 };
 
-const IMAGE_REQUEST_PATTERN = /\b(send|show|share|drop).{0,20}\b(selfie|photo|pic|picture)|\bwhat do you look like\b/i;
+const IMAGE_REQUEST_PATTERN =
+  /\b(send|show|share|drop).{0,30}\b(selfie|photo|pic|picture|nude|naked|body|lingerie|nsfw)|\bwhat do you look like\b|\b(nude|naked|topless|nsfw)\s*(pic|photo|selfie)?\b/i;
 
 export const detectRequestedImageCategory = (message: string): VirtualGirlfriendImageCategory => {
   const normalized = message.toLowerCase();
@@ -31,7 +33,7 @@ export const decideVirtualGirlfriendImageMoment = (input: {
   history: VirtualGirlfriendMessageRecord[];
   isPremium: boolean;
 }) => {
-  const directRequest = IMAGE_REQUEST_PATTERN.test(input.userMessage);
+  const directRequest = IMAGE_REQUEST_PATTERN.test(input.userMessage) || detectExplicitImageIntent(input.userMessage);
   const lastAssistantImageAt = [...input.history]
     .reverse()
     .find((message) => message.role === 'assistant' && message.attachments?.some((a) => a.kind === 'image'));
@@ -66,6 +68,7 @@ export const resolveVirtualGirlfriendChatImage = async (input: {
   existingImages: VirtualGirlfriendCompanionImageRecord[];
   visualProfile: VirtualGirlfriendVisualProfileRecord | null;
   allowFreshGeneration: boolean;
+  userMessage?: string;
 }) => {
   const result = await runChatImageMachine({ kind: 'chat_image', ...input });
   return { outcome: result.outcome, attachment: result.attachment, reason: result.reason };

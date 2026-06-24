@@ -20,6 +20,8 @@ export const env = {
   FLUX_BASE_URL: process.env.FLUX_BASE_URL,
   FLUX_MODEL: process.env.FLUX_MODEL,
   FLUX_KONTEXT_MODEL: process.env.FLUX_KONTEXT_MODEL,
+  // Adult Badies chat images default to fully explicit-capable generation.
+  VG_ALLOW_ADULT_CONTENT: process.env.VG_ALLOW_ADULT_CONTENT,
   R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
   R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,

@@ -25,6 +25,7 @@ import {
 } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/chat';
 import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
+import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
@@ -194,6 +195,7 @@ export type VirtualGirlfriendChatMachineRequest = {
   existingImages: VirtualGirlfriendCompanionImageRecord[];
   visualProfile: VirtualGirlfriendVisualProfileRecord | null;
   allowFreshGeneration: boolean;
+  userMessage?: string;
 };
 
 export type VirtualGirlfriendPortraitPreviewRequest = {
@@ -370,13 +372,21 @@ const toChatPromptInput = (
   companion: VirtualGirlfriendCompanionRecord,
   identityPack: VirtualGirlfriendVisualIdentityPack,
   chatCategory?: string,
+  userMessage?: string,
 ): ChatPromptInput => {
   const canonicalInput = toCanonicalPromptInput(companion, identityPack);
+  const explicitIntent = userMessage ? detectExplicitImageIntent(userMessage) : false;
+  const scene = buildRandomScene();
+  const contextHint = explicitIntent
+    ? `${scene}. Same person, same face, preserve identity lock. Honor this adult user request in styling and explicitness: ${userMessage?.trim()}`
+    : `${scene}. Same person, same face, preserve identity lock.`;
+
   return {
     ...canonicalInput,
     identityAnchors: identityPack.continuityAnchors,
     category: chatCategory || undefined,
-    contextHint: `${buildRandomScene()}. Same person, same face.`,
+    contextHint,
+    explicitIntent,
   };
 };
 
@@ -991,7 +1001,12 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     });
     logImageMachine(scope, 'download_success', { canonicalImageId: canonical.id, bytes: reference.bytes.byteLength });
 
-    const chatPromptInput = toChatPromptInput(input.companion, input.visualProfile.identity_pack, input.category);
+    const chatPromptInput = toChatPromptInput(
+      input.companion,
+      input.visualProfile.identity_pack,
+      input.category,
+      input.userMessage,
+    );
     const prompt = buildChatPrompt(chatPromptInput);
     const generated = await runProviderGeneration({
       scope,

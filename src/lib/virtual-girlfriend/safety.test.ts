@@ -38,8 +38,20 @@ describe('moderateVirtualGirlfriendContent', () => {
 });
 
 describe('moderateVirtualGirlfriendImageRequest', () => {
-  it('blocks adult terms when adult content is not allowed (default)', () => {
+  it('permits adult terms by default on Adult Badies', () => {
+    const previous = process.env.VG_ALLOW_ADULT_CONTENT;
+    delete process.env.VG_ALLOW_ADULT_CONTENT;
+    expect(moderateVirtualGirlfriendImageRequest('send a nude').allowed).toBe(true);
+    if (previous === undefined) delete process.env.VG_ALLOW_ADULT_CONTENT;
+    else process.env.VG_ALLOW_ADULT_CONTENT = previous;
+  });
+
+  it('blocks adult terms when adult content is disabled', () => {
+    const previous = process.env.VG_ALLOW_ADULT_CONTENT;
+    process.env.VG_ALLOW_ADULT_CONTENT = 'false';
     expect(moderateVirtualGirlfriendImageRequest('send a nude').allowed).toBe(false);
+    if (previous === undefined) delete process.env.VG_ALLOW_ADULT_CONTENT;
+    else process.env.VG_ALLOW_ADULT_CONTENT = previous;
   });
 
   it('permits adult terms when adult content is explicitly allowed', () => {

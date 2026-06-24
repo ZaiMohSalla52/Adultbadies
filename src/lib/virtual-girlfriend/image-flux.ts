@@ -1,4 +1,5 @@
 import { env } from '@/lib/env';
+import { isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
 import { buildPreviewNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
@@ -13,9 +14,10 @@ import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
  *   (default fal-ai/flux-pro/kontext) to keep the same face across the canonical,
  *   gallery, and chat surfaces ("same person, new scene/outfit").
  *
- * Safety note: fal's `enable_safety_checker` is left at its provider default
- * (on). This module does not disable any provider-side content filtering, and
- * the SFW negatives from the prompt builders are preserved in every prompt.
+ * Adult-capable chat: when VG_ALLOW_ADULT_CONTENT is enabled (default), chat
+ * Kontext calls disable fal's safety checker so explicit in-chat images are not
+ * blocked at the provider. Identity-lock surfaces (preview/canonical/gallery)
+ * keep the checker on and retain SFW negatives for stable reference portraits.
  */
 
 const FLUX_BASE_URL = env.FLUX_BASE_URL ?? 'https://fal.run';
@@ -119,6 +121,14 @@ const extractGeneratedImage = async (
 const withNegatives = (prompt: string, negatives: string) =>
   negatives.trim() ? `${prompt}\nAvoid: ${negatives}` : prompt;
 
+const falProviderOptions = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') => {
+  if (surface === 'chat' && isVirtualGirlfriendAdultContentEnabled()) {
+    return { enable_safety_checker: false };
+  }
+
+  return {};
+};
+
 export const generateCanonicalImageWithFlux = async (prompt: string): Promise<GeneratedImage> => {
   const canonicalParams = SURFACE_PARAMS.canonical;
   const response = await callFal(
@@ -177,6 +187,7 @@ const generateKontextFromReference = async (input: {
       aspect_ratio: resolveKontextAspect(surfaceParams.aspect_ratio),
       num_images: surfaceParams.num_images,
       output_format: 'png',
+      ...falProviderOptions(input.surface),
       ...(input.seed !== undefined ? { seed: input.seed } : {}),
     },
     input.errorLabel,

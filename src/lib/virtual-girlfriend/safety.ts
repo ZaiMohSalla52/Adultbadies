@@ -1,3 +1,5 @@
+import { isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
+
 /*
  * Content safety for Virtual Girlfriend surfaces.
  *
@@ -81,6 +83,8 @@ export const moderateVirtualGirlfriendImageRequest = (
   text: string,
   options: { allowAdultContent?: boolean } = {},
 ) => {
+  const allowAdultContent = options.allowAdultContent ?? isVirtualGirlfriendAdultContentEnabled();
+
   if (containsMinorSafetyRisk(text)) {
     return {
       allowed: false,
@@ -89,7 +93,7 @@ export const moderateVirtualGirlfriendImageRequest = (
     };
   }
 
-  if (!options.allowAdultContent) {
+  if (!allowAdultContent) {
     const matched = adultImagePatterns.find((pattern) => pattern.test(text));
     if (matched) {
       return {

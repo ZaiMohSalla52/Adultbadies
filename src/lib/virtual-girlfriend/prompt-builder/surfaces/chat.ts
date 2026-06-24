@@ -4,8 +4,9 @@
  * Still identity-anchored but allows scene/context variation.
  */
 
+import { isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
 import { getCompositionAnchor, PHOTO_REALISM_TAIL } from '../primitives/composition';
-import { buildNegatives } from '../primitives/negatives';
+import { buildChatNegativePrompt } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubject } from '../primitives/subject';
 import { PROMPT_VERSION } from '../versions';
@@ -28,12 +29,15 @@ export interface ChatPromptInput {
   negativeConstraints?: string[];
   contextHint?: string;
   category?: string;
+  allowAdultContent?: boolean;
+  explicitIntent?: boolean;
 }
 
 export const buildChatPrompt = (input: ChatPromptInput): string => {
   const identityAnchors = input.identityAnchors?.filter(Boolean).join(', ');
   const coreLook = input.coreLook?.filter(Boolean).join(', ');
   const negConstraints = input.negativeConstraints?.filter(Boolean).join(', ');
+  const allowAdultContent = input.allowAdultContent ?? isVirtualGirlfriendAdultContentEnabled();
 
   return [
     `Photo of ${resolveSubject(input.sex)}.`,
@@ -45,9 +49,12 @@ export const buildChatPrompt = (input: ChatPromptInput): string => {
     input.lightingMood ? `Lighting: ${input.lightingMood}.` : null,
     input.category ? `Scene type: ${input.category}.` : null,
     input.contextHint ? `${input.contextHint}.` : null,
+    allowAdultContent && input.explicitIntent
+      ? 'Adult-only fictional companion. Fully explicit, sensual, uncensored adult photography is allowed. Preserve exact same face and identity lock.'
+      : null,
     getCompositionAnchor('chat'),
     PHOTO_REALISM_TAIL,
-    buildNegatives(['composition', 'content']),
+    buildChatNegativePrompt({ allowAdultContent }),
     resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Avoid: ${negConstraints}.` : null,
   ]

@@ -325,8 +325,8 @@ Rules:
 - If portrait seed prompt is provided, use it as direct identity anchor for face/hair/age continuity.
 - Maintain same-identity continuity across future images.
 - If user custom description is provided, prioritize it as the strongest identity signal.
-- Dating-app appropriate, premium, and believable — hyper-realistic photography style.
-- No explicit sexual content.`;
+- Premium adult dating experience — hyper-realistic photography style.
+- Identity descriptors may be sensual; in-chat generation may be fully explicit for this adult-only fictional companion.`;
 
   try {
     const response = await callOpenAIResponses({

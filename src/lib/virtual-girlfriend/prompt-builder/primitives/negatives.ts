@@ -52,6 +52,16 @@ export const buildNegatives = (categories: Array<keyof typeof HARD_NEGATIVES>): 
 export const buildAllNegatives = (): string =>
   buildNegatives(Object.keys(HARD_NEGATIVES) as Array<keyof typeof HARD_NEGATIVES>);
 
+export const buildIdentityNegatives = (): string =>
+  buildNegatives(['composition', 'mockup', 'overlay']);
+
 export function buildPreviewNegativePrompt(): string {
   return buildAllNegatives();
+}
+
+export function buildChatNegativePrompt(input: { allowAdultContent?: boolean } = {}): string {
+  const categories: Array<keyof typeof HARD_NEGATIVES> = input.allowAdultContent
+    ? ['composition']
+    : ['composition', 'content'];
+  return buildNegatives(categories);
 }
