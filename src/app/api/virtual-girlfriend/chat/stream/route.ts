@@ -237,8 +237,10 @@ export async function POST(request: NextRequest) {
           && !imageMoment.teaseOnly
           && photoRequested
         ) {
+          // shouldSendImage means startImageIfNeeded ran, so the task exists but
+          // produced nothing — a real failure worth surfacing.
           imageOutcome = 'skipped_prerequisites';
-          imageOutcomeReason = imageStarted ? 'image_task_missing' : 'image_pipeline_not_started';
+          imageOutcomeReason = 'image_task_missing';
         }
         if (resolvedImage) {
           imageAttachment = resolvedImage.attachment;
@@ -265,8 +267,14 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Only surface a photo-failure when the pipeline actually ran and came
+        // back empty. If imageStarted is false, the companion deliberately chose
+        // not to send this beat (e.g. intent classified wantsPhoto but
+        // photoDelivery 'none'); that is a conversational choice, not an error,
+        // so leave the outcome as 'not_requested' and show the user nothing.
         if (
-          photoRequested
+          imageStarted
+          && photoRequested
           && !imageMoment.teaseOnly
           && !imageAttachment
         ) {
@@ -274,7 +282,7 @@ export async function POST(request: NextRequest) {
             imageOutcome = 'skipped_prerequisites';
           }
           if (!imageOutcomeReason) {
-            imageOutcomeReason = imageStarted ? 'image_not_attached' : 'image_pipeline_not_started';
+            imageOutcomeReason = 'image_not_attached';
           }
         }
 
