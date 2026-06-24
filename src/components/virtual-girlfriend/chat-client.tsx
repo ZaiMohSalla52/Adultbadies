@@ -174,11 +174,103 @@ export const VirtualGirlfriendChatClient = ({
       imageGeneration?: { requested: boolean; outcome: VirtualGirlfriendChatImageOutcome; reason: string | null };
     };
 
+    type StreamEvent =
+      | { type: 'token'; payload: { token: string } }
+      | { type: 'text_done'; payload: { content: string; segments?: string[]; contentType: 'text' | 'image' | 'mixed' } }
+      | { type: 'image'; payload: { attachment: VirtualGirlfriendMessageAttachment; contentType: 'mixed'; generationMode: string | null } }
+      | { type: 'done'; payload: DonePayload }
+      | { type: 'error'; payload: { error: string } };
+
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let payload: DonePayload | null = null;
     let streamDone = false;
+    const streamState = {
+      assistantId: null as string | null,
+    };
+    let liveAttachments: VirtualGirlfriendMessageAttachment[] = [];
+
+    const ensureStreamingAssistant = (token: string) => {
+      const streamId = streamState.assistantId ?? `temp-assistant-${Date.now()}`;
+      streamState.assistantId = streamId;
+
+      setMessages((prev) => {
+        const existing = prev.find((message) => message.id === streamId);
+        if (existing) {
+          return prev.map((message) =>
+            message.id === streamId
+              ? { ...message, content: `${message.content}${token}` }
+              : message,
+          );
+        }
+
+        return [
+          ...prev,
+          {
+            id: streamId,
+            role: 'assistant' as const,
+            content: token,
+            conversation_id: 'temp',
+            user_id: 'temp',
+            created_at: new Date().toISOString(),
+            moderation: {},
+            model: null,
+            token_count: null,
+            content_type: 'text' as const,
+            attachments: [],
+          },
+        ];
+      });
+      scrollToBottom();
+    };
+
+    const finalizeSegments = (segments: string[], contentType: DonePayload['contentType']) => {
+      if (!streamState.assistantId) return;
+
+      const streamId = streamState.assistantId;
+      setMessages((prev) => {
+        const withoutStream = prev.filter((message) => message.id !== streamId);
+        const createdAt = new Date().toISOString();
+
+        if (segments.length <= 1) {
+          return [
+            ...withoutStream,
+            {
+              id: streamId,
+              role: 'assistant' as const,
+              content: segments[0] ?? '',
+              conversation_id: 'temp',
+              user_id: 'temp',
+              created_at: createdAt,
+              moderation: {},
+              model: null,
+              token_count: null,
+              content_type: liveAttachments.length > 0 ? contentType : 'text',
+              attachments: liveAttachments,
+            },
+          ];
+        }
+
+        return [
+          ...withoutStream,
+          ...segments.map((segment, index) => ({
+            id: `${streamId}-${index}`,
+            role: 'assistant' as const,
+            content: segment,
+            conversation_id: 'temp',
+            user_id: 'temp',
+            created_at: createdAt,
+            moderation: {},
+            model: null,
+            token_count: null,
+            content_type: index === 0 && liveAttachments.length > 0 ? contentType : 'text',
+            attachments: index === 0 ? liveAttachments : [],
+          })),
+        ];
+      });
+      scrollToBottom();
+    };
 
     while (!streamDone) {
       const next = await reader.read();
@@ -189,7 +281,54 @@ export const VirtualGirlfriendChatClient = ({
         buffer = lines.pop() ?? '';
         for (const line of lines) {
           if (!line.trim()) continue;
-          const event = JSON.parse(line) as { type: 'done'; payload: DonePayload };
+          const event = JSON.parse(line) as StreamEvent;
+
+          if (event.type === 'token') {
+            ensureStreamingAssistant(event.payload.token);
+          }
+
+          if (event.type === 'text_done') {
+            const segments =
+              event.payload.segments && event.payload.segments.length > 0
+                ? event.payload.segments
+                : [event.payload.content];
+            finalizeSegments(segments, event.payload.contentType);
+          }
+
+          if (event.type === 'image') {
+            liveAttachments = [event.payload.attachment];
+            const activeStreamId = streamState.assistantId;
+            if (activeStreamId) {
+              setMessages((prev) =>
+                prev.map((message) => {
+                  if (message.id === activeStreamId) {
+                    return {
+                      ...message,
+                      content_type: 'mixed',
+                      attachments: liveAttachments,
+                    };
+                  }
+                  if (message.id.startsWith(`${activeStreamId}-`)) {
+                    const suffix = message.id.slice(activeStreamId.length + 1);
+                    return suffix === '0'
+                      ? { ...message, content_type: 'mixed', attachments: liveAttachments }
+                      : message;
+                  }
+                  return message;
+                }),
+              );
+              scrollToBottom();
+            }
+          }
+
+          if (event.type === 'error') {
+            setMessages((prev) => prev.filter((message) => message.id !== optimisticUser.id));
+            setError(event.payload.error);
+            setPending(false);
+            setIsStreaming(false);
+            return;
+          }
+
           if (event.type === 'done') payload = event.payload;
         }
       }
@@ -211,35 +350,7 @@ export const VirtualGirlfriendChatClient = ({
       setError('Could not attach a photo this turn — she\'ll still reply in chat. Try again in a moment.');
     }
 
-    const segments = payload.segments && payload.segments.length > 0 ? payload.segments : [payload.content];
     const attachments = payload.attachments ?? [];
-
-    // Reveal each message as its own bubble with a human-like typing pause.
-    for (let i = 0; i < segments.length; i += 1) {
-      const segment = segments[i];
-      const delay = Math.min(1700, Math.max(450, 400 + segment.length * 16));
-      await new Promise((resolve) => setTimeout(resolve, delay));
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `temp-assistant-${Date.now()}-${i}`,
-          role: 'assistant',
-          content: segment,
-          conversation_id: 'temp',
-          user_id: 'temp',
-          created_at: new Date().toISOString(),
-          moderation: {},
-          model: null,
-          token_count: null,
-          content_type: i === 0 && attachments.length > 0 ? payload.contentType : 'text',
-          attachments: i === 0 ? attachments : [],
-        },
-      ]);
-      scrollToBottom();
-    }
-
-    // Surface any new chat photo in the sidebar Photos grid (already seen → unlocked).
     const imageAttachment = attachments.find((attachment) => attachment.kind === 'image');
     if (imageAttachment?.imageId && imageAttachment.imageUrl) {
       const imageId = imageAttachment.imageId;
@@ -935,7 +1046,7 @@ export const VirtualGirlfriendChatClient = ({
             );
           })}
 
-          {isStreaming ? (
+          {isStreaming && !messages.some((message) => message.id.startsWith('temp-assistant-')) ? (
             <div className={styles.messageCompanion}>
               <div className={styles.companionAvatar}>
                 {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} unoptimized /> : <span>{companionName.charAt(0)}</span>}

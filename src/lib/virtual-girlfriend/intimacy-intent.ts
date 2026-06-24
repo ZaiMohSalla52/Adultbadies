@@ -45,7 +45,7 @@ const defaultIntent = (userMessage: string): ChatTurnIntent => ({
   companionGuidance: 'Respond naturally to what the user said. Match their tone and stay in character.',
 });
 
-const sanitizeIntent = (raw: Partial<ChatTurnIntent>, userMessage: string): ChatTurnIntent => {
+export const sanitizeIntent = (raw: Partial<ChatTurnIntent>, userMessage: string): ChatTurnIntent => {
   const fallback = defaultIntent(userMessage);
   const imageCategory = IMAGE_CATEGORIES.includes(raw.imageCategory as VirtualGirlfriendImageCategory)
     ? (raw.imageCategory as VirtualGirlfriendImageCategory)

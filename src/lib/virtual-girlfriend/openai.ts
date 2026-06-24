@@ -29,6 +29,86 @@ export const callOpenAIResponses = async (body: Record<string, unknown>) => {
   return (await response.json()) as Record<string, unknown>;
 };
 
+export type OpenAIStreamHandlers = {
+  onTextDelta?: (delta: string) => void;
+  onCompleted?: (payload: Record<string, unknown>) => void;
+};
+
+export const streamOpenAIResponses = async (
+  body: Record<string, unknown>,
+  handlers: OpenAIStreamHandlers = {},
+): Promise<Record<string, unknown>> => {
+  const apiKey = assertApiKey();
+
+  const response = await fetch(`${OPENAI_URL}/responses`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ ...body, stream: true }),
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`OpenAI Responses API stream failed (${response.status}): ${await response.text()}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let completedPayload: Record<string, unknown> | null = null;
+
+  const handleEvent = (event: Record<string, unknown>) => {
+    const type = typeof event.type === 'string' ? event.type : '';
+
+    if (type === 'response.output_text.delta') {
+      const delta = typeof event.delta === 'string' ? event.delta : '';
+      if (delta) handlers.onTextDelta?.(delta);
+      return;
+    }
+
+    if (type === 'response.completed') {
+      const responsePayload = event.response;
+      if (responsePayload && typeof responsePayload === 'object') {
+        completedPayload = responsePayload as Record<string, unknown>;
+        handlers.onCompleted?.(completedPayload);
+      }
+    }
+  };
+
+  while (true) {
+    const next = await reader.read();
+    if (next.done) break;
+
+    buffer += decoder.decode(next.value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith(':')) continue;
+
+      if (trimmed === 'data: [DONE]') continue;
+
+      const dataPrefix = 'data: ';
+      if (!trimmed.startsWith(dataPrefix)) continue;
+
+      try {
+        const event = JSON.parse(trimmed.slice(dataPrefix.length)) as Record<string, unknown>;
+        handleEvent(event);
+      } catch {
+        // Ignore malformed SSE chunks.
+      }
+    }
+  }
+
+  if (!completedPayload) {
+    throw new Error('OpenAI Responses API stream ended without a completed response.');
+  }
+
+  return completedPayload;
+};
+
 const collectOutputText = (node: unknown): string => {
   if (!node) return '';
 

@@ -99,10 +99,13 @@ export const decideIntimateImageMoment = async (input: {
   userMessage: string;
   history: VirtualGirlfriendMessageRecord[];
   isPremium: boolean;
+  intent?: ChatTurnIntent;
 }): Promise<IntimateImageMoment> => {
-  const intent = looksLikePhotoRequest(input.userMessage)
-    ? buildHeuristicPhotoIntent(input.userMessage)
-    : await classifyChatTurnIntent(input);
+  const intent =
+    input.intent
+    ?? (looksLikePhotoRequest(input.userMessage)
+      ? buildHeuristicPhotoIntent(input.userMessage)
+      : await classifyChatTurnIntent(input));
   return resolveImageMomentFromIntent({
     intent,
     history: input.history,
