@@ -88,4 +88,16 @@ describe('distinctness — name-only vs character duplicate', () => {
 
     expect(conflict).toBe(null);
   });
+
+  it('ignores a non-ready companion (timeout orphan) so retries are not blocked', () => {
+    const sameTraits = profile({ name: 'Sofia Blake' });
+    const orphan = { ...companion(sameTraits), generation_status: 'generating' as const };
+
+    const conflict = findDistinctnessConflict({
+      candidateProfile: profile({ name: 'Sofia Blake' }),
+      existingCompanions: [orphan],
+    });
+
+    expect(conflict).toBe(null);
+  });
 });

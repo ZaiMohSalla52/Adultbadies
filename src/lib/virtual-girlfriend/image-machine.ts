@@ -588,37 +588,38 @@ const generateGalleryFromCanonical = async (input: {
     deliveryUrl: input.canonicalImage.delivery_url,
     fallbackMimeType: input.canonicalImage.origin_mime_type,
   });
-  const galleryImages: VirtualGirlfriendCompanionImageRecord[] = [];
 
-  for (const capture of captures) {
-    const galleryPromptInput = toGalleryPromptInput(input.companion, input.visualProfile.identity_pack, capture);
-    const prompt = buildGalleryPrompt(galleryPromptInput, capture.variantIndex);
-    const generated = await runProviderGeneration({
-      scope: input.scope,
-      mode: 'gallery_from_reference',
-      prompt,
-      referenceImageBytes: canonicalRef.bytes,
-      referenceMimeType: canonicalRef.mimeType,
-    });
-
-    const galleryImage = await buildImageRecord({
-      token: input.token,
-      userId: input.userId,
-      companionId: input.companion.id,
-      visualProfileId: input.visualProfile.id,
-      promptHash: sha(`${input.visualProfile.prompt_hash}:gallery:${capture.variantIndex}:${prompt}`),
-      capture,
-      generated,
-      identityPack: input.visualProfile.identity_pack,
-      referenceImageId: input.canonicalImage.id,
-      promptText: prompt,
-      promptVersion: galleryPromptVersion,
-      surfaceType: 'gallery',
-      scope: input.scope,
-    });
-
-    galleryImages.push(galleryImage);
-  }
+  // Generate gallery variants concurrently. Serial generation is the dominant
+  // cost in setup and pushes the request past the serverless function limit.
+  const galleryImages = await Promise.all(
+    captures.map((capture) => {
+      const galleryPromptInput = toGalleryPromptInput(input.companion, input.visualProfile.identity_pack, capture);
+      const prompt = buildGalleryPrompt(galleryPromptInput, capture.variantIndex);
+      return runProviderGeneration({
+        scope: input.scope,
+        mode: 'gallery_from_reference',
+        prompt,
+        referenceImageBytes: canonicalRef.bytes,
+        referenceMimeType: canonicalRef.mimeType,
+      }).then((generated) =>
+        buildImageRecord({
+          token: input.token,
+          userId: input.userId,
+          companionId: input.companion.id,
+          visualProfileId: input.visualProfile.id,
+          promptHash: sha(`${input.visualProfile.prompt_hash}:gallery:${capture.variantIndex}:${prompt}`),
+          capture,
+          generated,
+          identityPack: input.visualProfile.identity_pack,
+          referenceImageId: input.canonicalImage.id,
+          promptText: prompt,
+          promptVersion: galleryPromptVersion,
+          surfaceType: 'gallery',
+          scope: input.scope,
+        }),
+      );
+    }),
+  );
 
   return galleryImages;
 };

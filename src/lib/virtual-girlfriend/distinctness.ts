@@ -266,6 +266,10 @@ export const findDistinctnessConflict = (input: {
 
   for (const companion of input.existingCompanions) {
     if (input.excludeCompanionId && companion.id === input.excludeCompanionId) continue;
+    // Only dedupe against fully generated companions. Companions still
+    // generating or failed (e.g. an orphan left by a timed-out setup) must not
+    // block a legitimate retry.
+    if (companion.generation_status && companion.generation_status !== 'ready') continue;
 
     const existing = fromCompanion(companion);
     const nameSimilarity = nameSimilarityScore(candidate, existing);
