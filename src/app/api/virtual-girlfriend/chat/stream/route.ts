@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
+import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
   getActiveVirtualGirlfriend,
@@ -27,6 +28,9 @@ const encoder = new TextEncoder();
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
+
+  const ageGate = await requireAgeVerifiedApi(auth);
+  if (ageGate) return ageGate;
 
   const body = (await request.json()) as { message?: string; companionId?: string };
   const message = String(body.message ?? '').trim();

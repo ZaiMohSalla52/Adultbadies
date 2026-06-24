@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
+import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import {
   getOrCreateVirtualGirlfriendConversation,
   listVirtualGirlfriends,
@@ -115,6 +116,9 @@ Rules:
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
+
+  const ageGate = await requireAgeVerifiedApi(auth);
+  if (ageGate) return ageGate;
 
   console.info('[virtual-girlfriend][setup] request received', { userId: auth.user.id });
 
