@@ -576,17 +576,15 @@ const pickReusableImage = (category: VirtualGirlfriendImageCategory, images: Vir
     return { image: null, reason: 'no_reusable_image' as const };
   }
 
-  const newestFirst = [...eligible].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  const exactCategory = newestFirst.find((image) => image.lineage_metadata?.chatCategory === category);
-  if (exactCategory) return { image: exactCategory, reason: null };
+  // Prefer varied gallery shots over always returning the canonical portrait,
+  // and pick randomly so repeated selfie requests don't return the same photo.
+  const gallery = eligible.filter((image) => image.image_kind === 'gallery');
+  const pool = gallery.length > 0 ? gallery : eligible;
+  const categoryMatches = pool.filter((image) => image.lineage_metadata?.chatCategory === category);
+  const choices = categoryMatches.length > 0 ? categoryMatches : pool;
+  const image = choices[Math.floor(Math.random() * choices.length)] ?? null;
 
-  const closestCategory = newestFirst.find((image) => {
-    const chatCategory = image.lineage_metadata?.chatCategory;
-    return chatCategory && (chatCategory === category || (category === 'selfie' && image.image_kind === 'canonical'));
-  });
-
-  if (closestCategory) return { image: closestCategory, reason: null };
-  return { image: newestFirst[0] ?? null, reason: null };
+  return { image, reason: null };
 };
 
 const resolveCanonicalReference = (

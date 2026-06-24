@@ -31,6 +31,28 @@ export const maxDuration = 60;
 
 const encoder = new TextEncoder();
 
+// Split a reply into 1-3 short "texting" bubbles. The model is prompted to
+// separate messages with a blank line; fall back to single newlines, then to a
+// sentence split for an over-long single block.
+const splitIntoMessages = (text: string): string[] => {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+
+  let parts = trimmed.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 1) {
+    parts = trimmed.split(/\n+/).map((part) => part.trim()).filter(Boolean);
+  }
+  if (parts.length === 1 && parts[0].length > 220) {
+    const sentences = parts[0].match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? parts;
+    if (sentences.length > 1) {
+      const mid = Math.ceil(sentences.length / 2);
+      parts = [sentences.slice(0, mid).join(' '), sentences.slice(mid).join(' ')];
+    }
+  }
+
+  return parts.slice(0, 3);
+};
+
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
@@ -154,11 +176,14 @@ export async function POST(request: NextRequest) {
     moderation: reply.moderation,
   });
 
+  const segments = splitIntoMessages(reply.assistantText);
+  const combinedContent = segments.join('\n\n') || reply.assistantText;
+
   await insertVirtualGirlfriendMessage(auth.accessToken, {
     conversationId: conversation.id,
     userId: auth.user.id,
     role: 'assistant',
-    content: reply.assistantText,
+    content: combinedContent,
     model: reply.model,
     moderation: {},
     contentType: imageAttachment ? 'mixed' : 'text',
@@ -203,19 +228,15 @@ export async function POST(request: NextRequest) {
     latestUserMessage: message,
   });
 
-  const chunks = reply.assistantText.split(/(\s+)/).filter(Boolean);
-
   const stream = new ReadableStream({
     start(controller) {
-      for (const chunk of chunks) {
-        controller.enqueue(encoder.encode(JSON.stringify({ type: 'chunk', chunk }) + '\n'));
-      }
       controller.enqueue(
         encoder.encode(
           JSON.stringify({
             type: 'done',
             payload: {
-              content: reply.assistantText,
+              content: combinedContent,
+              segments,
               contentType: imageAttachment ? 'mixed' : 'text',
               attachments: imageAttachment ? [imageAttachment] : [],
               generationMode: imageAttachment?.source ?? null,

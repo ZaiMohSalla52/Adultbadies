@@ -73,7 +73,8 @@ export const VirtualGirlfriendChatClient = ({
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [streamStarted, setStreamStarted] = useState(false);
+  const [sidebarImages, setSidebarImages] = useState(galleryImages);
+  const [sidebarUnlocked, setSidebarUnlocked] = useState(unlockedImageIds);
   const [stylePending, setStylePending] = useState<VirtualGirlfriendStyleControlPreset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [voicePending, setVoicePending] = useState(false);
@@ -131,7 +132,6 @@ export const VirtualGirlfriendChatClient = ({
 
     setPending(true);
     setIsStreaming(true);
-    setStreamStarted(false);
     setError(null);
     setDraft('');
 
@@ -165,94 +165,88 @@ export const VirtualGirlfriendChatClient = ({
       return;
     }
 
-    const assistantTempId = `temp-assistant-${Date.now()}`;
-    const imageRequested = /\b(selfie|photo|pic|picture|look like)\b/i.test(text);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: assistantTempId,
-        role: 'assistant',
-        content: imageRequested ? 'Picking the perfect photo for you…' : '',
-        conversation_id: 'temp',
-        user_id: 'temp',
-        created_at: new Date().toISOString(),
-        moderation: {},
-        model: null,
-        token_count: null,
-        content_type: 'text',
-        attachments: [],
-      },
-    ]);
+    type DonePayload = {
+      content: string;
+      segments?: string[];
+      contentType: 'text' | 'image' | 'mixed';
+      attachments: VirtualGirlfriendMessageAttachment[];
+      imageGeneration?: { requested: boolean; outcome: VirtualGirlfriendChatImageOutcome; reason: string | null };
+    };
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let done = false;
     let buffer = '';
+    let payload: DonePayload | null = null;
+    let streamDone = false;
 
-    while (!done) {
+    while (!streamDone) {
       const next = await reader.read();
-      done = next.done;
+      streamDone = next.done;
       if (next.value) {
         buffer += decoder.decode(next.value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
-
         for (const line of lines) {
           if (!line.trim()) continue;
-          const event = JSON.parse(line) as
-            | { type: 'chunk'; chunk: string }
-            | {
-                type: 'done';
-                payload: {
-                  content: string;
-                  contentType: 'text' | 'image' | 'mixed';
-                  attachments: VirtualGirlfriendMessageAttachment[];
-                  imageGeneration?: { requested: boolean; outcome: VirtualGirlfriendChatImageOutcome; reason: string | null };
-                };
-              };
-
-          if (event.type === 'chunk') {
-            setStreamStarted(true);
-            setMessages((prev) =>
-              prev.map((message) =>
-                message.id === assistantTempId
-                  ? {
-                      ...message,
-                      content: `${message.content === 'Picking the perfect photo for you…' ? '' : message.content}${event.chunk}`,
-                    }
-                  : message,
-              ),
-            );
-          }
-
-          if (event.type === 'done') {
-            if (
-              event.payload.imageGeneration?.requested
-              && (event.payload.imageGeneration.outcome === 'failed_generation' || event.payload.imageGeneration.outcome === 'skipped_prerequisites')
-            ) {
-              setError('Photo request received, but we could not attach an image this turn. Try again in a moment.');
-            }
-
-            setMessages((prev) =>
-              prev.map((message) =>
-                message.id === assistantTempId
-                  ? {
-                      ...message,
-                      content: event.payload.content,
-                      content_type: event.payload.contentType,
-                      attachments: event.payload.attachments,
-                    }
-                  : message,
-              ),
-            );
-          }
+          const event = JSON.parse(line) as { type: 'done'; payload: DonePayload };
+          if (event.type === 'done') payload = event.payload;
         }
       }
     }
 
+    if (!payload) {
+      setError('Unable to receive a reply right now.');
+      setPending(false);
+      setIsStreaming(false);
+      return;
+    }
+
+    if (
+      payload.imageGeneration?.requested
+      && (payload.imageGeneration.outcome === 'failed_generation' || payload.imageGeneration.outcome === 'skipped_prerequisites')
+    ) {
+      setError('Photo request received, but we could not attach an image this turn. Try again in a moment.');
+    }
+
+    const segments = payload.segments && payload.segments.length > 0 ? payload.segments : [payload.content];
+    const attachments = payload.attachments ?? [];
+
+    // Reveal each message as its own bubble with a human-like typing pause.
+    for (let i = 0; i < segments.length; i += 1) {
+      const segment = segments[i];
+      const delay = Math.min(1700, Math.max(450, 400 + segment.length * 16));
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `temp-assistant-${Date.now()}-${i}`,
+          role: 'assistant',
+          content: segment,
+          conversation_id: 'temp',
+          user_id: 'temp',
+          created_at: new Date().toISOString(),
+          moderation: {},
+          model: null,
+          token_count: null,
+          content_type: i === 0 && attachments.length > 0 ? payload.contentType : 'text',
+          attachments: i === 0 ? attachments : [],
+        },
+      ]);
+      scrollToBottom();
+    }
+
+    // Surface any new chat photo in the sidebar Photos grid (already seen → unlocked).
+    const imageAttachment = attachments.find((attachment) => attachment.kind === 'image');
+    if (imageAttachment?.imageId && imageAttachment.imageUrl) {
+      const imageId = imageAttachment.imageId;
+      const imageUrl = imageAttachment.imageUrl;
+      setSidebarImages((prev) => (prev.some((entry) => entry.id === imageId) ? prev : [{ id: imageId, url: imageUrl }, ...prev]));
+      setSidebarUnlocked((prev) => (prev.includes(imageId) ? prev : [imageId, ...prev]));
+    }
+
     setPending(false);
     setIsStreaming(false);
-    setStreamStarted(false);
     scrollToBottom();
   };
 
@@ -893,41 +887,52 @@ export const VirtualGirlfriendChatClient = ({
               );
             }
 
+            const bubbles = (message.content || '').split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+            const renderBubbles = bubbles.length > 0 ? bubbles : [''];
+
             return (
               <div key={message.id} className={styles.messageCompanion}>
                 <div className={styles.companionAvatar}>
                   {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} unoptimized /> : <span>{companionName.charAt(0)}</span>}
                 </div>
-                <div className={styles.bubbleCompanion}>
-                  {message.attachments?.map((attachment) =>
-                    attachment.kind === 'image' ? (
-                      <div key={attachment.imageId} className={styles.chatImage}>
-                        <Image
-                          src={attachment.imageUrl}
-                          alt="Generated"
-                          width={attachment.width ?? 1024}
-                          height={attachment.height ?? 1024}
-                          unoptimized
-                        />
-                      </div>
-                    ) : null,
-                  )}
-                  <p>{message.content}</p>
-                  <div className={styles.messageActions}>
-                    <span className={styles.timestamp}>{formatTime(message.created_at)}</span>
-                    <button type="button" className={styles.likeBtn} aria-label="Like message">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
-                    </button>
-                    <button type="button" className={styles.dislikeBtn} aria-label="Dislike message">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
-                    </button>
-                  </div>
+                <div className={styles.bubbleGroup}>
+                  {renderBubbles.map((part, idx) => (
+                    <div key={idx} className={styles.bubbleCompanion}>
+                      {idx === 0
+                        ? message.attachments?.map((attachment) =>
+                            attachment.kind === 'image' ? (
+                              <div key={attachment.imageId} className={styles.chatImage}>
+                                <Image
+                                  src={attachment.imageUrl}
+                                  alt="Generated"
+                                  width={attachment.width ?? 1024}
+                                  height={attachment.height ?? 1024}
+                                  unoptimized
+                                />
+                              </div>
+                            ) : null,
+                          )
+                        : null}
+                      {part ? <p>{part}</p> : null}
+                      {idx === renderBubbles.length - 1 ? (
+                        <div className={styles.messageActions}>
+                          <span className={styles.timestamp}>{formatTime(message.created_at)}</span>
+                          <button type="button" className={styles.likeBtn} aria-label="Like message">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                          </button>
+                          <button type="button" className={styles.dislikeBtn} aria-label="Dislike message">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
               </div>
             );
           })}
 
-          {isStreaming && !streamStarted ? (
+          {isStreaming ? (
             <div className={styles.messageCompanion}>
               <div className={styles.companionAvatar}>
                 {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} unoptimized /> : <span>{companionName.charAt(0)}</span>}
@@ -1025,12 +1030,12 @@ export const VirtualGirlfriendChatClient = ({
         </div>
 
         {infoTab === 'photos' ? (
-          galleryImages.length > 0 ? (
+          sidebarImages.length > 0 ? (
             <div className={styles.photosWrap}>
               <UnlockableGallery
                 companionName={companionName}
-                images={galleryImages}
-                initialUnlockedIds={unlockedImageIds}
+                images={sidebarImages}
+                initialUnlockedIds={sidebarUnlocked}
                 balance={pointBalance}
                 cost={unblurCost}
                 isPremium={isPremium}

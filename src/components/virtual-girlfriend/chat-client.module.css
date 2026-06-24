@@ -719,3 +719,11 @@
 .photosWrap {
   margin-top: 4px;
 }
+
+.bubbleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  min-width: 0;
+}

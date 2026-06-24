@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import styles from './profile-view.module.css';
 
 export type UnlockableImage = {
@@ -27,6 +27,22 @@ export const UnlockableGallery = ({
 }) => {
   const [unlocked, setUnlocked] = useState<Set<string>>(() => new Set(initialUnlockedIds));
   const [balance, setBalance] = useState(initialBalance);
+
+  // Merge in any newly-unlocked ids (e.g. a photo just sent in chat) without
+  // dropping locally-unlocked ones.
+  useEffect(() => {
+    setUnlocked((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const id of initialUnlockedIds) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [initialUnlockedIds]);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
