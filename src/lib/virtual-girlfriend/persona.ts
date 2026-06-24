@@ -1,4 +1,5 @@
-import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
+import { VG_TOGETHER_FAST_MODEL } from '@/lib/virtual-girlfriend/llm-models';
+import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend/together';
 import type { PersonaProfile, VirtualGirlfriendSetupPayload, VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
 
 const hasSemanticValue = (value: string | null | undefined) => Boolean(value && value.trim());
@@ -175,8 +176,8 @@ Requirements:
 - Return JSON only.`;
 
   try {
-    const response = await callOpenAIResponses({
-      model: 'gpt-5-mini',
+    const response = await callTogetherChat({
+      model: VG_TOGETHER_FAST_MODEL,
       input: [{ role: 'user', content: prompt }],
       reasoning: { effort: 'minimal' },
     });

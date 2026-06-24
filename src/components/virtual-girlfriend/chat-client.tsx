@@ -595,9 +595,11 @@ export const VirtualGirlfriendChatClient = ({
           mic.stream.getTracks().forEach((track) => track.stop());
           return;
         }
-        const body = (await response.json().catch(() => ({}))) as { error?: string; upgradePath?: string };
+        const body = (await response.json().catch(() => ({}))) as { error?: string; upgradePath?: string; code?: string };
         if (response.status === 402) {
           setError(body.error ?? 'Voice is available on Premium.');
+        } else if (response.status === 503 && body.code === 'VG_VOICE_PROVIDER_UNAVAILABLE') {
+          setError(body.error ?? 'Voice chat is temporarily unavailable while we migrate to Together AI.');
         } else if (response.status === 409) {
           setError(body.error ?? 'Voice unlocks once this companion finishes generation.');
         } else if (response.status === 400) {

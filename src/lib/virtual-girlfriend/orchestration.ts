@@ -1,5 +1,6 @@
 import { isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
-import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
+import { VG_TOGETHER_CHAT_MODEL } from '@/lib/virtual-girlfriend/llm-models';
+import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend/together';
 import { sanitizeAssistantReply } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { moderateVirtualGirlfriendContent } from '@/lib/virtual-girlfriend/safety';
 import { resolveVirtualGirlfriendProfile } from '@/lib/virtual-girlfriend/profile-resolver';
@@ -165,8 +166,8 @@ export const generateVirtualGirlfriendReply = async (input: {
 
   const contextHistory = input.history.slice(-14);
 
-  const response = await callOpenAIResponses({
-    model: 'gpt-5-mini',
+  const response = await callTogetherChat({
+    model: VG_TOGETHER_CHAT_MODEL,
     input: [
       {
         role: 'system',
@@ -208,7 +209,7 @@ export const generateVirtualGirlfriendReply = async (input: {
   return {
     ok: true as const,
     assistantText,
-    model: 'gpt-5-mini',
+    model: VG_TOGETHER_CHAT_MODEL,
     moderation: moderation.flags,
   };
 };
@@ -235,8 +236,8 @@ export const generateVirtualGirlfriendProactiveMessage = async (input: {
 }) => {
   const contextHistory = input.history.slice(-12);
 
-  const response = await callOpenAIResponses({
-    model: 'gpt-5-mini',
+  const response = await callTogetherChat({
+    model: VG_TOGETHER_CHAT_MODEL,
     input: [
       {
         role: 'system',
@@ -272,6 +273,6 @@ export const generateVirtualGirlfriendProactiveMessage = async (input: {
   return {
     ok: true as const,
     assistantText,
-    model: 'gpt-5-mini',
+    model: VG_TOGETHER_CHAT_MODEL,
   };
 };

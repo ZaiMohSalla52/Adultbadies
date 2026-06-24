@@ -7,7 +7,7 @@ import {
   getVirtualGirlfriendCompanionById,
   retrieveRelevantVirtualGirlfriendMemories,
 } from '@/lib/virtual-girlfriend/data';
-import { createVirtualGirlfriendRealtimeSession } from '@/lib/virtual-girlfriend/voice';
+import { VirtualGirlfriendVoiceUnavailableError } from '@/lib/virtual-girlfriend/voice';
 
 const json = (payload: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(payload), {
@@ -72,31 +72,21 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    const session = await createVirtualGirlfriendRealtimeSession({
-      companion,
-      memories,
-      styleProfile,
-    });
+    void memories;
+    void styleProfile;
 
-    if (!session.clientSecret) {
-      return json({ error: 'Voice session could not be initialized at the moment. Please try again shortly.' }, 502);
+    throw new VirtualGirlfriendVoiceUnavailableError();
+  } catch (error) {
+    if (error instanceof VirtualGirlfriendVoiceUnavailableError) {
+      return json(
+        {
+          error: error.message,
+          code: error.code,
+        },
+        503,
+      );
     }
 
-    return json({
-      session: {
-        id: session.sessionId,
-        clientSecret: session.clientSecret,
-        expiresAt: session.expiresAt,
-        model: session.model,
-        companion: {
-          id: companion.id,
-          name: companion.name,
-        },
-        memoryCount: memories.length,
-        styleAdaptationStrength: styleProfile.adaptation_strength,
-      },
-    });
-  } catch (error) {
     console.error('[virtual-girlfriend] voice session init failed', error);
     return json({ error: 'Voice service is temporarily unavailable. Please try again shortly.' }, 502);
   }

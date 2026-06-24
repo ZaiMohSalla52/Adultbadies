@@ -13,7 +13,8 @@ import {
   generateAndPersistVirtualGirlfriendImagePack,
   VirtualGirlfriendImagePackError,
 } from '@/lib/virtual-girlfriend/visual-identity';
-import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
+import { VG_TOGETHER_FAST_MODEL } from '@/lib/virtual-girlfriend/llm-models';
+import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend/together';
 import { generateVirtualGirlfriendPersona, resolvePersonaSemanticInput } from '@/lib/virtual-girlfriend/persona';
 import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
 import type {
@@ -106,8 +107,8 @@ Rules:
 - Output JSON only.`;
 
   try {
-    const response = await callOpenAIResponses({
-      model: 'gpt-4o-mini',
+    const response = await callTogetherChat({
+      model: VG_TOGETHER_FAST_MODEL,
       input: [{ role: 'user', content: prompt }],
     });
 

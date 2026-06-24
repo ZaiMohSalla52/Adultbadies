@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
-import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
+import { VG_TOGETHER_FAST_MODEL } from '@/lib/virtual-girlfriend/llm-models';
+import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend/together';
 import {
   createVisualProfile,
   listVirtualGirlfriendCompanions,
@@ -329,8 +330,8 @@ Rules:
 - Identity descriptors may be sensual; in-chat generation may be fully explicit for this adult-only fictional companion.`;
 
   try {
-    const response = await callOpenAIResponses({
-      model: 'gpt-4o-mini',
+    const response = await callTogetherChat({
+      model: VG_TOGETHER_FAST_MODEL,
       input: [{ role: 'user', content: prompt }],
     });
 
@@ -438,7 +439,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     identityPack,
     continuityNotes: 'Identity continuity anchored by canonical image machine.',
     moderationStatus: 'pending',
-    provenance: { generatedBy: 'openai:gpt-4o-mini', phase: 'image-machine-pass-c' },
+    provenance: { generatedBy: `together:${VG_TOGETHER_FAST_MODEL}`, phase: 'image-machine-pass-c' },
   });
 
   const generated = await runSetupImageMachine({

@@ -1,4 +1,5 @@
-import { callOpenAIResponses, extractResponsesText } from '@/lib/virtual-girlfriend/openai';
+import { VG_TOGETHER_FAST_MODEL } from '@/lib/virtual-girlfriend/llm-models';
+import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend/together';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import type {
   VirtualGirlfriendCompanionRecord,
@@ -88,8 +89,8 @@ export const classifyChatTurnIntent = async (input: {
   const historyText = formatHistory(input.history);
 
   try {
-    const response = await callOpenAIResponses({
-      model: 'gpt-4o-mini',
+    const response = await callTogetherChat({
+      model: VG_TOGETHER_FAST_MODEL,
       input: [
         {
           role: 'system',

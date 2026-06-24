@@ -13,8 +13,7 @@ export const env = {
   NEXT_PUBLIC_SUPABASE_ANON_KEY: getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'development-anon-key'),
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   ADMIN_REVIEWER_EMAILS: process.env.ADMIN_REVIEWER_EMAILS,
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
+  TOGETHER_API_KEY: process.env.TOGETHER_API_KEY,
   // Image generation: Flux via fal.ai (sole provider).
   FLUX_API_KEY: process.env.FLUX_API_KEY,
   FLUX_BASE_URL: process.env.FLUX_BASE_URL,
