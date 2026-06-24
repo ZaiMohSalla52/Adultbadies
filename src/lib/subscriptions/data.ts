@@ -18,9 +18,35 @@ export const getLatestSubscription = async (token: string, userId: string): Prom
   return rows[0] ?? null;
 };
 
+// Test/dev premium override: emails listed in PREMIUM_OVERRIDE_EMAILS
+// (comma-separated) resolve as premium without a real subscription. The email
+// is read from the Supabase access-token JWT so the override works for every
+// getUserEntitlements caller without threading the email through each one.
+const decodeJwtEmail = (token: string): string | null => {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    const parsed = JSON.parse(json) as { email?: unknown };
+    return typeof parsed.email === 'string' ? parsed.email.trim().toLowerCase() : null;
+  } catch {
+    return null;
+  }
+};
+
+const isPremiumOverrideToken = (token: string): boolean => {
+  const allow = (process.env.PREMIUM_OVERRIDE_EMAILS ?? '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allow.length) return false;
+  const email = decodeJwtEmail(token);
+  return email ? allow.includes(email) : false;
+};
+
 export const getUserEntitlements = async (token: string, userId: string): Promise<Entitlements> => {
   const subscription = await getLatestSubscription(token, userId);
-  return buildEntitlements(subscription);
+  return buildEntitlements(subscription, { forcePremium: isPremiumOverrideToken(token) });
 };
 
 export const getSwipeCountForToday = async (token: string, userId: string): Promise<number> => {

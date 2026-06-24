@@ -29,8 +29,14 @@ const resolveMembershipState = (subscription: SubscriptionRecord | null): Member
   return 'premium_expired';
 };
 
-export const buildEntitlements = (subscription: SubscriptionRecord | null): Entitlements => {
-  const membershipState = resolveMembershipState(subscription);
+export const buildEntitlements = (
+  subscription: SubscriptionRecord | null,
+  options: { forcePremium?: boolean } = {},
+): Entitlements => {
+  const baseState = resolveMembershipState(subscription);
+  // forcePremium is a test/dev override (PREMIUM_OVERRIDE_EMAILS) so an account
+  // without a real subscription resolves as premium for QA.
+  const membershipState: MembershipState = options.forcePremium ? 'premium_active' : baseState;
   const hasPremium = membershipState === 'premium_active' || membershipState === 'premium_canceled';
 
   return {
