@@ -18,6 +18,7 @@ import {
 } from '@/lib/virtual-girlfriend/data';
 import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
+import { grantCompanionImageAccess } from '@/lib/points/data';
 import { resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
 import { streamVirtualGirlfriendChatTurn } from '@/lib/virtual-girlfriend/chat-turn';
 import { resolveImageMomentFromIntent } from '@/lib/virtual-girlfriend/intimacy';
@@ -253,6 +254,14 @@ export async function POST(request: NextRequest) {
                 generationMode: imageAttachment.source ?? null,
               },
             });
+
+            if (imageAttachment.imageId && imageAttachment.source === 'fresh-generation') {
+              try {
+                await grantCompanionImageAccess(auth.accessToken, imageAttachment.imageId);
+              } catch (grantError) {
+                console.warn('[virtual-girlfriend] failed to auto-grant chat image gallery access', grantError);
+              }
+            }
           }
         }
 

@@ -87,7 +87,7 @@ export const UnlockableGallery = ({
         <span className={styles.pointsPill}>💜 {balance} points</span>
         {lockedCount > 0 ? (
           <span className={styles.lockedHint}>
-            {lockedCount} locked · {cost} pts each
+            {lockedCount} locked · {cost} pts each · unlock removes blur (same photo)
           </span>
         ) : null}
       </div>
@@ -102,7 +102,11 @@ export const UnlockableGallery = ({
                 alt={`${companionName} gallery photo`}
                 fill
                 className={styles.image}
-                style={isUnlocked ? undefined : { filter: 'blur(22px)', transform: 'scale(1.1)' }}
+                style={
+                  isUnlocked
+                    ? { filter: 'brightness(1.08) contrast(1.04)' }
+                    : { filter: 'blur(14px) brightness(0.72)', transform: 'scale(1.06)' }
+                }
               />
               {!isUnlocked ? (
                 <div className={styles.lockOverlay}>

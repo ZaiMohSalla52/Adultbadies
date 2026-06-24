@@ -5,7 +5,7 @@
  */
 
 import { isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
-import { getCompositionAnchor, PHOTO_REALISM_TAIL } from '../primitives/composition';
+import { EXPOSURE_LIGHTING_TAIL, getCompositionAnchor, PHOTO_REALISM_TAIL } from '../primitives/composition';
 import { buildChatNegativePrompt } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubject } from '../primitives/subject';
@@ -54,6 +54,7 @@ export const buildChatPrompt = (input: ChatPromptInput): string => {
       : null,
     getCompositionAnchor('chat'),
     PHOTO_REALISM_TAIL,
+    EXPOSURE_LIGHTING_TAIL,
     buildChatNegativePrompt({ allowAdultContent }),
     resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Avoid: ${negConstraints}.` : null,

@@ -44,6 +44,14 @@ export const HARD_NEGATIVES = {
     'no nudity',
     'no explicit content',
   ],
+  exposure: [
+    'no underexposure',
+    'no too dark',
+    'no muddy shadows hiding the face',
+    'no black crush',
+    'no silhouette subject',
+    'no unreadable low-light face',
+  ],
 } as const;
 
 export const buildNegatives = (categories: Array<keyof typeof HARD_NEGATIVES>): string =>
@@ -61,7 +69,7 @@ export function buildPreviewNegativePrompt(): string {
 
 export function buildChatNegativePrompt(input: { allowAdultContent?: boolean } = {}): string {
   const categories: Array<keyof typeof HARD_NEGATIVES> = input.allowAdultContent
-    ? ['composition']
-    : ['composition', 'content'];
+    ? ['composition', 'exposure']
+    : ['composition', 'content', 'exposure'];
   return buildNegatives(categories);
 }

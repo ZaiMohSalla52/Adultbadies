@@ -42,6 +42,14 @@ export const claimPointStipend = async (token: string): Promise<number> => {
   return row?.balance ?? 0;
 };
 
+/** Grant free gallery access (e.g. a photo already delivered in chat). */
+export const grantCompanionImageAccess = async (token: string, imageId: string): Promise<void> => {
+  await supabaseRest('rpc/grant_companion_image_access', token, {
+    method: 'POST',
+    body: { p_image_id: imageId },
+  });
+};
+
 /** Spend points to unlock a gallery image. The DB enforces cost and balance. */
 export const unlockCompanionImage = async (token: string, imageId: string): Promise<UnlockResult> => {
   const result = await supabaseRest<UnlockResult>('rpc/unlock_companion_image', token, {

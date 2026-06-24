@@ -4,7 +4,7 @@
  * Must remain identity-anchored.
  */
 
-import { getCompositionAnchor, PHOTO_REALISM_TAIL } from '../primitives/composition';
+import { EXPOSURE_LIGHTING_TAIL, getCompositionAnchor, PHOTO_REALISM_TAIL } from '../primitives/composition';
 import { buildAllNegatives } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubject } from '../primitives/subject';
@@ -48,6 +48,7 @@ export const buildGalleryPrompt = (input: GalleryPromptInput, variantIndex: numb
     `Gallery variant ${variantIndex + 1}. Vary scene, angle, and outfit while preserving identity.`,
     getCompositionAnchor('gallery'),
     PHOTO_REALISM_TAIL,
+    EXPOSURE_LIGHTING_TAIL,
     buildAllNegatives(),
     resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Also avoid: ${negConstraints}.` : null,

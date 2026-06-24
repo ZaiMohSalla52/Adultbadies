@@ -25,7 +25,10 @@ export const getCompositionAnchor = (surface: SurfaceType): string => COMPOSITIO
  * realism aesthetic can be tuned in one place.
  */
 export const PHOTO_REALISM_TAIL =
-  'Candid amateur photo, shot on a full-frame 35mm camera, natural available light, true-to-life skin tones with realistic texture and subtle natural imperfections, soft shallow depth of field, authentic unposed feel.';
+  'Candid amateur photo, shot on a full-frame 35mm camera, natural available light, well-exposed subject with clear visible facial features, balanced brightness, true-to-life skin tones with realistic texture and subtle natural imperfections, soft shallow depth of field, authentic unposed feel.';
+
+export const EXPOSURE_LIGHTING_TAIL =
+  'Face and body clearly lit — no underexposure, no muddy darkness, no silhouette.';
 
 export const PREVIEW_EXPRESSIONS: string[] = [
   'Direct confident gaze into camera, relaxed natural presence.',
