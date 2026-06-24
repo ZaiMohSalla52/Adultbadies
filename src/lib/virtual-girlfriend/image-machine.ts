@@ -51,7 +51,7 @@ const STYLE_VERSION = 'vg-image-v3';
 const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
 const MACHINE_TIMEOUT_MS = {
-  providerRequest: 28_000,
+  providerRequest: 60_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;

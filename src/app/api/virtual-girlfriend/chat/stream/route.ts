@@ -171,9 +171,7 @@ export async function POST(request: NextRequest) {
           });
       };
 
-      if (heuristicIntent) {
-        startImageIfNeeded(imageMoment);
-      }
+      startImageIfNeeded(imageMoment);
 
       try {
         const turn = await streamVirtualGirlfriendChatTurn({
@@ -226,6 +224,15 @@ export async function POST(request: NextRequest) {
         let imageOutcomeReason: string | null = imageMoment.teaseOnly ? 'tease_before_photo' : null;
 
         const resolvedImage = imageTask ? await imageTask : null;
+        if (
+          !resolvedImage
+          && imageMoment.shouldSendImage
+          && !imageMoment.teaseOnly
+          && photoRequested
+        ) {
+          imageOutcome = 'skipped_prerequisites';
+          imageOutcomeReason = imageStarted ? 'image_task_missing' : 'image_pipeline_not_started';
+        }
         if (resolvedImage) {
           imageAttachment = resolvedImage.attachment;
           imageOutcome = resolvedImage.outcome;

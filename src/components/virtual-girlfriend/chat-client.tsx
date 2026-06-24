@@ -225,10 +225,29 @@ export const VirtualGirlfriendChatClient = ({
       scrollToBottom();
     };
 
+    const attachImageToAssistant = (attachment: VirtualGirlfriendMessageAttachment) => {
+      const targetId = streamState.assistantId;
+      if (!targetId) return;
+
+      liveAttachments = [attachment];
+      setMessages((prev) =>
+        prev.map((message) => {
+          if (message.id === targetId || message.id === `${targetId}-0`) {
+            return { ...message, content_type: 'mixed', attachments: liveAttachments };
+          }
+          return message;
+        }),
+      );
+      scrollToBottom();
+    };
+
     const finalizeSegments = (segments: string[], contentType: DonePayload['contentType']) => {
       if (!streamState.assistantId) return;
 
       const streamId = streamState.assistantId;
+      if (segments.length > 1) {
+        streamState.assistantId = `${streamId}-0`;
+      }
       setMessages((prev) => {
         const withoutStream = prev.filter((message) => message.id !== streamId);
         const createdAt = new Date().toISOString();
@@ -296,29 +315,7 @@ export const VirtualGirlfriendChatClient = ({
           }
 
           if (event.type === 'image') {
-            liveAttachments = [event.payload.attachment];
-            const activeStreamId = streamState.assistantId;
-            if (activeStreamId) {
-              setMessages((prev) =>
-                prev.map((message) => {
-                  if (message.id === activeStreamId) {
-                    return {
-                      ...message,
-                      content_type: 'mixed',
-                      attachments: liveAttachments,
-                    };
-                  }
-                  if (message.id.startsWith(`${activeStreamId}-`)) {
-                    const suffix = message.id.slice(activeStreamId.length + 1);
-                    return suffix === '0'
-                      ? { ...message, content_type: 'mixed', attachments: liveAttachments }
-                      : message;
-                  }
-                  return message;
-                }),
-              );
-              scrollToBottom();
-            }
+            attachImageToAssistant(event.payload.attachment);
           }
 
           if (event.type === 'error') {
@@ -342,16 +339,28 @@ export const VirtualGirlfriendChatClient = ({
       return;
     }
 
-    if (
-      payload.imageGeneration?.requested
-      && !payload.attachments?.some((attachment) => attachment.kind === 'image')
-      && (payload.imageGeneration.outcome === 'failed_generation' || payload.imageGeneration.outcome === 'skipped_prerequisites')
-    ) {
-      setError('Could not attach a photo this turn — she\'ll still reply in chat. Try again in a moment.');
-    }
-
     const attachments = payload.attachments ?? [];
     const imageAttachment = attachments.find((attachment) => attachment.kind === 'image');
+
+    if (imageAttachment) {
+      attachImageToAssistant(imageAttachment);
+    }
+
+    const photoMissing =
+      payload.imageGeneration?.requested
+      && !attachments.some((attachment) => attachment.kind === 'image')
+      && payload.imageGeneration.reason !== 'tease_before_photo'
+      && payload.imageGeneration.outcome !== 'not_requested';
+
+    if (photoMissing) {
+      const reason = payload.imageGeneration?.reason;
+      setError(
+        reason
+          ? `Could not attach a photo (${reason}). Try again in a moment.`
+          : 'Could not attach a photo this turn — she\'ll still reply in chat. Try again in a moment.',
+      );
+    }
+
     if (imageAttachment?.imageId && imageAttachment.imageUrl) {
       const imageId = imageAttachment.imageId;
       const imageUrl = imageAttachment.imageUrl;
