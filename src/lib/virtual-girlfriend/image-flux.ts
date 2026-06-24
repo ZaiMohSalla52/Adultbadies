@@ -123,7 +123,14 @@ const withNegatives = (prompt: string, negatives: string) =>
 
 const falProviderOptions = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') => {
   if (surface === 'chat' && isVirtualGirlfriendAdultContentEnabled()) {
-    return { enable_safety_checker: false };
+    // Kontext applies two independent moderation gates: `enable_safety_checker`
+    // (a boolean post-gen checker) and `safety_tolerance` (1 = strict … 5 =
+    // permissive, default "2"). Disabling only the checker still leaves the
+    // strict default tolerance in place, which blanks flagged/borderline
+    // content to a solid black image — so adult chat photos came back black.
+    // Raise tolerance to the most permissive value alongside disabling the
+    // checker so explicit in-chat images render instead of returning black.
+    return { enable_safety_checker: false, safety_tolerance: '5' };
   }
 
   return {};
