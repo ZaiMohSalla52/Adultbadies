@@ -17,6 +17,12 @@ export const env = {
   OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
   IDEOGRAM_API_KEY: process.env.IDEOGRAM_API_KEY,
   IDEOGRAM_BASE_URL: process.env.IDEOGRAM_BASE_URL,
+  // Image provider selection: 'ideogram' (default) or 'fal' (Flux via fal.ai).
+  IMAGE_PROVIDER: process.env.IMAGE_PROVIDER,
+  FLUX_API_KEY: process.env.FLUX_API_KEY,
+  FLUX_BASE_URL: process.env.FLUX_BASE_URL,
+  FLUX_MODEL: process.env.FLUX_MODEL,
+  FLUX_KONTEXT_MODEL: process.env.FLUX_KONTEXT_MODEL,
   R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
   R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,

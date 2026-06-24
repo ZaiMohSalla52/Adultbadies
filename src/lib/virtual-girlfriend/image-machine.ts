@@ -1,13 +1,13 @@
 import crypto from 'node:crypto';
 import {
-  generateCanonicalImageFromReferenceWithIdeogram,
-  generateCanonicalImageWithIdeogram,
-  generatePortraitPreviewImageWithIdeogram,
+  generateCanonicalImage,
+  generateCanonicalImageFromReference,
+  generatePortraitPreviewImage,
   generatePreviewWithCharacterReference,
-  generateGalleryImageFromReferenceWithIdeogram,
-  generateChatImageFromReferenceWithIdeogram,
-  type IdeogramGeneratedImage,
-} from '@/lib/virtual-girlfriend/image-ideogram';
+  generateGalleryImageFromReference,
+  generateChatImageFromReference,
+  type GeneratedImage,
+} from '@/lib/virtual-girlfriend/image-provider';
 import {
   buildCanonicalPrompt,
   canonicalPromptVersion,
@@ -391,7 +391,7 @@ const runProviderGeneration = async (input: {
   logImageMachine(input.scope, 'provider_call_start', { mode: input.mode });
   const run = async () => {
     if (input.mode === 'canonical') {
-      return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateCanonicalImageWithIdeogram(input.prompt));
+      return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateCanonicalImage(input.prompt));
     }
 
     if (!input.referenceImageBytes || !input.referenceMimeType) {
@@ -402,7 +402,7 @@ const runProviderGeneration = async (input: {
     const referenceMimeType = input.referenceMimeType;
 
     if (input.mode === 'canonical_from_reference') {
-      return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateCanonicalImageFromReferenceWithIdeogram({
+      return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateCanonicalImageFromReference({
         prompt: input.prompt,
         referenceImageBytes,
         referenceMimeType,
@@ -411,8 +411,8 @@ const runProviderGeneration = async (input: {
     }
 
     const generateFromReference = input.mode === 'gallery_from_reference'
-      ? generateGalleryImageFromReferenceWithIdeogram
-      : generateChatImageFromReferenceWithIdeogram;
+      ? generateGalleryImageFromReference
+      : generateChatImageFromReference;
 
     return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateFromReference({
       prompt: input.prompt,
@@ -447,7 +447,7 @@ const buildImageRecord = async (input: {
   visualProfileId: string;
   promptHash: string;
   capture: CapturePlan;
-  generated: IdeogramGeneratedImage;
+  generated: GeneratedImage;
   identityPack: VirtualGirlfriendVisualIdentityPack;
   referenceImageId?: string;
   lineageExtra?: Record<string, unknown>;
@@ -506,7 +506,7 @@ const buildImageRecord = async (input: {
     lineage_metadata: {
       generation_mode: input.capture.kind === 'canonical' ? 'canonical' : 'gallery_from_canonical',
       reference_image_id: input.referenceImageId ?? null,
-      provider: 'ideogram',
+      provider: input.generated.provider,
       provider_model: input.generated.model,
       provider_request_id: input.generated.requestId,
       provider_job_id: input.generated.jobId,
@@ -514,9 +514,9 @@ const buildImageRecord = async (input: {
       ...input.lineageExtra,
     },
     moderation_status: 'pending',
-    moderation: { provider: 'ideogram-v3' },
+    moderation: { provider: `${input.generated.provider}:${input.generated.model}` },
     provenance: {
-      generatedBy: `ideogram:${input.generated.model}`,
+      generatedBy: `${input.generated.provider}:${input.generated.model}`,
       generatedAt: new Date().toISOString(),
       providerEndpoint: input.generated.endpoint,
     },
@@ -960,7 +960,7 @@ export const runPortraitPreviewImageMachine = async (
   const leaderPrompt = buildPreviewPrompt(input, 0);
   const leaderSeed = Math.floor(Math.random() * 2147483647);
 
-  let leaderGenerated: IdeogramGeneratedImage;
+  let leaderGenerated: GeneratedImage;
   try {
     leaderGenerated = await withRetries({
       attempts: MACHINE_RETRY_ATTEMPTS.providerRequest,
@@ -969,7 +969,7 @@ export const runPortraitPreviewImageMachine = async (
       reason: 'provider_error',
       run: () =>
         withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
-          generatePortraitPreviewImageWithIdeogram(leaderPrompt, leaderSeed),
+          generatePortraitPreviewImage(leaderPrompt, leaderSeed),
         ),
     });
   } catch {
@@ -1025,7 +1025,7 @@ const fallbackParallelGeneration = async (
         reason: 'provider_error',
         run: () =>
           withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
-            generatePortraitPreviewImageWithIdeogram(prompt, seed),
+            generatePortraitPreviewImage(prompt, seed),
           ),
       });
       return {
