@@ -8,7 +8,7 @@ import {
   setVirtualGirlfriendGenerationStatus,
   upsertVirtualGirlfriend,
 } from '@/lib/virtual-girlfriend/data';
-import { findDistinctnessConflict } from '@/lib/virtual-girlfriend/distinctness';
+import { findDistinctnessConflict, isCharacterDuplicateConflict } from '@/lib/virtual-girlfriend/distinctness';
 import {
   generateAndPersistVirtualGirlfriendImagePack,
   VirtualGirlfriendImagePackError,
@@ -113,6 +113,26 @@ Rules:
   }
 };
 
+// Deterministic fallback that guarantees a name not already in the user's roster.
+// Used only for name-only collisions where the character is already distinct, so
+// generation never hard-blocks on a name clash.
+const ensureDistinctName = (proposedName: string, existingNames: string[]): string => {
+  const norm = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const taken = new Set(existingNames.map(norm));
+  if (!taken.has(norm(proposedName))) return proposedName;
+
+  const firstName = proposedName.trim().split(/\s+/)[0] ?? proposedName.trim();
+  const suffixes = ['Rae', 'Skye', 'Belle', 'Vale', 'Wren', 'Faye', 'Nova', 'Sol', 'Ivy', 'Lux'];
+  for (const suffix of suffixes) {
+    const candidate = `${firstName} ${suffix}`;
+    if (!taken.has(norm(candidate))) return candidate;
+  }
+
+  let counter = 2;
+  while (taken.has(norm(`${firstName} ${counter}`))) counter += 1;
+  return `${firstName} ${counter}`;
+};
+
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
@@ -163,7 +183,8 @@ export async function POST(request: NextRequest) {
     );
   }
   const companions = await listVirtualGirlfriends(auth.accessToken, auth.user.id);
-  const maxDistinctnessAttempts = Boolean(body.createNew) ? 3 : 1;
+  const excludeCompanionId = body.companionId?.trim() || undefined;
+  const existingNames = companions.map((companion) => companion.name);
 
   let chosenName = baseName;
   let structuredProfile = normalizeSetupInput(body, chosenName, normalizedTraits);
@@ -174,17 +195,22 @@ export async function POST(request: NextRequest) {
     createNew: Boolean(body.createNew),
   });
 
-  let conflict = findDistinctnessConflict({
-    candidateProfile: structuredProfile,
-    existingCompanions: companions,
-    excludeCompanionId: body.companionId?.trim() || undefined,
-  });
+  const evaluateConflict = () =>
+    findDistinctnessConflict({
+      candidateProfile: structuredProfile,
+      existingCompanions: companions,
+      excludeCompanionId,
+    });
 
-  for (let attempt = 1; conflict && attempt < maxDistinctnessAttempts; attempt += 1) {
+  let conflict = evaluateConflict();
+
+  // Name-only collisions never hard-block: try an LLM rename first, falling back
+  // to deterministic disambiguation. Only a genuine duplicate character blocks.
+  for (let attempt = 1; conflict && !isCharacterDuplicateConflict(conflict) && attempt <= 3; attempt += 1) {
     const suggestion = await generateDistinctNameSuggestion({
       proposedName: chosenName,
       profile: structuredProfile,
-      existingNames: companions.map((companion) => companion.name),
+      existingNames,
       conflictReasons: conflict.reasons,
     });
 
@@ -192,14 +218,21 @@ export async function POST(request: NextRequest) {
 
     chosenName = suggestion;
     structuredProfile = normalizeSetupInput(body, chosenName, normalizedTraits);
-    conflict = findDistinctnessConflict({
-      candidateProfile: structuredProfile,
-      existingCompanions: companions,
-      excludeCompanionId: body.companionId?.trim() || undefined,
+    conflict = evaluateConflict();
+  }
+
+  // Any remaining name-only conflict is resolved deterministically so generation proceeds.
+  if (conflict && !isCharacterDuplicateConflict(conflict)) {
+    chosenName = ensureDistinctName(chosenName, existingNames);
+    structuredProfile = normalizeSetupInput(body, chosenName, normalizedTraits);
+    conflict = evaluateConflict();
+    console.info('[virtual-girlfriend][setup] name collision auto-resolved', {
+      userId: auth.user.id,
+      resolvedName: chosenName,
     });
   }
 
-  if (conflict) {
+  if (conflict && isCharacterDuplicateConflict(conflict)) {
     const conflictAreas = Array.from(new Set(conflict.topFields.map((field) => field.category)));
     const topFieldLabels = conflict.topFields.map((field) => CONFLICT_FIELD_LABELS[field.field] ?? field.field);
 
