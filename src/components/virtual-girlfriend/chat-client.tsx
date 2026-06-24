@@ -923,7 +923,7 @@ export const VirtualGirlfriendChatClient = ({
     <div className={styles.chatLayout}>
       <main className={styles.chatMain}>
         <header className={styles.chatHeader}>
-          <Link href="/virtual-girlfriend" className={styles.backButton} aria-label="Back to companions">
+          <Link href="/chats" className={styles.backButton} aria-label="Back to chats">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6" />
             </svg>
@@ -933,11 +933,15 @@ export const VirtualGirlfriendChatClient = ({
           </div>
           <div className={styles.companionHeaderInfo}>
             <span className={styles.headerName}>{companionName}</span>
-            <span className={styles.companionHeaderStatus}>Online • {helperText}</span>
+            <span className={styles.companionHeaderStatus}>Online</span>
           </div>
+          <span className={styles.pointsPill} aria-label={`${pointBalance} points`}>
+            💜 {pointBalance}
+          </span>
           <details className={styles.headerMenu}>
             <summary className={styles.menuTrigger}>⋯</summary>
             <div className={styles.menuPanel}>
+              <p className={styles.menuMeta}>{helperText}</p>
               <p className={styles.menuLabel}>Tone presets</p>
               <div className={styles.menuButtons}>
                 {STYLE_PRESETS.map((preset) => (

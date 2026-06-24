@@ -91,7 +91,7 @@ export default async function ChatsPage() {
   const isEmpty = !hasNewMatches && !hasConversations;
 
   return (
-    <div className="chats-page">
+    <div className="chats-page chats-page--fullbleed">
       <div className="chats-header">
         <h1 className="my-0">Chats</h1>
       </div>
@@ -182,7 +182,6 @@ export default async function ChatsPage() {
               );
             })}
 
-            {/* VG threads — client component, tap to preview profile then chat */}
             <CompanionChatRows items={vgConversations} />
           </div>
         </>

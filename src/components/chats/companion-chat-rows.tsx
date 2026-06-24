@@ -1,8 +1,4 @@
-'use client';
-
-import Image from 'next/image';
 import Link from 'next/link';
-import React, { useState } from 'react';
 import { Avatar } from '@/components/ui/avatar';
 
 export type VGThreadItem = {
@@ -29,85 +25,30 @@ const formatDate = (value: string) => {
 };
 
 export function CompanionChatRows({ items }: { items: VGThreadItem[] }) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const active = items.find((i) => i.id === openId) ?? null;
-
   return (
     <>
-      {items.map((item) => {
-        const yourMove = item.lastMessageSenderId !== null && item.lastMessageSenderId !== item.userId;
-        return (
-          <button
-            key={item.id}
-            type="button"
-            className="chats-item chats-item-btn"
-            onClick={() => setOpenId(item.id)}
-          >
-            <Avatar
-              name={item.name}
-              imageUrl={item.avatarUrl}
-              kind="ai"
-              size="lg"
-              ring
-              isActive
-            />
-            <div className="chats-item-body">
-              <div className="chats-item-top">
-                <span className="chats-item-name">{item.name}</span>
-                {yourMove && <span className="chats-your-move-badge">YOUR MOVE</span>}
-                <span className="chats-item-time">{formatDate(item.lastActivityAt)}</span>
-              </div>
-              <div className="chats-item-bottom">
-                <span className="chats-item-preview">{item.preview ?? 'No messages yet.'}</span>
-                <span className="chats-item-star">☆</span>
-              </div>
+      {items.map((item) => (
+        <Link key={item.id} href={item.href} className="chats-item chats-item--ai">
+          <Avatar
+            name={item.name}
+            imageUrl={item.avatarUrl}
+            kind="ai"
+            size="lg"
+            ring
+            isActive
+          />
+          <div className="chats-item-body">
+            <div className="chats-item-top">
+              <span className="chats-item-name">{item.name}</span>
+              <span className="chats-ai-badge">AI</span>
+              <span className="chats-item-time">{formatDate(item.lastActivityAt)}</span>
             </div>
-          </button>
-        );
-      })}
-
-      {active && (
-        <div
-          className="companion-preview-backdrop"
-          onClick={() => setOpenId(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${active.name} profile`}
-        >
-          <div className="companion-preview-card" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="companion-preview-close"
-              onClick={() => setOpenId(null)}
-              aria-label="Close preview"
-            >
-              ×
-            </button>
-            <div className="companion-preview-img">
-              {active.avatarUrl ? (
-                <Image
-                  src={active.avatarUrl}
-                  alt={active.name}
-                  fill
-                  unoptimized
-                  className="companion-preview-photo"
-                />
-              ) : (
-                <div className="companion-preview-fallback">
-                  {active.name.charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
-            <div className="companion-preview-body">
-              <strong className="companion-preview-name">{active.name}</strong>
-              {active.bio && <p className="companion-preview-bio">{active.bio}</p>}
-              <Link href={active.href} className="ui-button ui-button-primary companion-preview-cta">
-                Chat Now →
-              </Link>
+            <div className="chats-item-bottom">
+              <span className="chats-item-preview">{item.preview ?? 'No messages yet.'}</span>
             </div>
           </div>
-        </div>
-      )}
+        </Link>
+      ))}
     </>
   );
 }
