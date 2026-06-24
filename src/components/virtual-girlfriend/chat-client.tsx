@@ -12,6 +12,8 @@ import type {
   VirtualGirlfriendChatImageOutcome,
   VirtualGirlfriendGenerationStatus,
 } from '@/lib/virtual-girlfriend/types';
+import { OUTFIT_PRESETS } from '@/lib/virtual-girlfriend/outfit-presets';
+import { ChatImageAttachment } from './chat-image-attachment';
 import { UnlockableGallery } from './unlockable-gallery';
 import styles from './chat-client.module.css';
 
@@ -64,12 +66,15 @@ export const VirtualGirlfriendChatClient = ({
   sexuality,
   galleryImages,
   unlockedImageIds,
-  pointBalance,
+  pointBalance: initialPointBalance,
   unblurCost,
 }: ChatClientProps) => {
   const [messages, setMessages] = useState(initialMessages);
   const [styleProfile, setStyleProfile] = useState(initialStyleProfile);
-  const [infoTab, setInfoTab] = useState<'photos' | 'profile'>('photos');
+  const [infoTab, setInfoTab] = useState<'photos' | 'wardrobe' | 'profile'>('photos');
+  const [outfitMenuOpen, setOutfitMenuOpen] = useState(false);
+  const [pointBalance, setPointBalance] = useState(initialPointBalance);
+  const [chatUnlockedIds, setChatUnlockedIds] = useState<Set<string>>(() => new Set(unlockedImageIds));
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -134,6 +139,7 @@ export const VirtualGirlfriendChatClient = ({
     setIsStreaming(true);
     setError(null);
     setDraft('');
+    setOutfitMenuOpen(false);
 
     const optimisticUser: VirtualGirlfriendMessageRecord = {
       id: `temp-user-${Date.now()}`,
@@ -367,7 +373,10 @@ export const VirtualGirlfriendChatClient = ({
       const imageId = imageAttachment.imageId;
       const imageUrl = imageAttachment.imageUrl;
       setSidebarImages((prev) => (prev.some((entry) => entry.id === imageId) ? prev : [{ id: imageId, url: imageUrl }, ...prev]));
-      setSidebarUnlocked((prev) => (prev.includes(imageId) ? prev : [imageId, ...prev]));
+      if (!imageAttachment.locked) {
+        setSidebarUnlocked((prev) => (prev.includes(imageId) ? prev : [imageId, ...prev]));
+        setChatUnlockedIds((prev) => new Set(prev).add(imageId));
+      }
     }
 
     setPending(false);
@@ -1028,15 +1037,20 @@ export const VirtualGirlfriendChatClient = ({
                       {idx === 0
                         ? message.attachments?.map((attachment) =>
                             attachment.kind === 'image' ? (
-                              <div key={attachment.imageId} className={styles.chatImage}>
-                                <Image
-                                  src={attachment.imageUrl}
-                                  alt="Generated"
-                                  width={attachment.width ?? 1024}
-                                  height={attachment.height ?? 1024}
-                                  unoptimized
-                                />
-                              </div>
+                              <ChatImageAttachment
+                                key={attachment.imageId}
+                                attachment={attachment}
+                                companionName={companionName}
+                                initialUnlocked={chatUnlockedIds.has(attachment.imageId) || !attachment.locked}
+                                balance={pointBalance}
+                                unblurCost={unblurCost}
+                                isPremium={isPremium}
+                                onUnlocked={(imageId, nextBalance) => {
+                                  setPointBalance(nextBalance);
+                                  setChatUnlockedIds((prev) => new Set(prev).add(imageId));
+                                  setSidebarUnlocked((prev) => (prev.includes(imageId) ? prev : [imageId, ...prev]));
+                                }}
+                              />
                             ) : null,
                           )
                         : null}
@@ -1073,7 +1087,37 @@ export const VirtualGirlfriendChatClient = ({
           ) : null}
         </div>
 
+        <div className={styles.quickChipRow}>
+          {OUTFIT_PRESETS.slice(0, 5).map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={styles.quickChip}
+              onClick={() => void send(preset.message)}
+              disabled={pending}
+            >
+              <span aria-hidden>{preset.icon}</span> {preset.label}
+            </button>
+          ))}
+        </div>
+
         <div className={styles.composerArea}>
+          {outfitMenuOpen ? (
+            <div className={styles.outfitMenu}>
+              {OUTFIT_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={styles.outfitMenuItem}
+                  disabled={pending}
+                  onClick={() => void send(preset.message)}
+                >
+                  <span className={styles.outfitMenuIcon}>{preset.icon}</span>
+                  <span>{preset.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
           {reachedLimit ? (
             <div className={styles.limitBox}>
               <p>You reached today&apos;s free message limit.</p>
@@ -1090,13 +1134,12 @@ export const VirtualGirlfriendChatClient = ({
             <>
               <button
                 type="button"
-                className={styles.quickChip}
-                onClick={() => void send('Send me a selfie 😊')}
+                className={`${styles.attachButton} ${outfitMenuOpen ? styles.attachButtonActive : ''}`}
+                aria-label="Wardrobe and outfit options"
+                aria-expanded={outfitMenuOpen}
+                onClick={() => setOutfitMenuOpen((open) => !open)}
                 disabled={pending}
               >
-                <span aria-hidden>📷</span> Send me picture
-              </button>
-              <button type="button" className={styles.attachButton} aria-label="Attachment options">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
@@ -1149,6 +1192,13 @@ export const VirtualGirlfriendChatClient = ({
           </button>
           <button
             type="button"
+            className={`${styles.infoTab} ${infoTab === 'wardrobe' ? styles.infoTabActive : ''}`}
+            onClick={() => setInfoTab('wardrobe')}
+          >
+            Wardrobe
+          </button>
+          <button
+            type="button"
             className={`${styles.infoTab} ${infoTab === 'profile' ? styles.infoTabActive : ''}`}
             onClick={() => setInfoTab('profile')}
           >
@@ -1156,7 +1206,25 @@ export const VirtualGirlfriendChatClient = ({
           </button>
         </div>
 
-        {infoTab === 'photos' ? (
+        {infoTab === 'wardrobe' ? (
+          <div className={styles.wardrobeList}>
+            {OUTFIT_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={styles.wardrobeItem}
+                disabled={pending}
+                onClick={() => void send(preset.message)}
+              >
+                <span aria-hidden>{preset.icon}</span>
+                <span>{preset.label}</span>
+              </button>
+            ))}
+            <Link href={`/virtual-girlfriend/generate?companionId=${companionId}`} className={styles.studioLink}>
+              Open full photo studio →
+            </Link>
+          </div>
+        ) : infoTab === 'photos' ? (
           sidebarImages.length > 0 ? (
             <div className={styles.photosWrap}>
               <UnlockableGallery
@@ -1166,6 +1234,7 @@ export const VirtualGirlfriendChatClient = ({
                 balance={pointBalance}
                 cost={unblurCost}
                 isPremium={isPremium}
+                onBalanceChange={setPointBalance}
               />
             </div>
           ) : (

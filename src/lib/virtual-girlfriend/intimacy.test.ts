@@ -90,6 +90,22 @@ describe('resolveImageMomentFromIntent', () => {
     expect(decision.preferFreshGeneration).toBe(true);
   });
 
+  it('prefers fresh generation for free users on outfit photo requests', () => {
+    const decision = resolveImageMomentFromIntent({
+      intent: intent({
+        wantsPhoto: true,
+        photoDelivery: 'send_now',
+        visualSceneHint: 'Stylish bikini at the beach, bright natural light.',
+      }),
+      history: [],
+      isPremium: false,
+      userMessage: 'Send me a pic of you in a bikini',
+    });
+
+    expect(decision.shouldSendImage).toBe(true);
+    expect(decision.preferFreshGeneration).toBe(true);
+  });
+
   it('does not send when the model says no photo fits this beat', () => {
     const decision = resolveImageMomentFromIntent({
       intent: intent({

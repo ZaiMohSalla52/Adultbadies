@@ -24,6 +24,7 @@ import { streamVirtualGirlfriendChatTurn } from '@/lib/virtual-girlfriend/chat-t
 import { resolveImageMomentFromIntent } from '@/lib/virtual-girlfriend/intimacy';
 import { sanitizeIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
+import { isOutfitPhotoRequest } from '@/lib/virtual-girlfriend/outfit-presets';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
@@ -115,7 +116,8 @@ export async function POST(request: NextRequest) {
     getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id),
   ]);
 
-  const heuristicIntent = looksLikePhotoRequest(message) ? buildHeuristicPhotoIntent(message) : null;
+  const photoRequested = looksLikePhotoRequest(message) || isOutfitPhotoRequest(message);
+  const heuristicIntent = photoRequested ? buildHeuristicPhotoIntent(message) : null;
   const explicitPhotoRequest = detectExplicitImageIntent(message);
 
   let imageMoment: IntimateImageMoment = resolveImageMomentFromIntent({
@@ -127,7 +129,7 @@ export async function POST(request: NextRequest) {
 
   const premiumGuidance =
     imageMoment.shouldSendImage && !imageMoment.teaseOnly && !entitlements.isPremium
-      ? 'Fresh custom photos need Premium — flirt and invite upgrade in-character, but NEVER say you cannot send photos or offer text descriptions instead. Gallery photos may still appear.'
+      ? 'A fresh photo is generating and may arrive blurred for free users — flirt naturally, tease the reveal, and NEVER say you cannot send photos or offer text descriptions instead.'
       : '';
 
   const stream = new ReadableStream<Uint8Array>({
@@ -158,7 +160,7 @@ export async function POST(request: NextRequest) {
           category: moment.category,
           existingImages: companionImages,
           visualProfile,
-          allowFreshGeneration: entitlements.isPremium || explicitPhotoRequest,
+          allowFreshGeneration: entitlements.isPremium || explicitPhotoRequest || photoRequested,
           userMessage: message,
           visualSceneHint: moment.visualSceneHint,
           preferFreshGeneration: moment.preferFreshGeneration,
@@ -214,8 +216,8 @@ export async function POST(request: NextRequest) {
 
         const segments = splitIntoMessages(turn.assistantText);
         const combinedContent = segments.join('\n\n') || turn.assistantText;
-        const photoRequested =
-          turn.intent.wantsPhoto || imageMoment.shouldSendImage || imageMoment.teaseOnly || looksLikePhotoRequest(message);
+        const photoRequestedThisTurn =
+          turn.intent.wantsPhoto || imageMoment.shouldSendImage || imageMoment.teaseOnly || photoRequested;
 
         enqueueEvent(controller, {
           type: 'text_done',
@@ -235,7 +237,7 @@ export async function POST(request: NextRequest) {
           !resolvedImage
           && imageMoment.shouldSendImage
           && !imageMoment.teaseOnly
-          && photoRequested
+          && photoRequestedThisTurn
         ) {
           // shouldSendImage means startImageIfNeeded ran, so the task exists but
           // produced nothing — a real failure worth surfacing.
@@ -247,6 +249,15 @@ export async function POST(request: NextRequest) {
           imageOutcome = resolvedImage.outcome;
           imageOutcomeReason = resolvedImage.reason;
 
+          if (
+            imageAttachment
+            && imageAttachment.source === 'fresh-generation'
+            && !entitlements.isPremium
+            && !explicitPhotoRequest
+          ) {
+            imageAttachment = { ...imageAttachment, locked: true };
+          }
+
           if (imageAttachment) {
             enqueueEvent(controller, {
               type: 'image',
@@ -257,7 +268,11 @@ export async function POST(request: NextRequest) {
               },
             });
 
-            if (imageAttachment.imageId && imageAttachment.source === 'fresh-generation') {
+            if (
+              imageAttachment.imageId
+              && imageAttachment.source === 'fresh-generation'
+              && !imageAttachment.locked
+            ) {
               try {
                 await grantCompanionImageAccess(auth.accessToken, imageAttachment.imageId);
               } catch (grantError) {
@@ -274,7 +289,7 @@ export async function POST(request: NextRequest) {
         // so leave the outcome as 'not_requested' and show the user nothing.
         if (
           imageStarted
-          && photoRequested
+          && photoRequestedThisTurn
           && !imageMoment.teaseOnly
           && !imageAttachment
         ) {
@@ -352,7 +367,7 @@ export async function POST(request: NextRequest) {
             attachments: imageAttachment ? [imageAttachment] : [],
             generationMode: imageAttachment?.source ?? null,
             imageGeneration: {
-              requested: photoRequested,
+              requested: photoRequestedThisTurn,
               outcome: imageMoment.teaseOnly ? 'not_requested' : imageOutcome,
               reason: imageMoment.teaseOnly ? 'tease_before_photo' : imageOutcomeReason,
             },

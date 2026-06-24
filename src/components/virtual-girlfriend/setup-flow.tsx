@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { STYLE_VIBE_OPTIONS } from '@/lib/virtual-girlfriend/outfit-presets';
 import type { VirtualGirlfriendSetupResult } from '@/lib/virtual-girlfriend/types';
 import styles from './setup-flow.module.css';
 
@@ -14,6 +15,7 @@ type BuilderStep =
   | 'age'
   | 'portrait'
   | 'breastSize'
+  | 'styleVibe'
   | 'occupation'
   | 'personality'
   | 'sexuality'
@@ -61,6 +63,7 @@ const STEPS: BuilderStep[] = [
   'age',
   'portrait',
   'breastSize',
+  'styleVibe',
   'occupation',
   'personality',
   'sexuality',
@@ -80,7 +83,7 @@ const makeInitialState = (): CreatorState => ({
   bodyType: '',
   breastSize: '',
   age: '',
-  styleVibe: pickRandom(['casual', 'elegant', 'edgy', 'bohemian', 'sporty', 'professional']),
+  styleVibe: '',
   occupation: '',
   personality: '',
   sexuality: '',
@@ -385,6 +388,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     if (step === 'bodyType' && !state.bodyType) return 'Choose body type.';
     if (step === 'age' && !state.age) return 'Choose age.';
     if (step === 'breastSize' && state.sex === 'female' && !state.breastSize) return 'Choose breast size.';
+    if (step === 'styleVibe' && !state.styleVibe) return 'Choose her default style.';
     if (step === 'portrait' && !state.selectedPortraitImage) return 'Pick one portrait to continue.';
     if (step === 'occupation' && !state.occupation) return 'Choose occupation.';
     if (step === 'personality' && !state.personality) return 'Choose personality.';
@@ -794,6 +798,26 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                     </div>
                   </>
                 )}
+              </div>
+            )}
+
+            {step === 'styleVibe' && (
+              <div className={styles.stepContent}>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s style', 'Choose her default style')}</h2>
+                <p className={styles.loadingSubtext}>Sets her default wardrobe vibe for photos and chat.</p>
+                <div className={styles.optionGridThree}>
+                  {STYLE_VIBE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`${styles.textOptionCard} ${state.styleVibe === option.value ? styles.optionCardSelected : ''}`}
+                      onClick={() => handleOptionSelect('styleVibe', option.value)}
+                    >
+                      <span className={styles.cardIcon}>{option.icon}</span>
+                      <span>{option.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 

@@ -95,7 +95,7 @@ export const resolveImageMomentFromIntent = (input: {
     teaseOnly: false,
     trigger,
     visualSceneHint: intent.visualSceneHint ?? undefined,
-    preferFreshGeneration: explicitRequest || (input.isPremium && preferFreshGeneration),
+    preferFreshGeneration,
   };
 };
 

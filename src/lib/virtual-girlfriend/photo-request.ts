@@ -1,5 +1,6 @@
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import type { ChatTurnIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
+import { OUTFIT_PRESETS } from '@/lib/virtual-girlfriend/outfit-presets';
 
 const PHOTO_REQUEST_HEURISTIC =
   /\b(selfie|selfies|photo|photos?|pic|pics?|picture|pictures?|snap|send me|show me|see you|what do you look|another (shot|image|photo)|more of you|closer peek|want to see)\b/i;
@@ -9,9 +10,16 @@ export const looksLikePhotoRequest = (message: string) => {
   return PHOTO_REQUEST_HEURISTIC.test(trimmed) || detectExplicitImageIntent(trimmed);
 };
 
+const resolvePresetSceneHint = (message: string) => {
+  const normalized = message.trim().toLowerCase();
+  const preset = OUTFIT_PRESETS.find((entry) => entry.message.toLowerCase() === normalized);
+  return preset?.sceneHint ?? null;
+};
+
 export const buildHeuristicPhotoIntent = (userMessage: string): ChatTurnIntent => {
   const trimmed = userMessage.trim();
   const explicit = detectExplicitImageIntent(trimmed);
+  const presetHint = resolvePresetSceneHint(trimmed);
 
   return {
     intimacyActive: true,
@@ -19,7 +27,9 @@ export const buildHeuristicPhotoIntent = (userMessage: string): ChatTurnIntent =
     photoDelivery: 'send_now',
     visualSceneHint: explicit
       ? `Explicit adult photo exactly as requested: ${trimmed}. Deliver the body/framing the user asked for. Same face and identity, new shot — not a recycled profile portrait.`
-      : `In-chat photo matching what the user wants: ${trimmed}`,
+      : presetHint
+        ? presetHint
+        : `In-chat photo matching what the user wants: ${trimmed}`,
     imageCategory: explicit ? 'indoor' : 'selfie',
     powerDynamic: 'balanced',
     companionGuidance: explicit

@@ -303,6 +303,8 @@ export type VirtualGirlfriendMessageAttachment = {
   height: number | null;
   source: 'gallery-reuse' | 'fresh-generation';
   promptHash?: string;
+  /** When true, the image is delivered blurred until the user spends points to unlock. */
+  locked?: boolean;
 };
 
 export type VirtualGirlfriendMemoryRecord = {

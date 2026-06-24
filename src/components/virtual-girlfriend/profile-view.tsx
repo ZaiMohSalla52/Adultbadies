@@ -136,6 +136,9 @@ export const VirtualGirlfriendProfileView = ({
             <Link href={`/virtual-girlfriend/chat?companionId=${companion.id}`} className={styles.primaryButton}>
               Chat now
             </Link>
+            <Link href={`/virtual-girlfriend/generate?companionId=${companion.id}`} className={styles.secondaryButton}>
+              Photo studio
+            </Link>
             <Link href="/virtual-girlfriend" className={styles.secondaryButton}>
               Switch companion
             </Link>

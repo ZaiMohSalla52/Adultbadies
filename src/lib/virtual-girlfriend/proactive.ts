@@ -5,6 +5,7 @@ import {
   getLatestVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
+  getVirtualGirlfriendCompanionImages,
   getVirtualGirlfriendMessages,
   insertVirtualGirlfriendMessageReturningId,
   listDueVirtualGirlfriendProactiveEvents,
@@ -15,8 +16,10 @@ import {
   touchVirtualGirlfriendConversation,
 } from '@/lib/virtual-girlfriend/data';
 import { generateVirtualGirlfriendProactiveMessage } from '@/lib/virtual-girlfriend/orchestration';
+import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import type {
   VirtualGirlfriendCompanionRecord,
+  VirtualGirlfriendMessageAttachment,
   VirtualGirlfriendMessageRecord,
   VirtualGirlfriendProactiveEventRecord,
   VirtualGirlfriendProactiveTriggerType,
@@ -59,11 +62,6 @@ export const maybeScheduleVirtualGirlfriendProactiveEvent = async (input: {
   companion: VirtualGirlfriendCompanionRecord;
   latestUserMessage: string;
 }) => {
-  const entitlements = await getUserEntitlements(input.token, input.userId);
-  if (!entitlements.isPremium) {
-    return { scheduled: false as const, reason: 'premium_required' };
-  }
-
   const pending = await listPendingVirtualGirlfriendProactiveEvents(input.token, input.userId, input.companion.id);
   if (pending.length > 0) {
     return { scheduled: false as const, reason: 'pending_exists' };
@@ -122,9 +120,6 @@ export const processDueVirtualGirlfriendProactiveEvents = async (input: {
   userId: string;
   companion: VirtualGirlfriendCompanionRecord;
 }) => {
-  const entitlements = await getUserEntitlements(input.token, input.userId);
-  if (!entitlements.isPremium) return { deliveredCount: 0, skipped: 'premium_required' as const };
-
   const dueEvents = await listDueVirtualGirlfriendProactiveEvents(input.token, input.userId, input.companion.id);
   if (dueEvents.length === 0) return { deliveredCount: 0, skipped: 'none_due' as const };
 
@@ -199,6 +194,29 @@ const deliverSingleProactiveEvent = async (input: {
       return false;
     }
 
+    const entitlements = await getUserEntitlements(input.token, input.userId);
+    let attachments: VirtualGirlfriendMessageAttachment[] = [];
+
+    if (Math.random() < 0.35) {
+      const images = await getVirtualGirlfriendCompanionImages(input.token, input.userId, input.companion.id);
+      const curated = curateVirtualGirlfriendImages(images);
+      const pool = curated.gallery.length > 0 ? curated.gallery : curated.canonical ? [curated.canonical] : [];
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      if (pick) {
+        attachments = [{
+          kind: 'image',
+          category: 'lifestyle',
+          imageId: pick.id,
+          imageUrl: pick.delivery_url,
+          width: pick.width,
+          height: pick.height,
+          source: 'gallery-reuse',
+          promptHash: pick.prompt_hash ?? undefined,
+          locked: !entitlements.isPremium,
+        }];
+      }
+    }
+
     const inserted = await insertVirtualGirlfriendMessageReturningId(input.token, {
       conversationId: input.conversationId,
       userId: input.userId,
@@ -206,8 +224,8 @@ const deliverSingleProactiveEvent = async (input: {
       content: generated.assistantText,
       model: generated.model,
       moderation: { proactive: true, triggerType: input.event.trigger_type },
-      contentType: 'text',
-      attachments: [],
+      contentType: attachments.length > 0 ? 'mixed' : 'text',
+      attachments,
     });
 
     await Promise.all([

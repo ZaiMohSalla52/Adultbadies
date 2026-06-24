@@ -17,6 +17,7 @@ export const UnlockableGallery = ({
   balance: initialBalance,
   cost,
   isPremium,
+  onBalanceChange,
 }: {
   companionName: string;
   images: UnlockableImage[];
@@ -24,6 +25,7 @@ export const UnlockableGallery = ({
   balance: number;
   cost: number;
   isPremium: boolean;
+  onBalanceChange?: (balance: number) => void;
 }) => {
   const [unlocked, setUnlocked] = useState<Set<string>>(() => new Set(initialUnlockedIds));
   const [balance, setBalance] = useState(initialBalance);
@@ -73,7 +75,10 @@ export const UnlockableGallery = ({
       }
 
       setUnlocked((prev) => new Set(prev).add(imageId));
-      if (typeof data.balance === 'number') setBalance(data.balance);
+      if (typeof data.balance === 'number') {
+        setBalance(data.balance);
+        onBalanceChange?.(data.balance);
+      }
     } catch {
       setError('Network error. Please try again.');
     } finally {
