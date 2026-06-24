@@ -83,7 +83,11 @@ export const VirtualGirlfriendProfileView = ({
               />
             </ProfileMediaFrame>
           ) : (
-            <div className={styles.mainEmpty}>Her portrait is being prepared. Please check back in a moment.</div>
+            <div className={styles.mainEmpty}>
+              {status === 'failed'
+                ? 'Image generation failed for this profile. You can retry from a stable state later.'
+                : 'Her portrait is being prepared. Please check back in a moment.'}
+            </div>
           )}
 
           {gallery.length > 0 ? (
