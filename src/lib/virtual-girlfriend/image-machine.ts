@@ -52,6 +52,9 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 
 const STYLE_VERSION = 'vg-image-v3';
+/** ai_companion_images.variant_index is postgres smallint (-32768..32767). */
+const MAX_IMAGE_VARIANT_INDEX = 32_767;
+const randomChatVariantIndex = () => Math.floor(Math.random() * MAX_IMAGE_VARIANT_INDEX);
 const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
 const MACHINE_TIMEOUT_MS = {
@@ -1074,7 +1077,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       promptHash: sha(`${visualContext.promptHashSeed}:chat:${input.category}:${prompt}`),
       capture: {
         kind: 'gallery',
-        variantIndex: Math.floor(Math.random() * 100000),
+        variantIndex: randomChatVariantIndex(),
         label: `chat ${input.category}`,
         framing: 'chat-shot',
         environment: 'contextual',
