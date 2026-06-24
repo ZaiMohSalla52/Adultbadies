@@ -140,6 +140,12 @@ export async function POST(request: NextRequest) {
         const moderation = moderateVirtualGirlfriendImageRequest(message);
         if (!moderation.allowed) {
           console.warn('[virtual-girlfriend] image request blocked by moderation', moderation.reason);
+          imageStarted = true;
+          imageTask = Promise.resolve({
+            outcome: 'skipped_prerequisites' as const,
+            attachment: null,
+            reason: `moderation_blocked:${moderation.reason}`,
+          });
           return;
         }
 
@@ -247,6 +253,19 @@ export async function POST(request: NextRequest) {
                 generationMode: imageAttachment.source ?? null,
               },
             });
+          }
+        }
+
+        if (
+          photoRequested
+          && !imageMoment.teaseOnly
+          && !imageAttachment
+        ) {
+          if (imageOutcome === 'not_requested') {
+            imageOutcome = 'skipped_prerequisites';
+          }
+          if (!imageOutcomeReason) {
+            imageOutcomeReason = imageStarted ? 'image_not_attached' : 'image_pipeline_not_started';
           }
         }
 

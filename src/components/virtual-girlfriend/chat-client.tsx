@@ -354,9 +354,11 @@ export const VirtualGirlfriendChatClient = ({
 
     if (photoMissing) {
       const reason = payload.imageGeneration?.reason;
+      const outcome = payload.imageGeneration?.outcome;
+      const detail = reason ?? (outcome && outcome !== 'not_requested' ? outcome : null);
       setError(
-        reason
-          ? `Could not attach a photo (${reason}). Try again in a moment.`
+        detail
+          ? `Could not attach a photo (${detail}). Try again in a moment.`
           : 'Could not attach a photo this turn — she\'ll still reply in chat. Try again in a moment.',
       );
     }

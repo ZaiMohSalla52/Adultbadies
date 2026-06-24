@@ -26,6 +26,10 @@ import {
 import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
+import {
+  resolveCanonicalReferenceForChat,
+  resolveChatVisualContext,
+} from '@/lib/virtual-girlfriend/chat-image-bootstrap';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
@@ -990,8 +994,8 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     }
   }
 
-  if (!input.allowFreshGeneration || !input.visualProfile) {
-    const reason = !input.allowFreshGeneration ? 'missing_prerequisites:fresh_generation_not_allowed' : 'missing_prerequisites:visual_profile_missing';
+  if (!input.allowFreshGeneration) {
+    const reason = 'missing_prerequisites:fresh_generation_not_allowed';
     logImageMachine(scope, 'final_outcome', { status: 'skipped_prerequisites', reason });
     return {
       kind: 'chat_image',
@@ -1002,12 +1006,13 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     };
   }
 
-  let canonical: VirtualGirlfriendCompanionImageRecord;
-  try {
-    canonical = resolveCanonicalReference(input.visualProfile, input.existingImages);
-    logImageMachine(scope, 'reference_resolved', { canonicalImageId: canonical.id });
-  } catch (error) {
-    const reason = error instanceof VirtualGirlfriendImageMachineError ? `${error.reason}:${error.message}` : 'missing_prerequisites:canonical_reference_missing';
+  const visualContext = resolveChatVisualContext({
+    companion: input.companion,
+    visualProfile: input.visualProfile,
+    existingImages: input.existingImages,
+  });
+  if (!visualContext) {
+    const reason = 'missing_prerequisites:visual_profile_missing';
     logImageMachine(scope, 'final_outcome', { status: 'skipped_prerequisites', reason });
     return {
       kind: 'chat_image',
@@ -1017,6 +1022,25 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       reason,
     };
   }
+
+  const canonical = resolveCanonicalReferenceForChat(input.visualProfile, input.existingImages);
+  if (!canonical) {
+    const reason = 'missing_prerequisites:canonical_reference_missing';
+    logImageMachine(scope, 'final_outcome', { status: 'skipped_prerequisites', reason });
+    return {
+      kind: 'chat_image',
+      status: 'skipped_prerequisites',
+      outcome: 'skipped_prerequisites',
+      attachment: null,
+      reason,
+    };
+  }
+
+  logImageMachine(scope, 'reference_resolved', {
+    canonicalImageId: canonical.id,
+    bootstrapped: visualContext.bootstrapped,
+    visualProfileId: visualContext.visualProfileId,
+  });
 
   try {
     const reference = await downloadReferenceBytes({
@@ -1028,7 +1052,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
 
     const chatPromptInput = toChatPromptInput(
       input.companion,
-      input.visualProfile.identity_pack,
+      visualContext.identityPack,
       input.category,
       input.userMessage,
       input.visualSceneHint,
@@ -1046,8 +1070,8 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       token: input.token,
       userId: input.userId,
       companionId: input.companion.id,
-      visualProfileId: input.visualProfile.id,
-      promptHash: sha(`${input.visualProfile.prompt_hash}:chat:${input.category}:${prompt}`),
+      visualProfileId: visualContext.visualProfileId,
+      promptHash: sha(`${visualContext.promptHashSeed}:chat:${input.category}:${prompt}`),
       capture: {
         kind: 'gallery',
         variantIndex: Math.floor(Math.random() * 100000),
@@ -1060,7 +1084,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         glamourLevel: 'balanced',
       },
       generated,
-      identityPack: input.visualProfile.identity_pack,
+      identityPack: visualContext.identityPack,
       referenceImageId: canonical.id,
       lineageExtra: {
         generation_mode: 'chat_from_canonical',
