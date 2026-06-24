@@ -388,14 +388,20 @@ const toChatPromptInput = (
   const explicitIntent =
     (userMessage ? detectExplicitImageIntent(userMessage) : false)
     || (visualSceneHint ? detectExplicitImageIntent(visualSceneHint) : false);
-  const scene = buildRandomScene();
   const sceneDirective = visualSceneHint?.trim() || (explicitIntent ? userMessage?.trim() : undefined);
+  // When the user asks for a specific look/scene, their directive drives the
+  // image. buildRandomScene injects a random wardrobe + location for variety,
+  // but that fights an explicit request — it put her in an evening dress in a
+  // garden when the user asked for a bikini — so only use it when there is no
+  // directive. We also drop the canonical wardrobe line (below) for the same
+  // reason, so the requested outfit isn't overridden by her default dress.
   const contextHint = sceneDirective
-    ? `${scene}. Same person, same face, preserve identity lock. ${sceneDirective}`
-    : `${scene}. Same person, same face, preserve identity lock.`;
+    ? `${sceneDirective}. Same person, same face, preserve identity lock.`
+    : `${buildRandomScene()}. Same person, same face, preserve identity lock.`;
 
   return {
     ...canonicalInput,
+    wardrobeDirection: sceneDirective ? undefined : canonicalInput.wardrobeDirection,
     identityAnchors: identityPack.continuityAnchors,
     category: chatCategory || undefined,
     contextHint,
