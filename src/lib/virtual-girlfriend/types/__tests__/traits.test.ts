@@ -1,12 +1,6 @@
+import { describe, expect, it } from 'vitest';
 import { SURFACE_PARAMS } from '../../image-surfaces';
 import { normalizeToCompanionTraits } from '../normalize';
-
-declare const describe: (name: string, fn: () => void) => void;
-declare const it: (name: string, fn: () => void) => void;
-declare const expect: (value: unknown) => {
-  toBe: (expected: unknown) => void;
-  toThrow: () => void;
-};
 
 describe('normalizeToCompanionTraits', () => {
   it('normalizes valid female input', () => {
@@ -85,8 +79,8 @@ describe('SURFACE_PARAMS', () => {
     expect(SURFACE_PARAMS.canonical.style_type).toBe('REALISTIC');
   });
 
-  it('chat uses AUTO style', () => {
-    expect(SURFACE_PARAMS.chat.style_type).toBe('AUTO');
+  it('chat uses REALISTIC style', () => {
+    expect(SURFACE_PARAMS.chat.style_type).toBe('REALISTIC');
   });
 
   it('all surfaces use num_images 1', () => {

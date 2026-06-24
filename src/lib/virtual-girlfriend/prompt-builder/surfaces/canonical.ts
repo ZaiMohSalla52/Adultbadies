@@ -4,7 +4,7 @@
  * This prompt becomes seed for all future regenerations.
  */
 
-import { getCompositionAnchor } from '../primitives/composition';
+import { getCompositionAnchor, PHOTO_REALISM_TAIL } from '../primitives/composition';
 import { buildAllNegatives } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubject } from '../primitives/subject';
@@ -48,7 +48,7 @@ export const buildCanonicalPrompt = (input: CanonicalPromptInput): string => {
     cameraPrefs ? `Camera: ${cameraPrefs}.` : null,
     input.realismLevel ? `Realism: ${input.realismLevel}.` : null,
     getCompositionAnchor('canonical'),
-    'Best quality, ultra realistic, intricate facial details, professional photography, 8k.',
+    PHOTO_REALISM_TAIL,
     buildAllNegatives(),
     resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Also avoid: ${negConstraints}.` : null,

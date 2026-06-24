@@ -6,11 +6,11 @@
  */
 
 export const PROMPT_VERSION = {
-  preview: 'preview_v3',
-  canonical: 'canonical_v2',
-  regenerate: 'regenerate_v2',
-  gallery: 'gallery_v2',
-  chat: 'chat_image_v2',
+  preview: 'preview_v4',
+  canonical: 'canonical_v3',
+  regenerate: 'regenerate_v3',
+  gallery: 'gallery_v3',
+  chat: 'chat_image_v3',
 } as const;
 
 export type SurfaceType = keyof typeof PROMPT_VERSION;
