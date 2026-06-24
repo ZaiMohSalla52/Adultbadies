@@ -1,5 +1,5 @@
 import { env } from '@/lib/env';
-import { resolveVgTogetherModel } from '@/lib/virtual-girlfriend/llm-models';
+import { buildTogetherModelCandidates } from '@/lib/virtual-girlfriend/llm-models';
 
 const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions';
 
@@ -81,11 +81,11 @@ const buildMessages = (body: TogetherLegacyBody): TogetherChatMessage[] => {
   return messages;
 };
 
-const buildRequestBody = (body: TogetherLegacyBody, stream: boolean) => {
+const buildRequestPayload = (body: TogetherLegacyBody, model: string, stream: boolean) => {
   const wantsJson = body.text?.format?.type === 'json_schema' || body.text?.format?.type === 'json_object';
 
   return {
-    model: resolveVgTogetherModel(body.model),
+    model,
     messages: buildMessages(body),
     stream,
     temperature: body.temperature ?? 0.85,
@@ -99,24 +99,40 @@ const wrapCompletion = (content: string, model: string): Record<string, unknown>
   model,
 });
 
+const isModelUnavailableError = (status: number, bodyText: string) =>
+  status === 404 && (bodyText.includes('model_not_available') || bodyText.includes('Unable to access model'));
+
 const postTogetherChat = async (body: TogetherLegacyBody, stream: boolean) => {
   const apiKey = assertApiKey();
-  const requestBody = buildRequestBody(body, stream);
+  const candidates = buildTogetherModelCandidates(body.model);
+  let lastError = 'Together chat API failed with no model candidates.';
 
-  const response = await fetch(TOGETHER_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
+  for (const model of candidates) {
+    const response = await fetch(TOGETHER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(buildRequestPayload(body, model, stream)),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Together chat API failed (${response.status}): ${await response.text()}`);
+    if (response.ok) {
+      return { response, model };
+    }
+
+    const errorText = await response.text();
+    lastError = `Together chat API failed (${response.status}) with model ${model}: ${errorText}`;
+
+    if (isModelUnavailableError(response.status, errorText)) {
+      console.warn(`[together] model unavailable, trying fallback: ${model}`);
+      continue;
+    }
+
+    throw new Error(lastError);
   }
 
-  return { response, model: requestBody.model };
+  throw new Error(lastError);
 };
 
 export const callTogetherChat = async (body: TogetherLegacyBody) => {
