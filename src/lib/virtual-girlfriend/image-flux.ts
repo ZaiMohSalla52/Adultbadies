@@ -121,16 +121,20 @@ const extractGeneratedImage = async (
 const withNegatives = (prompt: string, negatives: string) =>
   negatives.trim() ? `${prompt}\nAvoid: ${negatives}` : prompt;
 
+// Kontext applies two independent moderation gates: `enable_safety_checker`
+// (a boolean post-gen checker) and `safety_tolerance` (1 = strict … 5 =
+// permissive, fal default "2"). Disabling only the checker still leaves the
+// strict default tolerance in place, which blanks flagged/borderline content to
+// a solid black image — so adult chat photos came back black. We raise tolerance
+// alongside disabling the checker so explicit in-chat images render instead of
+// returning black. The value is env-tunable (FLUX_CHAT_SAFETY_TOLERANCE) so it
+// can be dialed toward "6" or pulled back if fal rejects a value with a 422,
+// without a redeploy. Default "5" is the documented permissive max for Kontext.
+const resolveChatSafetyTolerance = () => env.FLUX_CHAT_SAFETY_TOLERANCE?.trim() || '5';
+
 const falProviderOptions = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') => {
   if (surface === 'chat' && isVirtualGirlfriendAdultContentEnabled()) {
-    // Kontext applies two independent moderation gates: `enable_safety_checker`
-    // (a boolean post-gen checker) and `safety_tolerance` (1 = strict … 5 =
-    // permissive, default "2"). Disabling only the checker still leaves the
-    // strict default tolerance in place, which blanks flagged/borderline
-    // content to a solid black image — so adult chat photos came back black.
-    // Raise tolerance to the most permissive value alongside disabling the
-    // checker so explicit in-chat images render instead of returning black.
-    return { enable_safety_checker: false, safety_tolerance: '5' };
+    return { enable_safety_checker: false, safety_tolerance: resolveChatSafetyTolerance() };
   }
 
   return {};
