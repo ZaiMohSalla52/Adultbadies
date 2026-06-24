@@ -1,9 +1,9 @@
 /*
  * Provider-agnostic generated-image shape.
- * Both the Ideogram and Flux providers return this structure so the image
- * machine never needs to know which provider produced an image.
+ * The Flux provider returns this structure so the image machine never needs to
+ * know which concrete provider produced an image.
  */
-export type ImageProviderName = 'ideogram' | 'flux';
+export type ImageProviderName = 'flux';
 
 export type GeneratedImage = {
   bytes: Buffer;

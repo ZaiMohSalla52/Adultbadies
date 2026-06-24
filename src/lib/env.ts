@@ -15,10 +15,7 @@ export const env = {
   ADMIN_REVIEWER_EMAILS: process.env.ADMIN_REVIEWER_EMAILS,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL,
-  IDEOGRAM_API_KEY: process.env.IDEOGRAM_API_KEY,
-  IDEOGRAM_BASE_URL: process.env.IDEOGRAM_BASE_URL,
-  // Image provider selection: 'ideogram' (default) or 'fal' (Flux via fal.ai).
-  IMAGE_PROVIDER: process.env.IMAGE_PROVIDER,
+  // Image generation: Flux via fal.ai (sole provider).
   FLUX_API_KEY: process.env.FLUX_API_KEY,
   FLUX_BASE_URL: process.env.FLUX_BASE_URL,
   FLUX_MODEL: process.env.FLUX_MODEL,

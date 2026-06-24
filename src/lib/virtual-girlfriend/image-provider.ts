@@ -1,13 +1,4 @@
-import { env } from '@/lib/env';
-import type { GeneratedImage, ImageProviderName } from '@/lib/virtual-girlfriend/image-types';
-import {
-  generateCanonicalImageWithIdeogram,
-  generatePortraitPreviewImageWithIdeogram,
-  generatePreviewWithCharacterReference as generatePreviewWithCharacterReferenceIdeogram,
-  generateCanonicalImageFromReferenceWithIdeogram,
-  generateGalleryImageFromReferenceWithIdeogram,
-  generateChatImageFromReferenceWithIdeogram,
-} from '@/lib/virtual-girlfriend/image-ideogram';
+import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
 import {
   generateCanonicalImageWithFlux,
   generatePortraitPreviewImageWithFlux,
@@ -20,28 +11,19 @@ import {
 export type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
 
 /*
- * Single switch point for the image provider.
+ * Image provider facade.
  *
- * IMAGE_PROVIDER=ideogram (default) keeps the existing Ideogram V3 pipeline.
- * IMAGE_PROVIDER=fal routes every surface to Flux (base) + Flux Kontext
- * (reference / identity-lock) via fal.ai.
- *
- * Every function below preserves the exact prompt (including the SFW negatives
- * baked into the prompt builders) and provider-default safety behavior. This
- * layer changes *which model renders*, not what is allowed to be rendered.
+ * Flux (fal.ai) is the sole image provider. This thin layer keeps the image
+ * machine decoupled from the concrete provider module so a future provider can
+ * be swapped in one place. There is intentionally no silent fallback: if
+ * FLUX_API_KEY is missing, generation fails loudly rather than degrading.
  */
-export const getImageProvider = (): ImageProviderName =>
-  env.IMAGE_PROVIDER?.toLowerCase() === 'fal' ? 'flux' : 'ideogram';
-
-const usingFlux = () => getImageProvider() === 'flux';
 
 export const generateCanonicalImage = (prompt: string): Promise<GeneratedImage> =>
-  usingFlux() ? generateCanonicalImageWithFlux(prompt) : generateCanonicalImageWithIdeogram(prompt);
+  generateCanonicalImageWithFlux(prompt);
 
 export const generatePortraitPreviewImage = (prompt: string, seed?: number): Promise<GeneratedImage> =>
-  usingFlux()
-    ? generatePortraitPreviewImageWithFlux(prompt, seed)
-    : generatePortraitPreviewImageWithIdeogram(prompt, seed);
+  generatePortraitPreviewImageWithFlux(prompt, seed);
 
 export const generatePreviewWithCharacterReference = (
   prompt: string,
@@ -49,34 +31,23 @@ export const generatePreviewWithCharacterReference = (
   referenceMimeType: string,
   seed?: number,
 ): Promise<GeneratedImage> =>
-  usingFlux()
-    ? generatePreviewWithCharacterReferenceFlux(prompt, referenceImageBytes, referenceMimeType, seed)
-    : generatePreviewWithCharacterReferenceIdeogram(prompt, referenceImageBytes, referenceMimeType, seed);
+  generatePreviewWithCharacterReferenceFlux(prompt, referenceImageBytes, referenceMimeType, seed);
 
 export const generateCanonicalImageFromReference = (input: {
   prompt: string;
   referenceImageBytes: Buffer;
   referenceMimeType: string;
   imageWeight?: number;
-}): Promise<GeneratedImage> =>
-  usingFlux()
-    ? generateCanonicalImageFromReferenceWithFlux(input)
-    : generateCanonicalImageFromReferenceWithIdeogram(input);
+}): Promise<GeneratedImage> => generateCanonicalImageFromReferenceWithFlux(input);
 
 export const generateGalleryImageFromReference = (input: {
   prompt: string;
   referenceImageBytes: Buffer;
   referenceMimeType: string;
-}): Promise<GeneratedImage> =>
-  usingFlux()
-    ? generateGalleryImageFromReferenceWithFlux(input)
-    : generateGalleryImageFromReferenceWithIdeogram(input);
+}): Promise<GeneratedImage> => generateGalleryImageFromReferenceWithFlux(input);
 
 export const generateChatImageFromReference = (input: {
   prompt: string;
   referenceImageBytes: Buffer;
   referenceMimeType: string;
-}): Promise<GeneratedImage> =>
-  usingFlux()
-    ? generateChatImageFromReferenceWithFlux(input)
-    : generateChatImageFromReferenceWithIdeogram(input);
+}): Promise<GeneratedImage> => generateChatImageFromReferenceWithFlux(input);

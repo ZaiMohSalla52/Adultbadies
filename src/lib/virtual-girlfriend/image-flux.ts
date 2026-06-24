@@ -4,15 +4,14 @@ import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
 
 /*
- * Flux provider (fal.ai).
+ * Flux provider (fal.ai) — sole image provider.
  *
- * Mirrors the public surface of image-ideogram.ts so the image machine can be
- * swapped provider-for-provider through image-provider.ts.
+ * Exposes the generation surface consumed by image-provider.ts / image-machine.
  *
  * - Base text-to-image generation uses FLUX_MODEL (default fal-ai/flux/dev).
  * - Reference / identity-lock generation uses FLUX_KONTEXT_MODEL
- *   (default fal-ai/flux-pro/kontext), which is the Flux equivalent of the
- *   Ideogram "remix from canonical" identity-continuity flow.
+ *   (default fal-ai/flux-pro/kontext) to keep the same face across the canonical,
+ *   gallery, and chat surfaces ("same person, new scene/outfit").
  *
  * Safety note: fal's `enable_safety_checker` is left at its provider default
  * (on). This module does not disable any provider-side content filtering, and

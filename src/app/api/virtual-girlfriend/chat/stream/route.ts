@@ -23,6 +23,12 @@ import { decideVirtualGirlfriendImageMoment, resolveVirtualGirlfriendChatImage }
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
 
+// Image generation + model reply can exceed the platform default function
+// limit. 60s is the safe ceiling across Vercel plans; Pro/Enterprise can raise
+// this to 300.
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 const encoder = new TextEncoder();
 
 export async function POST(request: NextRequest) {
