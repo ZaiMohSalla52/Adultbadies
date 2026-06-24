@@ -10,6 +10,9 @@ import {
 import { resolveCompanionImageState } from '@/lib/virtual-girlfriend/generation-state';
 import { VirtualGirlfriendProfileView } from '@/components/virtual-girlfriend/profile-view';
 import { GenerationPoller } from '@/components/virtual-girlfriend/generation-poller';
+import { getUserEntitlements } from '@/lib/subscriptions/data';
+import { claimPointStipend, getPointBalance, getUnlockedImageIds } from '@/lib/points/data';
+import { POINTS } from '@/lib/points/constants';
 
 export default async function VirtualGirlfriendProfilePage({
   searchParams,
@@ -48,10 +51,29 @@ export default async function VirtualGirlfriendProfilePage({
 
   const status = resolveCompanionImageState({ companion, images, visualProfile });
 
+  const entitlements = await getUserEntitlements(auth.accessToken, auth.user.id);
+  // Premium members receive their monthly points stipend (idempotent per period).
+  if (entitlements.isPremium) {
+    await claimPointStipend(auth.accessToken);
+  }
+  const [pointBalance, unlockedImageIds] = await Promise.all([
+    getPointBalance(auth.accessToken, auth.user.id),
+    getUnlockedImageIds(auth.accessToken, auth.user.id, companion.id),
+  ]);
+
   return (
     <>
       <GenerationPoller companionId={companion.id} status={status} />
-      <VirtualGirlfriendProfileView companion={companion} visualProfile={visualProfile} images={images} status={status} />
+      <VirtualGirlfriendProfileView
+        companion={companion}
+        visualProfile={visualProfile}
+        images={images}
+        status={status}
+        pointBalance={pointBalance}
+        unlockedImageIds={unlockedImageIds}
+        unblurCost={POINTS.unblurCost}
+        isPremium={entitlements.isPremium}
+      />
     </>
   );
 }

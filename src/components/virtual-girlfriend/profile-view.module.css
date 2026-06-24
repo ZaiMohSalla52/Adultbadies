@@ -230,6 +230,69 @@
   padding: 20px;
 }
 
+.galleryToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pointsPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(168, 85, 247, 0.18);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+}
+
+.lockedHint {
+  font-size: 12px;
+  color: #9a9a9a;
+}
+
+.lockOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 14, 0.35);
+}
+
+.unblurButton {
+  cursor: pointer;
+  padding: 9px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  border: none;
+  background: linear-gradient(135deg, #f43f8e, #a855f7);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.unblurButton:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.galleryError {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #f4a6c0;
+}
+
+.upgradeLink {
+  color: #f43f8e;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .heroCard {
     grid-template-columns: 1fr;
