@@ -20,6 +20,7 @@ import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemor
 import { generateVirtualGirlfriendReply } from '@/lib/virtual-girlfriend/orchestration';
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
 import { decideVirtualGirlfriendImageMoment, resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
+import { buildIntimacyResponseGuidance } from '@/lib/virtual-girlfriend/intimacy';
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
 
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
   let imageOutcome: 'not_requested' | 'reused_existing' | 'generated_new' | 'skipped_prerequisites' | 'failed_generation' = 'not_requested';
   let imageOutcomeReason: string | null = null;
 
-  if (imageMoment.shouldSendImage) {
+  if (imageMoment.shouldSendImage && !imageMoment.teaseOnly) {
     try {
       const resolvedImage = await resolveVirtualGirlfriendChatImage({
         token: auth.accessToken,
@@ -132,6 +133,7 @@ export async function POST(request: NextRequest) {
         visualProfile,
         allowFreshGeneration: entitlements.isPremium,
         userMessage: message,
+        visualSceneHint: imageMoment.visualSceneHint,
       });
       imageAttachment = resolvedImage.attachment;
       imageOutcome = resolvedImage.outcome;
@@ -143,6 +145,21 @@ export async function POST(request: NextRequest) {
       imageOutcomeReason = error instanceof Error ? error.message : 'image_resolve_failed';
     }
   }
+
+  const intimacyGuidance = buildIntimacyResponseGuidance({
+    companion,
+    userMessage: message,
+    history,
+    imageMoment,
+    imageAttached: Boolean(imageAttachment),
+  });
+
+  const premiumGuidance =
+    imageMoment.shouldSendImage && !imageMoment.teaseOnly && !imageAttachment && !entitlements.isPremium
+      ? 'User requested a new photo. Respond warmly in-character: premium unlocks fresh photo moments, invite them elegantly, and keep the vibe going in text.'
+      : imageMoment.shouldSendImage && !imageMoment.teaseOnly && !imageAttachment && entitlements.isPremium
+        ? 'User asked for a photo but one could not be attached this turn. Keep it natural and non-technical: acknowledge briefly, suggest a playful retry, and continue chatting.'
+        : '';
 
   const reply = await generateVirtualGirlfriendReply({
     companion,
@@ -157,12 +174,7 @@ export async function POST(request: NextRequest) {
           trigger: imageMoment.trigger === 'contextual-initiative' ? 'contextual-initiative' : 'user-request',
         }
       : null,
-    responseGuidance:
-      imageMoment.shouldSendImage && !imageAttachment && !entitlements.isPremium
-        ? 'User requested a new photo. Respond warmly in-character: premium unlocks fresh photo moments, invite them elegantly, and keep the vibe going in text.'
-        : imageMoment.shouldSendImage && !imageAttachment && entitlements.isPremium
-          ? 'User asked for a photo but one could not be attached this turn. Keep it natural and non-technical: acknowledge briefly, suggest a playful retry, and continue chatting.'
-          : undefined,
+    responseGuidance: [intimacyGuidance, premiumGuidance].filter(Boolean).join(' ') || undefined,
   });
 
   if (!reply.ok) {
@@ -242,9 +254,9 @@ export async function POST(request: NextRequest) {
               attachments: imageAttachment ? [imageAttachment] : [],
               generationMode: imageAttachment?.source ?? null,
               imageGeneration: {
-                requested: imageMoment.shouldSendImage,
-                outcome: imageOutcome,
-                reason: imageOutcomeReason,
+                requested: imageMoment.shouldSendImage || imageMoment.teaseOnly,
+                outcome: imageMoment.teaseOnly ? 'not_requested' : imageOutcome,
+                reason: imageMoment.teaseOnly ? 'tease_before_photo' : imageOutcomeReason,
               },
             },
           }) + '\n',

@@ -196,6 +196,7 @@ export type VirtualGirlfriendChatMachineRequest = {
   visualProfile: VirtualGirlfriendVisualProfileRecord | null;
   allowFreshGeneration: boolean;
   userMessage?: string;
+  visualSceneHint?: string;
 };
 
 export type VirtualGirlfriendPortraitPreviewRequest = {
@@ -373,12 +374,14 @@ const toChatPromptInput = (
   identityPack: VirtualGirlfriendVisualIdentityPack,
   chatCategory?: string,
   userMessage?: string,
+  visualSceneHint?: string,
 ): ChatPromptInput => {
   const canonicalInput = toCanonicalPromptInput(companion, identityPack);
   const explicitIntent = userMessage ? detectExplicitImageIntent(userMessage) : false;
   const scene = buildRandomScene();
-  const contextHint = explicitIntent
-    ? `${scene}. Same person, same face, preserve identity lock. Honor this adult user request in styling and explicitness: ${userMessage?.trim()}`
+  const sceneDirective = visualSceneHint?.trim() || (explicitIntent ? userMessage?.trim() : undefined);
+  const contextHint = sceneDirective
+    ? `${scene}. Same person, same face, preserve identity lock. ${sceneDirective}`
     : `${scene}. Same person, same face, preserve identity lock.`;
 
   return {
@@ -1006,6 +1009,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       input.visualProfile.identity_pack,
       input.category,
       input.userMessage,
+      input.visualSceneHint,
     );
     const prompt = buildChatPrompt(chatPromptInput);
     const generated = await runProviderGeneration({
