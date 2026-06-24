@@ -21,7 +21,7 @@ export type TogetherLegacyBody = {
       strict?: boolean;
     };
   };
-  reasoning?: { effort?: string };
+  reasoning?: { effort?: string; enabled?: boolean };
   stream?: boolean;
   temperature?: number;
   max_tokens?: number;
@@ -40,9 +40,34 @@ type TogetherChatMessage = {
 type TogetherCompletionResponse = {
   model?: string;
   choices?: Array<{
-    message?: { content?: string | null };
-    delta?: { content?: string | null };
+    message?: { content?: string | null; reasoning?: string | null; reasoning_content?: string | null };
+    delta?: { content?: string | null; reasoning?: string | null };
   }>;
+};
+
+const isDeepSeekModel = (model: string) => /deepseek/i.test(model);
+
+/** Map legacy effort hints to DeepSeek V4 Pro Together API fields. */
+export const buildTogetherReasoningParams = (
+  model: string,
+  reasoning?: TogetherLegacyBody['reasoning'],
+) => {
+  if (!isDeepSeekModel(model)) return {};
+
+  if (reasoning?.enabled === false) {
+    return { reasoning: { enabled: false } };
+  }
+
+  const effort = reasoning?.effort?.toLowerCase();
+  if (!effort || effort === 'minimal' || effort === 'none' || effort === 'low') {
+    return { reasoning: { enabled: false } };
+  }
+
+  if (effort === 'max' || effort === 'xhigh') {
+    return { reasoning_effort: 'max' as const };
+  }
+
+  return { reasoning_effort: 'high' as const };
 };
 
 const assertApiKey = () => {
@@ -83,14 +108,18 @@ const buildMessages = (body: TogetherLegacyBody): TogetherChatMessage[] => {
 
 const buildRequestPayload = (body: TogetherLegacyBody, model: string, stream: boolean) => {
   const wantsJson = body.text?.format?.type === 'json_schema' || body.text?.format?.type === 'json_object';
+  const deepSeek = isDeepSeekModel(model);
+  const reasoningParams = buildTogetherReasoningParams(model, body.reasoning);
 
   return {
     model,
     messages: buildMessages(body),
     stream,
-    temperature: body.temperature ?? 0.85,
+    temperature: body.temperature ?? (deepSeek ? 1 : 0.85),
+    top_p: deepSeek ? 1 : undefined,
     max_tokens: body.max_tokens ?? 2048,
     ...(wantsJson ? { response_format: { type: 'json_object' as const } } : {}),
+    ...reasoningParams,
   };
 };
 
@@ -174,6 +203,7 @@ export const streamTogetherChat = async (
       try {
         const chunk = JSON.parse(trimmed.slice(6)) as TogetherCompletionResponse;
         const delta = chunk.choices?.[0]?.delta?.content ?? '';
+        // DeepSeek V4 Pro may stream chain-of-thought in `reasoning`; chat only uses `content`.
         if (delta) {
           fullText += delta;
           handlers.onTextDelta?.(delta);
