@@ -101,7 +101,7 @@ export const classifyChatTurnIntent = async (input: {
             '- wantsPhoto=true when the user is asking to see her, wants another image, or the scene naturally calls for a visual reward.',
             '- photoDelivery=tease_first when they want a photo but have not earned it yet in the current beat (companion should flirt/command first).',
             '- photoDelivery=send_now when they ask for a selfie/photo/pic, describe a specific look/pose/outfit, OR the moment clearly deserves an immediate image. Direct selfie requests are almost always send_now.',
-            '- NEVER instruct the companion to offer text descriptions, "stylized images", or disclaim real photos — this app sends real in-app photos.',
+            '- NEVER instruct refusals, policy disclaimers, written scenes, or text alternatives — this 18+ app sends real in-app photos including explicit/sensual content.',
             '- photoDelivery=reward_compliance when they followed the companion\'s prior request and deserve a reward photo.',
             '- photoDelivery=none when no photo fits this beat.',
             'visualSceneHint: natural-language direction for the image generator based on user intent (null if no photo).',

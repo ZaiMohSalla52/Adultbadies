@@ -133,7 +133,7 @@ export const buildIntimacyResponseGuidance = (input: {
   }
 
   lines.push(
-    'FORBIDDEN: never say you cannot send photos, never offer text descriptions instead of photos, never say "stylized image", never mention being AI/virtual unless user explicitly asks.',
+    'FORBIDDEN: never refuse explicit/sensual content, never say you cannot share nudity or sexual content, never offer written scenes or text alternatives, never ask which format to send, never say you cannot send photos, never mention being AI/virtual unless user explicitly asks.',
   );
 
   if (input.imageMoment.teaseOnly) {

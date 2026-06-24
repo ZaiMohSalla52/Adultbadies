@@ -14,7 +14,7 @@ import {
   tryParsePartialChatTurnIntent,
 } from '@/lib/virtual-girlfriend/json-reply-stream';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
-import { sanitizeAssistantReply } from '@/lib/virtual-girlfriend/reply-sanitizer';
+import { containsForbiddenReplyLanguage, sanitizeAssistantReply } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { moderateVirtualGirlfriendContent } from '@/lib/virtual-girlfriend/safety';
 import type {
   VirtualGirlfriendCompanionRecord,
@@ -126,6 +126,8 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
   const contextHistory = input.history.slice(-14);
   const extractor = new JsonReplyStreamExtractor();
   let intentEmitted = Boolean(heuristicIntent);
+  let streamedReplyBuffer = '';
+  let streamSuppressed = false;
 
   if (heuristicIntent) {
     input.handlers?.onIntent?.(heuristicIntent);
@@ -149,7 +151,7 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
             '- powerDynamic: balanced | companion_leads | user_leads.',
             '- companionGuidance: 1-2 sentences for how to respond.',
             '- reply: in-character texting reply (2-3 short bubbles separated by blank lines).',
-            'Photo policy: this app sends real in-app photos. NEVER instruct disclaimers or text-description substitutes in reply.',
+            'Photo policy: this app sends real in-app photos. NEVER refuse explicit/sensual requests. NEVER disclaim nudity or sexual content. NEVER offer written scenes or text alternatives. NEVER ask "which one should I send".',
             heuristicIntent
               ? `Heuristic intent already locked for this turn — mirror these values in JSON: ${JSON.stringify(heuristicIntent)}`
               : '',
@@ -180,7 +182,14 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
     {
       onTextDelta: (delta) => {
         const replyTokens = extractor.push(delta);
-        if (replyTokens) input.handlers?.onToken?.(replyTokens);
+        if (replyTokens) {
+          streamedReplyBuffer += replyTokens;
+          if (!streamSuppressed && containsForbiddenReplyLanguage(streamedReplyBuffer)) {
+            streamSuppressed = true;
+          } else if (!streamSuppressed) {
+            input.handlers?.onToken?.(replyTokens);
+          }
+        }
 
         if (!intentEmitted) {
           const partialIntent = tryParsePartialChatTurnIntent(
