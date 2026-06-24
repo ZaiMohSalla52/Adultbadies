@@ -3,17 +3,20 @@ const getEnvModel = (key: string, fallback: string) => {
   return value || fallback;
 };
 
-/**
- * Verified on Together serverless (short-form id).
- * Many cognitivecomputations/dolphin-* Llama 3.1 ids are NOT hosted there.
- */
-export const VG_TOGETHER_DEFAULT_CHAT_MODEL = 'dolphin-2.5-mixtral-8x7b';
+/** Primary Together serverless model — DeepSeek V4 Pro. */
+export const VG_TOGETHER_DEFAULT_CHAT_MODEL = 'deepseek-ai/DeepSeek-V4-Pro';
+
+/** Uncensored fallback when primary is unavailable or blocked for a turn. */
+export const VG_TOGETHER_UNCENSORED_FALLBACK_MODEL = 'dolphin-2.5-mixtral-8x7b';
 
 const DEPRECATED_MODEL_ALIASES: Record<string, string> = {
   'cognitivecomputations/dolphin-2.9.4-llama-3.1-8b': VG_TOGETHER_DEFAULT_CHAT_MODEL,
   'cognitivecomputations/dolphin-2.9.1-llama-3-8b': VG_TOGETHER_DEFAULT_CHAT_MODEL,
   'cognitivecomputations/dolphin-2.9-llama3-8b': VG_TOGETHER_DEFAULT_CHAT_MODEL,
   'cognitivecomputations/dolphin-3.0-llama-3.1-8b': VG_TOGETHER_DEFAULT_CHAT_MODEL,
+  'dolphin-2.5-mixtral-8x7b': VG_TOGETHER_UNCENSORED_FALLBACK_MODEL,
+  'DeepSeek-V4-Pro': VG_TOGETHER_DEFAULT_CHAT_MODEL,
+  'deepseek-v4-pro': VG_TOGETHER_DEFAULT_CHAT_MODEL,
 };
 
 export function normalizeVgTogetherModel(model: string) {
@@ -35,7 +38,7 @@ export function normalizeVgTogetherModel(model: string) {
   return trimmed;
 }
 
-/** Primary in-character chat + merged turn model (uncensored Dolphin Mixtral). */
+/** Primary in-character chat + merged turn model. */
 export const VG_TOGETHER_CHAT_MODEL = normalizeVgTogetherModel(
   getEnvModel('VG_TOGETHER_CHAT_MODEL', VG_TOGETHER_DEFAULT_CHAT_MODEL),
 );
@@ -47,7 +50,7 @@ export const VG_TOGETHER_FAST_MODEL = normalizeVgTogetherModel(
 
 /** Ordered fallbacks when Together returns model_not_available. */
 export const VG_TOGETHER_FALLBACK_MODELS = [
-  VG_TOGETHER_DEFAULT_CHAT_MODEL,
+  VG_TOGETHER_UNCENSORED_FALLBACK_MODEL,
   'meta-llama/Llama-3.3-70B-Instruct-Turbo',
 ] as const;
 
