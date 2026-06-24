@@ -31,6 +31,10 @@ export interface ChatPromptInput {
   category?: string;
   allowAdultContent?: boolean;
   explicitIntent?: boolean;
+  // The user asked for a specific look/scene this turn (e.g. "in a bikini").
+  // Permits revealing-but-not-explicit wardrobe so the request is honored
+  // instead of the model defaulting to conservative clothing.
+  requestedLook?: boolean;
 }
 
 export const buildChatPrompt = (input: ChatPromptInput): string => {
@@ -51,7 +55,9 @@ export const buildChatPrompt = (input: ChatPromptInput): string => {
     input.contextHint ? `${input.contextHint}.` : null,
     allowAdultContent && input.explicitIntent
       ? 'Adult-only fictional companion. Fully explicit, sensual, uncensored adult photography is allowed. Preserve exact same face and identity lock.'
-      : null,
+      : allowAdultContent && input.requestedLook
+        ? 'Adult-only fictional companion. Render the exact outfit, pose, and setting the user requested — including swimwear, bikinis, lingerie, or other revealing wardrobe — even if the reference photo shows modest clothing. Do not substitute a more conservative outfit. Preserve exact same face and identity lock.'
+        : null,
     getCompositionAnchor('chat'),
     PHOTO_REALISM_TAIL,
     EXPOSURE_LIGHTING_TAIL,

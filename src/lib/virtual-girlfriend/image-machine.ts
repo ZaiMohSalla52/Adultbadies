@@ -406,6 +406,7 @@ const toChatPromptInput = (
     category: chatCategory || undefined,
     contextHint,
     explicitIntent,
+    requestedLook: Boolean(sceneDirective),
   };
 };
 
