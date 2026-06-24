@@ -396,7 +396,7 @@ const toChatPromptInput = (
   // directive. We also drop the canonical wardrobe line (below) for the same
   // reason, so the requested outfit isn't overridden by her default dress.
   const contextHint = sceneDirective
-    ? `${sceneDirective}. Same person, same face, preserve identity lock.`
+    ? `Restyle this exact person for a brand new shot: ${sceneDirective}. Change her wardrobe, pose, and setting to match that request even if the reference photo shows different clothing or location. Keep the same face and identity lock.`
     : `${buildRandomScene()}. Same person, same face, preserve identity lock.`;
 
   return {
