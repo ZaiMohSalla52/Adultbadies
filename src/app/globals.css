@@ -2557,3 +2557,254 @@ img {
   font-size: 1rem;
   line-height: 1;
 }
+
+/* ── AI Girlfriend roster page ── */
+
+.ai-gf-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ai-gf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.ai-gf-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.ai-gf-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.ai-gf-card-img {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.ai-gf-card-photo {
+  object-fit: cover;
+}
+
+.ai-gf-card-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  font-weight: 700;
+  color: rgba(255, 46, 99, 0.6);
+  background: linear-gradient(160deg, rgba(255, 46, 99, 0.08), rgba(192, 132, 252, 0.06));
+}
+
+.ai-gf-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: #fff;
+}
+
+.ai-gf-badge--active     { background: #22c55e; }
+.ai-gf-badge--generating { background: #f59e0b; }
+.ai-gf-badge--failed     { background: #ef4444; }
+
+.ai-gf-card-body {
+  padding: 12px;
+  display: grid;
+  gap: 3px;
+}
+
+.ai-gf-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ai-gf-card-bio {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-gf-card-cta {
+  margin-top: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #ff2e63;
+}
+
+.ai-gf-create {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 16px;
+  border: 2px dashed rgba(255, 46, 99, 0.3);
+  background: rgba(255, 46, 99, 0.04);
+  text-decoration: none;
+  aspect-ratio: 3 / 4;
+  transition: background 150ms, border-color 150ms;
+}
+
+.ai-gf-create:hover {
+  background: rgba(255, 46, 99, 0.09);
+  border-color: rgba(255, 46, 99, 0.5);
+}
+
+.ai-gf-create-icon  { font-size: 2rem; }
+
+.ai-gf-create-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ff2e63;
+}
+
+.ai-gf-create-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 480px) {
+  .ai-gf-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── Companion preview modal (chats page) ── */
+
+.chats-item-btn {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.companion-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.companion-preview-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 24px 24px 0 0;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-bottom: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.companion-preview-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.companion-preview-img {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  max-height: 55vh;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.companion-preview-photo { object-fit: cover; }
+
+.companion-preview-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 4rem;
+  font-weight: 700;
+  color: rgba(255, 46, 99, 0.6);
+  background: linear-gradient(160deg, rgba(255, 46, 99, 0.08), rgba(192, 132, 252, 0.06));
+}
+
+.companion-preview-body {
+  padding: 16px 16px 20px;
+  display: grid;
+  gap: 6px;
+}
+
+.companion-preview-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.companion-preview-bio {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.companion-preview-cta {
+  margin-top: 6px;
+  text-align: center;
+  justify-content: center;
+}
+
+@media (min-width: 540px) {
+  .companion-preview-backdrop {
+    align-items: center;
+  }
+
+  .companion-preview-card {
+    border-radius: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    max-height: 80vh;
+  }
+}

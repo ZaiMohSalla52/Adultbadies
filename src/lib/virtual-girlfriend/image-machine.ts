@@ -1,13 +1,13 @@
 import crypto from 'node:crypto';
 import {
-  generateCanonicalImageFromReferenceWithIdeogram,
-  generateCanonicalImageWithIdeogram,
-  generatePortraitPreviewImageWithIdeogram,
+  generateCanonicalImage,
+  generateCanonicalImageFromReference,
+  generatePortraitPreviewImage,
   generatePreviewWithCharacterReference,
-  generateGalleryImageFromReferenceWithIdeogram,
-  generateChatImageFromReferenceWithIdeogram,
-  type IdeogramGeneratedImage,
-} from '@/lib/virtual-girlfriend/image-ideogram';
+  generateGalleryImageFromReference,
+  generateChatImageFromReference,
+  type GeneratedImage,
+} from '@/lib/virtual-girlfriend/image-provider';
 import {
   buildCanonicalPrompt,
   canonicalPromptVersion,
@@ -29,6 +29,7 @@ import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
 import { uploadToR2 } from '@/lib/storage/r2';
+import { VIRTUAL_GIRLFRIEND_GALLERY_TARGET } from '@/lib/virtual-girlfriend/gallery';
 import {
   getVirtualGirlfriendCompanionById,
   insertCompanionImages,
@@ -242,46 +243,81 @@ export type VirtualGirlfriendPortraitPreviewResult = {
   candidates: VirtualGirlfriendPortraitPreviewCandidate[];
 };
 
-const buildCapturePlan = (companion: VirtualGirlfriendCompanionRecord): CapturePlan[] => {
-  const aesthetic = companion.visual_aesthetic?.toLowerCase() ?? '';
-  const glam = aesthetic.includes('night') || aesthetic.includes('luxury');
+const SETUP_GALLERY_BATCH = 3;
+const GALLERY_TOPUP_BATCH = 3;
 
-  return [
-    {
-      kind: 'canonical',
-      variantIndex: 0,
-      label: 'canonical portrait',
-      framing: 'close-up portrait, eye-level, natural perspective',
-      environment: glam ? 'elevated interior with soft practical lights' : 'bright natural indoor setting',
-      mood: 'warm magnetic confidence',
-      wardrobe: glam ? 'elegant fitted look' : 'chic casual look',
-      expression: 'inviting slight smile, emotionally present',
-      glamourLevel: glam ? 'high but tasteful' : 'moderate natural polish',
-    },
-    {
-      kind: 'gallery',
-      variantIndex: 1,
-      label: 'gallery lifestyle moment',
-      framing: 'waist-up candid framing',
-      environment: 'lifestyle location with depth and context',
-      mood: 'playful relaxed charm',
-      wardrobe: 'distinct daywear styling, polished but natural',
-      expression: 'candid mid-conversation warmth',
-      glamourLevel: 'balanced premium casual',
-    },
-    {
-      kind: 'gallery',
-      variantIndex: 2,
-      label: 'gallery social moment',
-      framing: 'half-body environmental composition',
-      environment: glam ? 'night-out premium venue' : 'cozy golden-hour street scene',
-      mood: 'flirty confident energy',
-      wardrobe: glam ? 'statement evening styling' : 'styled smart-casual look',
-      expression: 'confident direct gaze with subtle smile',
-      glamourLevel: glam ? 'elevated glam' : 'refined lifestyle polish',
-    },
-  ];
+type GalleryScenePreset = {
+  framing: string;
+  environment: string;
+  environmentGlam: string;
+  mood: string;
+  wardrobe: string;
+  wardrobeGlam: string;
+  expression: string;
+  glamourLevel: string;
 };
+
+// Diverse scene pool so a companion's gallery reads like a real photo set.
+const GALLERY_SCENE_PRESETS: GalleryScenePreset[] = [
+  { framing: 'waist-up candid framing', environment: 'sunlit café by a window', environmentGlam: 'chic rooftop lounge at golden hour', mood: 'playful relaxed charm', wardrobe: 'fashion-forward flattering daywear — fitted top or cute dress', wardrobeGlam: 'elegant silk slip dress', expression: 'candid mid-conversation warmth', glamourLevel: 'balanced premium casual' },
+  { framing: 'half-body environmental composition', environment: 'cozy golden-hour city street', environmentGlam: 'night-out premium venue with warm bokeh', mood: 'flirty confident energy', wardrobe: 'trendy smart-casual outfit, flattering fit', wardrobeGlam: 'glamorous statement evening dress', expression: 'confident direct gaze with subtle smile', glamourLevel: 'refined lifestyle polish' },
+  { framing: 'three-quarter body, leaning casually', environment: 'modern apartment with soft daylight', environmentGlam: 'luxury hotel suite with mood lighting', mood: 'warm inviting calm', wardrobe: 'soft oversized knit with fitted bottoms', wardrobeGlam: 'satin lounge set, elegant and tasteful', expression: 'soft genuine smile', glamourLevel: 'natural cozy polish' },
+  { framing: 'waist-up, outdoors', environment: 'lush green park in dappled sunlight', environmentGlam: 'beach boardwalk at sunset', mood: 'bright breezy joy', wardrobe: 'summery flattering dress', wardrobeGlam: 'chic resort outfit', expression: 'natural candid laugh', glamourLevel: 'fresh lifestyle' },
+  { framing: 'half-body, seated', environment: 'stylish bar with warm ambient light', environmentGlam: 'upscale cocktail bar with neon accents', mood: 'magnetic flirtatious', wardrobe: 'sleek going-out top, flattering', wardrobeGlam: 'bold statement going-out dress', expression: 'playful over-the-shoulder glance', glamourLevel: 'elevated evening' },
+  { framing: 'upper body, indoor', environment: 'bright bedroom with soft morning light', environmentGlam: 'plush bedroom with warm glow', mood: 'intimate tender', wardrobe: 'cozy fitted casual set', wardrobeGlam: 'elegant silk camisole, tasteful', expression: 'soft inviting look', glamourLevel: 'soft intimate polish' },
+  { framing: 'three-quarter, standing', environment: 'urban rooftop with skyline behind', environmentGlam: 'penthouse balcony at dusk', mood: 'confident poised', wardrobe: 'tailored chic outfit', wardrobeGlam: 'sophisticated evening ensemble', expression: 'composed confident gaze', glamourLevel: 'premium polished' },
+  { framing: 'waist-up candid', environment: 'art gallery interior', environmentGlam: 'elegant gala event lighting', mood: 'cultured charming', wardrobe: 'smart stylish daywear', wardrobeGlam: 'refined cocktail dress', expression: 'engaged warm smile', glamourLevel: 'sophisticated' },
+];
+
+const isGlamAesthetic = (companion: VirtualGirlfriendCompanionRecord) => {
+  const aesthetic = companion.visual_aesthetic?.toLowerCase() ?? '';
+  return aesthetic.includes('night') || aesthetic.includes('luxury') || aesthetic.includes('glam');
+};
+
+const buildCanonicalCapture = (companion: VirtualGirlfriendCompanionRecord): CapturePlan => {
+  const glam = isGlamAesthetic(companion);
+  return {
+    kind: 'canonical',
+    variantIndex: 0,
+    label: 'canonical portrait',
+    framing: 'close-up portrait, eye-level, natural perspective',
+    environment: glam ? 'elevated interior with soft practical lights' : 'bright natural indoor setting',
+    mood: 'warm magnetic confidence',
+    wardrobe: glam ? 'elegant figure-flattering fitted dress, premium fabric' : 'effortlessly chic fitted top, stylish and flattering',
+    expression: 'inviting slight smile, emotionally present',
+    glamourLevel: glam ? 'high but tasteful' : 'moderate natural polish',
+  };
+};
+
+// Gallery captures come from the preset pool, indexed by 1-based gallery
+// position so setup and later top-up batches stay distinct and diverse.
+const buildGalleryCaptureForIndex = (companion: VirtualGirlfriendCompanionRecord, galleryIndex: number): CapturePlan => {
+  const glam = isGlamAesthetic(companion);
+  const preset = GALLERY_SCENE_PRESETS[(galleryIndex - 1) % GALLERY_SCENE_PRESETS.length];
+  return {
+    kind: 'gallery',
+    variantIndex: galleryIndex,
+    label: `gallery moment ${galleryIndex}`,
+    framing: preset.framing,
+    environment: glam ? preset.environmentGlam : preset.environment,
+    mood: preset.mood,
+    wardrobe: glam ? preset.wardrobeGlam : preset.wardrobe,
+    expression: preset.expression,
+    glamourLevel: preset.glamourLevel,
+  };
+};
+
+const buildGalleryCaptures = (
+  companion: VirtualGirlfriendCompanionRecord,
+  fromIndex: number,
+  count: number,
+): CapturePlan[] =>
+  Array.from({ length: Math.max(0, count) }, (_, i) => buildGalleryCaptureForIndex(companion, fromIndex + i));
+
+const buildCapturePlan = (companion: VirtualGirlfriendCompanionRecord): CapturePlan[] => [
+  buildCanonicalCapture(companion),
+  ...buildGalleryCaptures(companion, 1, SETUP_GALLERY_BATCH),
+];
 
 const toCanonicalPromptInput = (
   companion: VirtualGirlfriendCompanionRecord,
@@ -391,7 +427,7 @@ const runProviderGeneration = async (input: {
   logImageMachine(input.scope, 'provider_call_start', { mode: input.mode });
   const run = async () => {
     if (input.mode === 'canonical') {
-      return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateCanonicalImageWithIdeogram(input.prompt));
+      return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateCanonicalImage(input.prompt));
     }
 
     if (!input.referenceImageBytes || !input.referenceMimeType) {
@@ -402,7 +438,7 @@ const runProviderGeneration = async (input: {
     const referenceMimeType = input.referenceMimeType;
 
     if (input.mode === 'canonical_from_reference') {
-      return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateCanonicalImageFromReferenceWithIdeogram({
+      return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateCanonicalImageFromReference({
         prompt: input.prompt,
         referenceImageBytes,
         referenceMimeType,
@@ -411,8 +447,8 @@ const runProviderGeneration = async (input: {
     }
 
     const generateFromReference = input.mode === 'gallery_from_reference'
-      ? generateGalleryImageFromReferenceWithIdeogram
-      : generateChatImageFromReferenceWithIdeogram;
+      ? generateGalleryImageFromReference
+      : generateChatImageFromReference;
 
     return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateFromReference({
       prompt: input.prompt,
@@ -447,7 +483,7 @@ const buildImageRecord = async (input: {
   visualProfileId: string;
   promptHash: string;
   capture: CapturePlan;
-  generated: IdeogramGeneratedImage;
+  generated: GeneratedImage;
   identityPack: VirtualGirlfriendVisualIdentityPack;
   referenceImageId?: string;
   lineageExtra?: Record<string, unknown>;
@@ -506,7 +542,7 @@ const buildImageRecord = async (input: {
     lineage_metadata: {
       generation_mode: input.capture.kind === 'canonical' ? 'canonical' : 'gallery_from_canonical',
       reference_image_id: input.referenceImageId ?? null,
-      provider: 'ideogram',
+      provider: input.generated.provider,
       provider_model: input.generated.model,
       provider_request_id: input.generated.requestId,
       provider_job_id: input.generated.jobId,
@@ -514,9 +550,9 @@ const buildImageRecord = async (input: {
       ...input.lineageExtra,
     },
     moderation_status: 'pending',
-    moderation: { provider: 'ideogram-v3' },
+    moderation: { provider: `${input.generated.provider}:${input.generated.model}` },
     provenance: {
-      generatedBy: `ideogram:${input.generated.model}`,
+      generatedBy: `${input.generated.provider}:${input.generated.model}`,
       generatedAt: new Date().toISOString(),
       providerEndpoint: input.generated.endpoint,
     },
@@ -540,17 +576,15 @@ const pickReusableImage = (category: VirtualGirlfriendImageCategory, images: Vir
     return { image: null, reason: 'no_reusable_image' as const };
   }
 
-  const newestFirst = [...eligible].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  const exactCategory = newestFirst.find((image) => image.lineage_metadata?.chatCategory === category);
-  if (exactCategory) return { image: exactCategory, reason: null };
+  // Prefer varied gallery shots over always returning the canonical portrait,
+  // and pick randomly so repeated selfie requests don't return the same photo.
+  const gallery = eligible.filter((image) => image.image_kind === 'gallery');
+  const pool = gallery.length > 0 ? gallery : eligible;
+  const categoryMatches = pool.filter((image) => image.lineage_metadata?.chatCategory === category);
+  const choices = categoryMatches.length > 0 ? categoryMatches : pool;
+  const image = choices[Math.floor(Math.random() * choices.length)] ?? null;
 
-  const closestCategory = newestFirst.find((image) => {
-    const chatCategory = image.lineage_metadata?.chatCategory;
-    return chatCategory && (chatCategory === category || (category === 'selfie' && image.image_kind === 'canonical'));
-  });
-
-  if (closestCategory) return { image: closestCategory, reason: null };
-  return { image: newestFirst[0] ?? null, reason: null };
+  return { image, reason: null };
 };
 
 const resolveCanonicalReference = (
@@ -580,44 +614,64 @@ const generateGalleryFromCanonical = async (input: {
   companion: VirtualGirlfriendCompanionRecord;
   visualProfile: VirtualGirlfriendVisualProfileRecord;
   canonicalImage: VirtualGirlfriendCompanionImageRecord;
+  captures: CapturePlan[];
   scope: string;
 }) => {
-  const captures = buildCapturePlan(input.companion).filter((entry) => entry.kind === 'gallery');
-  const canonicalRef = await downloadReferenceBytes({
-    scope: input.scope,
-    deliveryUrl: input.canonicalImage.delivery_url,
-    fallbackMimeType: input.canonicalImage.origin_mime_type,
-  });
+  const captures = input.captures;
+
+  let canonicalRef: { bytes: Buffer; mimeType: string };
+  try {
+    canonicalRef = await downloadReferenceBytes({
+      scope: input.scope,
+      deliveryUrl: input.canonicalImage.delivery_url,
+      fallbackMimeType: input.canonicalImage.origin_mime_type,
+    });
+  } catch (error) {
+    logImageMachine(input.scope, 'gallery_reference_unavailable', {
+      reason: error instanceof Error ? error.message : 'reference_download_failed',
+    });
+    return [];
+  }
+
+  // Generate gallery variants sequentially and resiliently: a single variant
+  // failure (e.g. a transient provider/rate-limit error) must not discard the
+  // others. Sequential avoids tripping provider concurrency limits.
   const galleryImages: VirtualGirlfriendCompanionImageRecord[] = [];
-
   for (const capture of captures) {
-    const galleryPromptInput = toGalleryPromptInput(input.companion, input.visualProfile.identity_pack, capture);
-    const prompt = buildGalleryPrompt(galleryPromptInput, capture.variantIndex);
-    const generated = await runProviderGeneration({
-      scope: input.scope,
-      mode: 'gallery_from_reference',
-      prompt,
-      referenceImageBytes: canonicalRef.bytes,
-      referenceMimeType: canonicalRef.mimeType,
-    });
+    try {
+      const galleryPromptInput = toGalleryPromptInput(input.companion, input.visualProfile.identity_pack, capture);
+      const prompt = buildGalleryPrompt(galleryPromptInput, capture.variantIndex);
+      const generated = await runProviderGeneration({
+        scope: input.scope,
+        mode: 'gallery_from_reference',
+        prompt,
+        referenceImageBytes: canonicalRef.bytes,
+        referenceMimeType: canonicalRef.mimeType,
+      });
 
-    const galleryImage = await buildImageRecord({
-      token: input.token,
-      userId: input.userId,
-      companionId: input.companion.id,
-      visualProfileId: input.visualProfile.id,
-      promptHash: sha(`${input.visualProfile.prompt_hash}:gallery:${capture.variantIndex}:${prompt}`),
-      capture,
-      generated,
-      identityPack: input.visualProfile.identity_pack,
-      referenceImageId: input.canonicalImage.id,
-      promptText: prompt,
-      promptVersion: galleryPromptVersion,
-      surfaceType: 'gallery',
-      scope: input.scope,
-    });
+      const galleryImage = await buildImageRecord({
+        token: input.token,
+        userId: input.userId,
+        companionId: input.companion.id,
+        visualProfileId: input.visualProfile.id,
+        promptHash: sha(`${input.visualProfile.prompt_hash}:gallery:${capture.variantIndex}:${prompt}`),
+        capture,
+        generated,
+        identityPack: input.visualProfile.identity_pack,
+        referenceImageId: input.canonicalImage.id,
+        promptText: prompt,
+        promptVersion: galleryPromptVersion,
+        surfaceType: 'gallery',
+        scope: input.scope,
+      });
 
-    galleryImages.push(galleryImage);
+      galleryImages.push(galleryImage);
+    } catch (error) {
+      logImageMachine(input.scope, 'gallery_variant_failed', {
+        variantIndex: capture.variantIndex,
+        reason: error instanceof Error ? error.message : 'gallery_variant_failed',
+      });
+    }
   }
 
   return galleryImages;
@@ -685,21 +739,78 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
   });
   logImageMachine(scope, 'persistence_success', { canonicalImageId: canonicalImage.id });
 
-  try {
-    const galleryImages = await generateGalleryFromCanonical({
-      token: input.token,
-      userId: input.userId,
-      companion: input.companion,
-      visualProfile: input.visualProfile,
-      canonicalImage,
-      scope,
-    });
-    logImageMachine(scope, 'final_outcome', { status: 'ready', canonicalImageId: canonicalImage.id, galleryCount: galleryImages.length });
-    return { kind: 'setup_pack', status: 'ready', canonicalImage, galleryImages };
-  } catch (error) {
-    logImageMachine(scope, 'final_outcome', { status: 'partial_success', reason: error instanceof Error ? error.message : 'gallery_generation_failed' });
-    throw new VirtualGirlfriendImagePackError('Gallery generation from canonical reference failed.', canonicalImage.id, { cause: error });
+  const galleryImages = await generateGalleryFromCanonical({
+    token: input.token,
+    userId: input.userId,
+    companion: input.companion,
+    visualProfile: input.visualProfile,
+    canonicalImage,
+    captures: buildGalleryCaptures(input.companion, 1, SETUP_GALLERY_BATCH),
+    scope,
+  });
+  const status = galleryImages.length > 0 ? 'ready' : 'partial_success';
+  logImageMachine(scope, 'final_outcome', { status, canonicalImageId: canonicalImage.id, galleryCount: galleryImages.length });
+  return { kind: 'setup_pack', status, canonicalImage, galleryImages };
+};
+
+export type VirtualGirlfriendGalleryTopUpResult = {
+  kind: 'gallery_topup';
+  galleryCount: number;
+  generatedCount: number;
+  reachedTarget: boolean;
+  generated: VirtualGirlfriendCompanionImageRecord[];
+};
+
+/**
+ * Generate the next batch of gallery photos toward the target, using the locked
+ * canonical as the identity reference. Designed to be called repeatedly (one
+ * batch per invocation) so the full grid fills in across requests without any
+ * single request exceeding the serverless function limit.
+ */
+export const runGalleryTopUpImageMachine = async (input: {
+  token: string;
+  userId: string;
+  companion: VirtualGirlfriendCompanionRecord;
+  visualProfile: VirtualGirlfriendVisualProfileRecord;
+  existingImages: VirtualGirlfriendCompanionImageRecord[];
+  target?: number;
+  batchSize?: number;
+}): Promise<VirtualGirlfriendGalleryTopUpResult> => {
+  const scope = 'gallery_topup';
+  const target = input.target ?? VIRTUAL_GIRLFRIEND_GALLERY_TARGET;
+  const batchSize = input.batchSize ?? GALLERY_TOPUP_BATCH;
+
+  const existingGalleryCount = input.existingImages.filter((image) => image.image_kind === 'gallery').length;
+  const remaining = Math.max(0, target - existingGalleryCount);
+  if (remaining === 0) {
+    return { kind: 'gallery_topup', galleryCount: existingGalleryCount, generatedCount: 0, reachedTarget: true, generated: [] };
   }
+
+  const canonical = resolveCanonicalReference(input.visualProfile, input.existingImages);
+  const count = Math.min(remaining, batchSize);
+  const captures = buildGalleryCaptures(input.companion, existingGalleryCount + 1, count);
+
+  logImageMachine(scope, 'request_start', { companionId: input.companion.id, existingGalleryCount, target, batch: count });
+
+  const generated = await generateGalleryFromCanonical({
+    token: input.token,
+    userId: input.userId,
+    companion: input.companion,
+    visualProfile: input.visualProfile,
+    canonicalImage: canonical,
+    captures,
+    scope,
+  });
+
+  const galleryCount = existingGalleryCount + generated.length;
+  logImageMachine(scope, 'final_outcome', { galleryCount, generatedCount: generated.length, reachedTarget: galleryCount >= target });
+  return {
+    kind: 'gallery_topup',
+    galleryCount,
+    generatedCount: generated.length,
+    reachedTarget: galleryCount >= target,
+    generated,
+  };
 };
 
 const runRegenerateImageMachine = async (input: VirtualGirlfriendRegenerateMachineRequest): Promise<VirtualGirlfriendRegenerateMachineResult> => {
@@ -774,6 +885,7 @@ const runRegenerateImageMachine = async (input: VirtualGirlfriendRegenerateMachi
         companion,
         visualProfile: input.visualProfile,
         canonicalImage,
+        captures: buildGalleryCaptures(companion, 1, SETUP_GALLERY_BATCH),
         scope,
       });
     } catch (error) {
@@ -960,7 +1072,7 @@ export const runPortraitPreviewImageMachine = async (
   const leaderPrompt = buildPreviewPrompt(input, 0);
   const leaderSeed = Math.floor(Math.random() * 2147483647);
 
-  let leaderGenerated: IdeogramGeneratedImage;
+  let leaderGenerated: GeneratedImage;
   try {
     leaderGenerated = await withRetries({
       attempts: MACHINE_RETRY_ATTEMPTS.providerRequest,
@@ -969,7 +1081,7 @@ export const runPortraitPreviewImageMachine = async (
       reason: 'provider_error',
       run: () =>
         withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
-          generatePortraitPreviewImageWithIdeogram(leaderPrompt, leaderSeed),
+          generatePortraitPreviewImage(leaderPrompt, leaderSeed),
         ),
     });
   } catch {
@@ -1025,7 +1137,7 @@ const fallbackParallelGeneration = async (
         reason: 'provider_error',
         run: () =>
           withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
-            generatePortraitPreviewImageWithIdeogram(prompt, seed),
+            generatePortraitPreviewImage(prompt, seed),
           ),
       });
       return {

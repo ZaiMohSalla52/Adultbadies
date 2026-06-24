@@ -16,15 +16,15 @@ describe('buildPreviewPrompt', () => {
   it('includes lighting variant in prompt', () => {
     const p0 = buildPreviewPrompt(femaleTraits, 0).toLowerCase();
     const p1 = buildPreviewPrompt(femaleTraits, 1).toLowerCase();
-    expect(p0.includes('front natural lighting')).toBe(true);
-    expect(p1.includes('golden side lighting')).toBe(true);
+    expect(p0.includes('warm golden natural window light')).toBe(true);
+    expect(p1.includes('cinematic warm side lighting')).toBe(true);
   });
 
   it('includes framing variant in prompt', () => {
     const p0 = buildPreviewPrompt(femaleTraits, 0).toLowerCase();
     const p1 = buildPreviewPrompt(femaleTraits, 1).toLowerCase();
-    expect(p0.includes('tight head and shoulders')).toBe(true);
-    expect(p1.includes('tight head and shoulders')).toBe(false);
+    expect(p0.includes('head and shoulders')).toBe(true);
+    expect(p1.includes('head and shoulders')).toBe(false);
   });
 
   it('includes styleVibe cue when provided', () => {
@@ -42,7 +42,7 @@ describe('buildPreviewPrompt', () => {
       personality: 'bubbly_energetic',
     };
     const p = buildPreviewPrompt(traitsWithPersonality, 0).toLowerCase();
-    expect(p.includes('bright energetic presence')).toBe(true);
+    expect(p.includes('bright radiant energetic smile')).toBe(true);
   });
 
   it('omits style cue when styleVibe is random', () => {
@@ -73,9 +73,9 @@ describe('buildPreviewPrompt', () => {
     const p1 = buildPreviewPrompt(femaleTraits, 1).toLowerCase();
     expect(p0.includes('direct confident gaze')).toBe(true);
     expect(p1.includes('warm genuine smile')).toBe(true);
-    expect(p0.includes('front natural lighting')).toBe(true);
-    expect(p1.includes('golden side lighting')).toBe(true);
-    expect(p0.includes('tight head and shoulders')).toBe(true);
-    expect(p1.includes('head and upper chest')).toBe(true);
+    expect(p0.includes('warm golden natural window light')).toBe(true);
+    expect(p1.includes('cinematic warm side lighting')).toBe(true);
+    expect(p0.includes('head and shoulders')).toBe(true);
+    expect(p1.includes('upper chest and face')).toBe(true);
   });
 });

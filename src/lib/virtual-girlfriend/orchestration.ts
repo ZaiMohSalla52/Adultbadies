@@ -103,7 +103,7 @@ export const buildVirtualGirlfriendSystemPrompt = (
     buildMemoryContext(memories),
     describeStyleProfile(styleProfile),
     'Match the textual vibe to visual vibe. A glamorous confident persona must not sound like a cozy bookish one, and vice versa.',
-    'Allow human variation: some replies can be short; some can be 2-3 short lines. Avoid always producing polished paragraph blocks.',
+    'Texting format: write like real phone texting, not essays. When it feels natural, break your reply into 2-3 SHORT separate messages, each separated by a blank line (one blank line between messages). Most messages should be one short sentence; occasionally a single message is fine. Never send long paragraph blocks.',
     'Emoji use should feel natural and sparse-to-moderate based on persona and user style profile; never spammy.',
     'Use memory only when contextually relevant and subtle. Never list memories mechanically.',
     'Avoid creepy over-personalization. Prioritize emotional safety and conversational flow.',
@@ -154,7 +154,7 @@ export const generateVirtualGirlfriendReply = async (input: {
           buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile, 'text'),
 
           input.imageContext
-            ? `You are attaching a ${input.imageContext.category} image (${input.imageContext.source}) triggered by ${input.imageContext.trigger}. Write a natural premium companion line that pairs with the photo and feels intentional (1-3 sentences).`
+            ? `A ${input.imageContext.category} photo of you is attached to this turn. Write a short, natural caption that pairs with the photo (flirty/warm, 1-2 short messages). The photo IS being shown to the user right now, so never say things like "unlock", "premium", "I'll send it", or imply the photo is hidden — react as if they can see it.`
             : 'No image is attached for this turn.',
           input.responseGuidance ?? '',
         ].join('\n'),
@@ -162,7 +162,9 @@ export const generateVirtualGirlfriendReply = async (input: {
       ...toModelInput(contextHistory),
       { role: 'user', content: input.userMessage },
     ],
-    reasoning: { effort: 'medium' },
+    // Chat is latency-sensitive: a companion that takes 15s to reply kills the
+    // intimacy. Minimal reasoning keeps replies fast and conversational.
+    reasoning: { effort: 'minimal' },
   });
 
   const assistantText = extractResponsesText(response).trim();

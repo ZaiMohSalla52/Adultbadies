@@ -266,6 +266,10 @@ export const findDistinctnessConflict = (input: {
 
   for (const companion of input.existingCompanions) {
     if (input.excludeCompanionId && companion.id === input.excludeCompanionId) continue;
+    // Only dedupe against fully generated companions. Companions still
+    // generating or failed (e.g. an orphan left by a timed-out setup) must not
+    // block a legitimate retry.
+    if (companion.generation_status && companion.generation_status !== 'ready') continue;
 
     const existing = fromCompanion(companion);
     const nameSimilarity = nameSimilarityScore(candidate, existing);
@@ -308,3 +312,18 @@ export const findDistinctnessConflict = (input: {
 
   return topConflict;
 };
+
+/**
+ * A conflict only represents a genuine duplicate *character* when the structured
+ * profile (look + vibe + profile) overlaps. Name-only collisions
+ * (exact_name_match / near_duplicate_name / surname_family_pattern_risk) are not
+ * character duplicates — they can be resolved by adjusting the name and should
+ * not hard-block generation.
+ */
+export const isCharacterDuplicateConflict = (conflict: DistinctnessConflict): boolean =>
+  conflict.reasons.includes('structured_profile_overlap');
+
+/** True when the only reasons are name-related and the character itself is distinct. */
+export const isNameOnlyConflict = (conflict: DistinctnessConflict): boolean =>
+  !isCharacterDuplicateConflict(conflict);
+

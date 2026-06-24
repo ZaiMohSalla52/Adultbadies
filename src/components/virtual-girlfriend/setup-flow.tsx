@@ -543,7 +543,12 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
         const body = (await response.json()) as VirtualGirlfriendSetupResult;
 
-        if (body.state === 'ready' || body.state === 'partial_success' || body.state === 'review_pending') {
+        if (
+          body.state === 'generating'
+          || body.state === 'ready'
+          || body.state === 'partial_success'
+          || body.state === 'review_pending'
+        ) {
           const destination = body.companionId ? `/virtual-girlfriend/profile?companionId=${body.companionId}` : '/virtual-girlfriend/profile';
           router.push(destination);
           router.refresh();

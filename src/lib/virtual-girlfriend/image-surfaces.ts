@@ -1,16 +1,14 @@
 /*
- * SURFACE_PARAMS — future single source of truth for Ideogram provider params per surface.
+ * SURFACE_PARAMS — per-surface image generation parameters.
  *
- * Rules:
- * - Do not change live generation behavior in this phase
- * - Do not automatically rewire existing runtime generation to use this registry yet
- * - This file is architecture scaffolding for later phases
- * - Values must match current intended runtime behavior, especially Phase 1 preview settings
+ * The Flux provider consumes `aspect_ratio` and `num_images`. The remaining
+ * fields (magic_prompt_option, style_type, rendering_speed) are legacy
+ * descriptors retained for documentation/intent; they are not sent to Flux.
  */
 
 import type { SurfaceType } from './types/surfaces';
 
-export interface IdeogramSurfaceParams {
+export interface SurfaceImageParams {
   aspect_ratio: string;
   num_images: 1;
   magic_prompt_option: 'ON' | 'OFF';
@@ -18,7 +16,7 @@ export interface IdeogramSurfaceParams {
   rendering_speed: 'DEFAULT' | 'TURBO' | 'QUALITY';
 }
 
-export const SURFACE_PARAMS: Record<SurfaceType, IdeogramSurfaceParams> = {
+export const SURFACE_PARAMS: Record<SurfaceType, SurfaceImageParams> = {
   preview: {
     aspect_ratio: '3x4',
     num_images: 1,
@@ -56,7 +54,7 @@ export const SURFACE_PARAMS: Record<SurfaceType, IdeogramSurfaceParams> = {
   },
 } as const;
 
-export function getSurfaceParams(surface: SurfaceType): IdeogramSurfaceParams {
+export function getSurfaceParams(surface: SurfaceType): SurfaceImageParams {
   return SURFACE_PARAMS[surface];
 }
 

@@ -4,7 +4,7 @@
  * Still identity-anchored but allows scene/context variation.
  */
 
-import { getCompositionAnchor } from '../primitives/composition';
+import { getCompositionAnchor, PHOTO_REALISM_TAIL } from '../primitives/composition';
 import { buildNegatives } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubject } from '../primitives/subject';
@@ -46,7 +46,7 @@ export const buildChatPrompt = (input: ChatPromptInput): string => {
     input.category ? `Scene type: ${input.category}.` : null,
     input.contextHint ? `${input.contextHint}.` : null,
     getCompositionAnchor('chat'),
-    'Best quality, ultra realistic, intricate facial details, professional photography, 8k.',
+    PHOTO_REALISM_TAIL,
     buildNegatives(['composition', 'content']),
     resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Avoid: ${negConstraints}.` : null,

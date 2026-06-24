@@ -8,6 +8,7 @@ import type {
   VirtualGirlfriendCompanionStatus,
 } from '@/lib/virtual-girlfriend/types';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
+import { UnlockableGallery } from '@/components/virtual-girlfriend/unlockable-gallery';
 import styles from './profile-view.module.css';
 
 export const VirtualGirlfriendProfileView = ({
@@ -15,17 +16,27 @@ export const VirtualGirlfriendProfileView = ({
   visualProfile,
   images,
   status,
+  pointBalance,
+  unlockedImageIds,
+  unblurCost,
+  isPremium,
 }: {
   companion: VirtualGirlfriendCompanionRecord;
   visualProfile: VirtualGirlfriendVisualProfileRecord | null;
   images: VirtualGirlfriendCompanionImageRecord[];
   status: VirtualGirlfriendCompanionStatus;
+  pointBalance: number;
+  unlockedImageIds: string[];
+  unblurCost: number;
+  isPremium: boolean;
 }) => {
   const curated = curateVirtualGirlfriendImages(images, {
     lockedCanonicalImageId: visualProfile?.canonical_reference_image_id ?? null,
   });
   const canonical = curated.canonical;
   const gallery = curated.gallery;
+  const unlockedSet = new Set(unlockedImageIds);
+  const unlockedThumbnails = gallery.filter((image) => unlockedSet.has(image.id));
   const structured = companion.structured_profile;
 
   const cleanValue = (value: unknown): string | null => {
@@ -83,12 +94,16 @@ export const VirtualGirlfriendProfileView = ({
               />
             </ProfileMediaFrame>
           ) : (
-            <div className={styles.mainEmpty}>Her portrait is being prepared. Please check back in a moment.</div>
+            <div className={styles.mainEmpty}>
+              {status === 'failed'
+                ? 'Image generation failed for this profile. You can retry from a stable state later.'
+                : 'Her portrait is being prepared. Please check back in a moment.'}
+            </div>
           )}
 
-          {gallery.length > 0 ? (
+          {unlockedThumbnails.length > 0 ? (
             <div className={styles.thumbnailRow}>
-              {gallery.slice(0, 3).map((image) => (
+              {unlockedThumbnails.slice(0, 3).map((image) => (
                 <div key={image.id} className={styles.thumbnail}>
                   <Image src={image.delivery_url} alt={`${companion.name} alternate portrait`} fill className={styles.image} />
                 </div>
@@ -138,13 +153,14 @@ export const VirtualGirlfriendProfileView = ({
         </div>
 
         {gallery.length > 0 ? (
-          <div className={styles.galleryRow}>
-            {gallery.map((image) => (
-              <div key={image.id} className={styles.galleryCard}>
-                <Image src={image.delivery_url} alt={`${companion.name} gallery photo`} fill className={styles.image} />
-              </div>
-            ))}
-          </div>
+          <UnlockableGallery
+            companionName={companion.name}
+            images={gallery.map((image) => ({ id: image.id, url: image.delivery_url }))}
+            initialUnlockedIds={unlockedImageIds}
+            balance={pointBalance}
+            cost={unblurCost}
+            isPremium={isPremium}
+          />
         ) : (
           <div className={styles.galleryEmpty}>No extra gallery moments yet.</div>
         )}

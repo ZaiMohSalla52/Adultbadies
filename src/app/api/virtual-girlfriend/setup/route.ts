@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
+import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import {
   getOrCreateVirtualGirlfriendConversation,
   listVirtualGirlfriends,
@@ -7,7 +8,7 @@ import {
   setVirtualGirlfriendGenerationStatus,
   upsertVirtualGirlfriend,
 } from '@/lib/virtual-girlfriend/data';
-import { findDistinctnessConflict } from '@/lib/virtual-girlfriend/distinctness';
+import { findDistinctnessConflict, isCharacterDuplicateConflict } from '@/lib/virtual-girlfriend/distinctness';
 import {
   generateAndPersistVirtualGirlfriendImagePack,
   VirtualGirlfriendImagePackError,
@@ -20,6 +21,12 @@ import type {
   VirtualGirlfriendSetupResult,
   VirtualGirlfriendStructuredProfile,
 } from '@/lib/virtual-girlfriend/types';
+
+// Setup generates the canonical portrait + gallery pack synchronously, which
+// far exceeds the platform default function limit. 60s is the safe ceiling
+// across Vercel plans; Pro/Enterprise can raise this to 300.
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 const CONFLICT_FIELD_LABELS: Record<string, string> = {
   selectedPortraitPrompt: 'portrait style',
@@ -112,9 +119,32 @@ Rules:
   }
 };
 
+// Deterministic fallback that guarantees a name not already in the user's roster.
+// Used only for name-only collisions where the character is already distinct, so
+// generation never hard-blocks on a name clash.
+const ensureDistinctName = (proposedName: string, existingNames: string[]): string => {
+  const norm = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const taken = new Set(existingNames.map(norm));
+  if (!taken.has(norm(proposedName))) return proposedName;
+
+  const firstName = proposedName.trim().split(/\s+/)[0] ?? proposedName.trim();
+  const suffixes = ['Rae', 'Skye', 'Belle', 'Vale', 'Wren', 'Faye', 'Nova', 'Sol', 'Ivy', 'Lux'];
+  for (const suffix of suffixes) {
+    const candidate = `${firstName} ${suffix}`;
+    if (!taken.has(norm(candidate))) return candidate;
+  }
+
+  let counter = 2;
+  while (taken.has(norm(`${firstName} ${counter}`))) counter += 1;
+  return `${firstName} ${counter}`;
+};
+
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
   if ('error' in auth) return auth.error;
+
+  const ageGate = await requireAgeVerifiedApi(auth);
+  if (ageGate) return ageGate;
 
   console.info('[virtual-girlfriend][setup] request received', { userId: auth.user.id });
 
@@ -159,7 +189,8 @@ export async function POST(request: NextRequest) {
     );
   }
   const companions = await listVirtualGirlfriends(auth.accessToken, auth.user.id);
-  const maxDistinctnessAttempts = Boolean(body.createNew) ? 3 : 1;
+  const excludeCompanionId = body.companionId?.trim() || undefined;
+  const existingNames = companions.map((companion) => companion.name);
 
   let chosenName = baseName;
   let structuredProfile = normalizeSetupInput(body, chosenName, normalizedTraits);
@@ -170,17 +201,22 @@ export async function POST(request: NextRequest) {
     createNew: Boolean(body.createNew),
   });
 
-  let conflict = findDistinctnessConflict({
-    candidateProfile: structuredProfile,
-    existingCompanions: companions,
-    excludeCompanionId: body.companionId?.trim() || undefined,
-  });
+  const evaluateConflict = () =>
+    findDistinctnessConflict({
+      candidateProfile: structuredProfile,
+      existingCompanions: companions,
+      excludeCompanionId,
+    });
 
-  for (let attempt = 1; conflict && attempt < maxDistinctnessAttempts; attempt += 1) {
+  let conflict = evaluateConflict();
+
+  // Name-only collisions never hard-block: try an LLM rename first, falling back
+  // to deterministic disambiguation. Only a genuine duplicate character blocks.
+  for (let attempt = 1; conflict && !isCharacterDuplicateConflict(conflict) && attempt <= 3; attempt += 1) {
     const suggestion = await generateDistinctNameSuggestion({
       proposedName: chosenName,
       profile: structuredProfile,
-      existingNames: companions.map((companion) => companion.name),
+      existingNames,
       conflictReasons: conflict.reasons,
     });
 
@@ -188,14 +224,21 @@ export async function POST(request: NextRequest) {
 
     chosenName = suggestion;
     structuredProfile = normalizeSetupInput(body, chosenName, normalizedTraits);
-    conflict = findDistinctnessConflict({
-      candidateProfile: structuredProfile,
-      existingCompanions: companions,
-      excludeCompanionId: body.companionId?.trim() || undefined,
+    conflict = evaluateConflict();
+  }
+
+  // Any remaining name-only conflict is resolved deterministically so generation proceeds.
+  if (conflict && !isCharacterDuplicateConflict(conflict)) {
+    chosenName = ensureDistinctName(chosenName, existingNames);
+    structuredProfile = normalizeSetupInput(body, chosenName, normalizedTraits);
+    conflict = evaluateConflict();
+    console.info('[virtual-girlfriend][setup] name collision auto-resolved', {
+      userId: auth.user.id,
+      resolvedName: chosenName,
     });
   }
 
-  if (conflict) {
+  if (conflict && isCharacterDuplicateConflict(conflict)) {
     const conflictAreas = Array.from(new Set(conflict.topFields.map((field) => field.category)));
     const topFieldLabels = conflict.topFields.map((field) => CONFLICT_FIELD_LABELS[field.field] ?? field.field);
 
@@ -247,75 +290,66 @@ export async function POST(request: NextRequest) {
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
 
-  try {
-    console.info('[virtual-girlfriend][setup] visual generation started', { userId: auth.user.id, companionId: companion.id });
+  const imageSetup = {
+    origin: structuredProfile.origin ?? undefined,
+    archetype: structuredProfile.archetype,
+    age: structuredProfile.age ?? undefined,
+    hairColor: structuredProfile.hairColor ?? undefined,
+    tone: structuredProfile.tone,
+    affectionStyle: structuredProfile.affectionStyle,
+    visualAesthetic: structuredProfile.visualAesthetic,
+    occupation: structuredProfile.occupation ?? undefined,
+    personality: structuredProfile.personality ?? undefined,
+    preferenceHints: structuredProfile.preferenceHints ?? undefined,
+    selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt ?? undefined,
+    selectedPortraitImage: structuredProfile.selectedPortraitImage ?? undefined,
+    sex: structuredProfile.sex ?? undefined,
+    hairLength: structuredProfile.hairLength ?? undefined,
+    eyeColor: structuredProfile.eyeColor ?? undefined,
+    skinTone: structuredProfile.skinTone ?? undefined,
+    breastSize: structuredProfile.breastSize ?? undefined,
+    styleVibe: structuredProfile.styleVibe ?? undefined,
+    bodyType: structuredProfile.bodyType ?? structuredProfile.figure ?? undefined,
+    figure: structuredProfile.figure ?? undefined,
+    freeformDetails: structuredProfile.freeformDetails ?? undefined,
+  };
 
-    await generateAndPersistVirtualGirlfriendImagePack({
-      token: auth.accessToken,
-      userId: auth.user.id,
-      companion,
-      setup: {
-        origin: structuredProfile.origin ?? undefined,
-        archetype: structuredProfile.archetype,
-        age: structuredProfile.age ?? undefined,
-        hairColor: structuredProfile.hairColor ?? undefined,
-        tone: structuredProfile.tone,
-        affectionStyle: structuredProfile.affectionStyle,
-        visualAesthetic: structuredProfile.visualAesthetic,
-        occupation: structuredProfile.occupation ?? undefined,
-        personality: structuredProfile.personality ?? undefined,
-        preferenceHints: structuredProfile.preferenceHints ?? undefined,
-        selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt ?? undefined,
-        selectedPortraitImage: structuredProfile.selectedPortraitImage ?? undefined,
-        sex: structuredProfile.sex ?? undefined,
-        hairLength: structuredProfile.hairLength ?? undefined,
-        eyeColor: structuredProfile.eyeColor ?? undefined,
-        skinTone: structuredProfile.skinTone ?? undefined,
-        breastSize: structuredProfile.breastSize ?? undefined,
-        styleVibe: structuredProfile.styleVibe ?? undefined,
-        bodyType: structuredProfile.bodyType ?? structuredProfile.figure ?? undefined,
-        figure: structuredProfile.figure ?? undefined,
-        freeformDetails: structuredProfile.freeformDetails ?? undefined,
-      },
-    });
-
-    await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
-    console.info('[virtual-girlfriend][setup] provider success + persistence complete', { userId: auth.user.id, companionId: companion.id });
-
-    return NextResponse.json({
-      state: 'ready',
-      companionId: companion.id,
-      conversationId: conversation.id,
-      message: 'Companion created with locked portrait and gallery continuity.',
-    } satisfies VirtualGirlfriendSetupResult);
-  } catch (error) {
-    console.error('[virtual-girlfriend][setup] provider failure', error);
-
-    if (error instanceof VirtualGirlfriendImagePackError && error.canonicalImageId) {
-      await setCanonicalReferenceImageId(auth.accessToken, auth.user.id, companion.id, error.canonicalImageId);
-      await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
-      console.info('[virtual-girlfriend][setup] canonical persisted but gallery generation failed', {
+  // Decouple image generation from the request. The companion is persisted in
+  // 'generating' state and the response returns immediately; the canonical +
+  // gallery pack renders in the background and the profile page polls for it.
+  after(async () => {
+    const scope = { userId: auth.user.id, companionId: companion.id };
+    try {
+      console.info('[virtual-girlfriend][setup] background visual generation started', scope);
+      await generateAndPersistVirtualGirlfriendImagePack({
+        token: auth.accessToken,
         userId: auth.user.id,
-        companionId: companion.id,
-        canonicalImageId: error.canonicalImageId,
+        companion,
+        setup: imageSetup,
       });
-
-      return NextResponse.json({
-        state: 'partial_success',
-        companionId: companion.id,
-        conversationId: conversation.id,
-        warning: 'Her locked portrait is ready, but gallery expansion failed this pass. You can continue now and retry gallery moments later.',
-      } satisfies VirtualGirlfriendSetupResult, { status: 207 });
+      await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
+      console.info('[virtual-girlfriend][setup] background generation complete', scope);
+    } catch (error) {
+      console.error('[virtual-girlfriend][setup] background generation failure', error);
+      if (error instanceof VirtualGirlfriendImagePackError && error.canonicalImageId) {
+        // Canonical landed but gallery failed: keep the canonical and mark ready.
+        await setCanonicalReferenceImageId(auth.accessToken, auth.user.id, companion.id, error.canonicalImageId);
+        await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
+      } else {
+        await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'failed');
+      }
     }
+  });
 
-    await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'failed');
-    console.info('[virtual-girlfriend][setup] persistence complete with failed image status', { userId: auth.user.id, companionId: companion.id });
+  console.info('[virtual-girlfriend][setup] companion ready; images generating in background', {
+    userId: auth.user.id,
+    companionId: companion.id,
+  });
 
-    return NextResponse.json({
-      state: 'failed',
-      companionId: companion.id,
-      conversationId: conversation.id,
-      message: 'Profile was created, but we could not complete image generation. Open the profile to retry from a stable state.',
-    } satisfies VirtualGirlfriendSetupResult, { status: 502 });
-  }
+  return NextResponse.json({
+    state: 'generating',
+    companionId: companion.id,
+    conversationId: conversation.id,
+    message: 'Your companion is being created — her photos are generating now.',
+  } satisfies VirtualGirlfriendSetupResult);
 }

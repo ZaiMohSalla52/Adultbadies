@@ -178,7 +178,7 @@ Requirements:
     const response = await callOpenAIResponses({
       model: 'gpt-5-mini',
       input: [{ role: 'user', content: prompt }],
-      reasoning: { effort: 'medium' },
+      reasoning: { effort: 'minimal' },
     });
 
     const text = extractResponsesText(response);

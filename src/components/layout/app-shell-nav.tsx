@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment } from 'react';
-import { usePathname } from 'next/navigation';
+import { Fragment, useState, useEffect, useTransition } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { signOutAction } from '@/app/(auth)/actions';
 import styles from './app-shell-nav.module.css';
 
@@ -13,6 +13,21 @@ export type AppNavItem = {
 
 export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavItem[]; mobile?: boolean }) => {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isPending) setPendingHref(null);
+  }, [isPending]);
+
+  const handleNavClick = (href: string) => {
+    setPendingHref(href);
+    startTransition(() => {
+      router.push(href);
+    });
+  };
+
   const NavIcon = ({ label }: { label: string }) => {
     switch (label) {
       case 'Discovery':
@@ -34,13 +49,20 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
             <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
           </svg>
         );
-      case 'Virtual Girlfriend':
+      case 'AI Girlfriend':
         return (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
             <circle cx="9" cy="7" r="4" />
             <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
             <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        );
+      case 'Create':
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v8M8 12h8" />
           </svg>
         );
       case 'Account':
@@ -66,20 +88,23 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
     return (
       <nav className={styles.mobileNav} aria-label="Authenticated navigation mobile">
         {mobileTabs.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const hrefPath = item.href.split('?')[0];
+          const isActive = pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+          const isItemPending = isPending && pendingHref === item.href;
 
           return (
-            <Link
+            <a
               key={item.href}
               href={item.href}
               className={isActive ? styles.tabActive : styles.tab}
               aria-current={isActive ? 'page' : undefined}
+              onClick={(e) => { e.preventDefault(); handleNavClick(item.href); }}
             >
-              <span className={styles.tabIcon}>
-                <NavIcon label={item.label} />
+              <span className={`${styles.tabIcon}${isItemPending ? ` ${styles.tabIconPending}` : ''}`}>
+                {isItemPending ? <span className={styles.navSpinner} aria-hidden /> : <NavIcon label={item.label} />}
               </span>
               <span className={styles.tabLabel}>{item.label}</span>
-            </Link>
+            </a>
           );
         })}
       </nav>
@@ -99,21 +124,24 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
 
       <nav className={styles.nav} aria-label="Authenticated navigation">
         {items.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const hrefPath = item.href.split('?')[0];
+          const isActive = pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+          const isItemPending = isPending && pendingHref === item.href;
 
           return (
             <Fragment key={item.href}>
               {item.label === 'Account' ? <div className={styles.navSpacer} aria-hidden /> : null}
-              <Link
+              <a
                 href={item.href}
-                className={isActive ? styles.navItemActive : styles.navItem}
+                className={isItemPending ? styles.navItemPending : isActive ? styles.navItemActive : styles.navItem}
                 aria-current={isActive ? 'page' : undefined}
+                onClick={(e) => { e.preventDefault(); handleNavClick(item.href); }}
               >
                 <span className={styles.navIcon}>
-                  <NavIcon label={item.label} />
+                  {isItemPending ? <span className={styles.navSpinner} aria-hidden /> : <NavIcon label={item.label} />}
                 </span>
                 <span className={styles.navLabel}>{item.label}</span>
-              </Link>
+              </a>
             </Fragment>
           );
         })}

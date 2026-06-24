@@ -2,12 +2,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { Avatar } from '@/components/ui/avatar';
+import { CompanionChatRows } from '@/components/chats/companion-chat-rows';
+import type { VGThreadItem } from '@/components/chats/companion-chat-rows';
 import { getHumanChatThreads, getIncomingLikesCount } from '@/lib/matches/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import {
-  getLatestVirtualGirlfriendConversation,
-  getVirtualGirlfriendCompanionImages,
-  getVirtualGirlfriendMessages,
+  getLatestVirtualGirlfriendConversationBatch,
+  getLatestVirtualGirlfriendMessage,
+  getVirtualGirlfriendCompanionImagesBatch,
   listVirtualGirlfriendCompanions,
 } from '@/lib/virtual-girlfriend/data';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
@@ -16,15 +18,9 @@ import type { ChatThreadItem } from '@/lib/matches/types';
 const formatDate = (value: string) => {
   const date = new Date(value);
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(date);
-  }
-  if (diffDays < 7) {
-    return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-  }
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(date);
+  if (diffDays < 7) return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
 };
 
@@ -35,55 +31,64 @@ export default async function ChatsPage() {
     redirect('/sign-in');
   }
 
+  const token = auth.accessToken!;
+  const userId = auth.user!.id;
+
   const [humanThreads, companions, incomingLikesCount] = await Promise.all([
-    getHumanChatThreads(auth.accessToken, auth.user.id),
-    listVirtualGirlfriendCompanions(auth.accessToken, auth.user.id),
-    getIncomingLikesCount(auth.accessToken, auth.user.id),
+    getHumanChatThreads(token, userId),
+    listVirtualGirlfriendCompanions(token, userId),
+    getIncomingLikesCount(token, userId),
   ]);
 
-  const virtualThreads = (
-    await Promise.all(
-      companions
-        .filter((c) => c.setup_completed)
-        .map(async (companion) => {
-          const conversation = await getLatestVirtualGirlfriendConversation(
-            auth.accessToken,
-            auth.user.id,
-            companion.id,
-          );
-          if (!conversation) return null;
+  const setupCompanions = companions.filter((c) => c.setup_completed);
+  const setupIds = setupCompanions.map((c) => c.id);
 
-          const [messages, companionImages] = await Promise.all([
-            getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
-            getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
-          ]);
+  const [conversationMap, imageMap] = await Promise.all([
+    getLatestVirtualGirlfriendConversationBatch(token, userId, setupIds),
+    getVirtualGirlfriendCompanionImagesBatch(token, userId, setupIds),
+  ]);
 
-          const curated = curateVirtualGirlfriendImages(companionImages);
-          const latestMessage = messages.at(-1) ?? null;
+  const companionsWithConversation = setupCompanions.filter((c) => conversationMap.has(c.id));
+  const latestMessages = await Promise.all(
+    companionsWithConversation.map((c) =>
+      getLatestVirtualGirlfriendMessage(token, conversationMap.get(c.id)!.id),
+    ),
+  );
 
-          return {
-            id: conversation.id,
-            href: `/virtual-girlfriend/chat?companionId=${companion.id}`,
-            title: companion.name,
-            kind: 'virtual_girlfriend',
-            lastActivityAt:
-              latestMessage?.created_at ?? conversation.last_message_at ?? conversation.updated_at,
-            preview: latestMessage?.content ?? null,
-            avatarUrl: curated.canonical?.delivery_url ?? null,
-            lastMessageSenderId: latestMessage?.role === 'user' ? auth.user.id : null,
-            isNew: !latestMessage,
-          };
-        }),
-    )
-  ).filter((t) => t !== null) as ChatThreadItem[];
+  // Build VG thread items (passed to client component for preview-on-click)
+  const vgThreads: VGThreadItem[] = companionsWithConversation.map((companion, i) => {
+    const conversation = conversationMap.get(companion.id)!;
+    const latestMessage = latestMessages[i];
+    const images = imageMap.get(companion.id) ?? [];
+    const { canonical } = curateVirtualGirlfriendImages(images);
+    return {
+      id: conversation.id,
+      companionId: companion.id,
+      name: companion.name,
+      bio: companion.display_bio || companion.archetype || '',
+      avatarUrl: canonical?.delivery_url ?? null,
+      href: `/virtual-girlfriend/chat?companionId=${companion.id}`,
+      preview: latestMessage?.content ?? null,
+      lastActivityAt: latestMessage?.created_at ?? conversation.last_message_at ?? conversation.updated_at,
+      lastMessageSenderId: latestMessage?.role === 'user' ? userId : null,
+      userId,
+      isNew: !latestMessage,
+    };
+  });
 
-  const allThreads = [...humanThreads, ...virtualThreads].sort((a, b) =>
+  const humanNewMatches = humanThreads.filter((t) => t.isNew);
+  const vgNewMatches = vgThreads.filter((t) => t.isNew);
+  const humanConversations = humanThreads.filter((t) => !t.isNew);
+  const vgConversations = vgThreads.filter((t) => !t.isNew);
+
+  // Sort human conversations by recency
+  const sortedHumanConversations = [...humanConversations].sort((a, b) =>
     a.lastActivityAt > b.lastActivityAt ? -1 : 1,
   );
 
-  // Split into new matches (no messages) and active conversations (has messages)
-  const newMatches = allThreads.filter((t) => t.isNew);
-  const conversations = allThreads.filter((t) => !t.isNew);
+  const hasNewMatches = humanNewMatches.length > 0 || vgNewMatches.length > 0 || incomingLikesCount > 0;
+  const hasConversations = sortedHumanConversations.length > 0 || vgConversations.length > 0;
+  const isEmpty = !hasNewMatches && !hasConversations;
 
   return (
     <div className="chats-page">
@@ -92,15 +97,15 @@ export default async function ChatsPage() {
       </div>
 
       {/* ── New matches row ── */}
-      {(newMatches.length > 0 || incomingLikesCount > 0) && (
+      {hasNewMatches && (
         <div className="chats-new-matches-section">
-          {newMatches.length > 0 && (
+          {(humanNewMatches.length + vgNewMatches.length) > 0 && (
             <p className="chats-new-matches-label">
-              {newMatches.length} new match{newMatches.length !== 1 ? 'es' : ''}
+              {humanNewMatches.length + vgNewMatches.length} new match
+              {humanNewMatches.length + vgNewMatches.length !== 1 ? 'es' : ''}
             </p>
           )}
           <div className="chats-matches-row">
-            {/* Incoming likes bubble */}
             {incomingLikesCount > 0 && (
               <Link href="/discovery" className="chats-match-bubble">
                 <div className="chats-match-bubble-avatar chats-likes-bubble-avatar">
@@ -113,54 +118,54 @@ export default async function ChatsPage() {
               </Link>
             )}
 
-            {/* New match bubbles (no messages yet) */}
-            {newMatches.map((thread) => (
-              <Link key={`${thread.kind}-${thread.id}`} href={thread.href} className="chats-match-bubble">
+            {humanNewMatches.map((thread) => (
+              <Link key={thread.id} href={thread.href} className="chats-match-bubble">
                 <div className="chats-match-bubble-avatar">
                   {thread.avatarUrl ? (
-                    <Image
-                      src={thread.avatarUrl}
-                      alt={thread.title}
-                      fill
-                      className="chats-match-bubble-img"
-                      unoptimized
-                    />
+                    <Image src={thread.avatarUrl} alt={thread.title} fill className="chats-match-bubble-img" unoptimized />
                   ) : (
-                    <div className="chats-match-bubble-fallback">
-                      {thread.title.charAt(0).toUpperCase()}
-                    </div>
+                    <div className="chats-match-bubble-fallback">{thread.title.charAt(0).toUpperCase()}</div>
                   )}
                 </div>
                 <span className="chats-match-bubble-name">{thread.title}</span>
+              </Link>
+            ))}
+
+            {vgNewMatches.map((thread) => (
+              <Link key={thread.id} href={thread.href} className="chats-match-bubble">
+                <div className="chats-match-bubble-avatar">
+                  {thread.avatarUrl ? (
+                    <Image src={thread.avatarUrl} alt={thread.name} fill className="chats-match-bubble-img" unoptimized />
+                  ) : (
+                    <div className="chats-match-bubble-fallback">{thread.name.charAt(0).toUpperCase()}</div>
+                  )}
+                </div>
+                <span className="chats-match-bubble-name">{thread.name}</span>
               </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* ── Most recent conversations ── */}
-      {conversations.length > 0 && (
+      {/* ── Conversations ── */}
+      {hasConversations && (
         <>
           <div className="chats-section-header">
             <span className="chats-section-title">Most recent</span>
-            <span className="chats-section-filter">⊞</span>
           </div>
 
           <div className="chats-list">
-            {conversations.map((thread) => {
-              const yourMove =
-                thread.lastMessageSenderId !== null &&
-                thread.lastMessageSenderId !== auth.user!.id;
-
+            {/* Human threads — static server-rendered links */}
+            {sortedHumanConversations.map((thread: ChatThreadItem) => {
+              const yourMove = thread.lastMessageSenderId !== null && thread.lastMessageSenderId !== userId;
               return (
-                <Link key={`${thread.kind}-${thread.id}`} href={thread.href} className="chats-item">
+                <Link key={thread.id} href={thread.href} className="chats-item">
                   <Avatar
                     name={thread.title}
                     imageUrl={thread.avatarUrl}
-                    kind={thread.kind === 'virtual_girlfriend' ? 'ai' : 'human'}
+                    kind="human"
                     size="lg"
                     ring
-                    isActive={thread.kind === 'virtual_girlfriend'}
                   />
                   <div className="chats-item-body">
                     <div className="chats-item-top">
@@ -176,11 +181,15 @@ export default async function ChatsPage() {
                 </Link>
               );
             })}
+
+            {/* VG threads — client component, tap to preview profile then chat */}
+            <CompanionChatRows items={vgConversations} />
           </div>
         </>
       )}
 
-      {allThreads.length === 0 && incomingLikesCount === 0 && (
+      {/* ── Empty state ── */}
+      {isEmpty && (
         <div className="chats-empty">
           <p className="my-0">No chats yet.</p>
           <p className="my-0 text-sm text-muted">
