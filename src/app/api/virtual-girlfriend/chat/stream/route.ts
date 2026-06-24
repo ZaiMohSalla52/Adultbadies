@@ -105,7 +105,8 @@ export async function POST(request: NextRequest) {
     getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id),
   ]);
 
-  const imageMoment = decideVirtualGirlfriendImageMoment({
+  const imageMoment = await decideVirtualGirlfriendImageMoment({
+    companion,
     userMessage: message,
     history,
     isPremium: entitlements.isPremium,
@@ -147,9 +148,6 @@ export async function POST(request: NextRequest) {
   }
 
   const intimacyGuidance = buildIntimacyResponseGuidance({
-    companion,
-    userMessage: message,
-    history,
     imageMoment,
     imageAttached: Boolean(imageAttachment),
   });

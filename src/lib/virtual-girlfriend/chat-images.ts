@@ -9,12 +9,9 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 
 export type { IntimateImageMoment } from '@/lib/virtual-girlfriend/intimacy';
-export { detectPhotoRequest, detectSpecificVisualRequest } from '@/lib/virtual-girlfriend/intimacy';
 
-export const detectRequestedImageCategory = (message: string): VirtualGirlfriendImageCategory =>
-  decideIntimateImageMoment({ userMessage: message, history: [], isPremium: true }).category;
-
-export const decideVirtualGirlfriendImageMoment = (input: {
+export const decideVirtualGirlfriendImageMoment = async (input: {
+  companion: VirtualGirlfriendCompanionRecord;
   userMessage: string;
   history: VirtualGirlfriendMessageRecord[];
   isPremium: boolean;
