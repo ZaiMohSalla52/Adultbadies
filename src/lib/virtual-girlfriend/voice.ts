@@ -33,10 +33,11 @@ export const buildVirtualGirlfriendVoiceSessionContext = (input: {
   return [systemPrompt, voiceSafetyPolicy].join('\n');
 };
 
-export const createVirtualGirlfriendRealtimeSession = async (_input: {
+export const createVirtualGirlfriendRealtimeSession = async (input: {
   companion: VirtualGirlfriendCompanionRecord;
   memories: VirtualGirlfriendMemoryRecord[];
   styleProfile: VirtualGirlfriendUserStyleProfileRecord;
 }) => {
+  void input;
   throw new VirtualGirlfriendVoiceUnavailableError();
 };

@@ -235,7 +235,7 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
   const photoRequested =
     intent.wantsPhoto || input.imageMoment.shouldSendImage || input.imageMoment.teaseOnly;
 
-  let assistantText = sanitizeAssistantReply({
+  const assistantText = sanitizeAssistantReply({
     text: reply,
     imageAttached: false,
     photoRequested,

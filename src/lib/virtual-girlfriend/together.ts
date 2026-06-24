@@ -1,6 +1,7 @@
-import Together from 'together-ai';
 import { env } from '@/lib/env';
 import { resolveVgTogetherModel } from '@/lib/virtual-girlfriend/llm-models';
+
+const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions';
 
 type ChatRole = 'system' | 'user' | 'assistant';
 
@@ -31,12 +32,25 @@ export type TogetherStreamHandlers = {
   onCompleted?: (payload: Record<string, unknown>) => void;
 };
 
-const getClient = () => {
+type TogetherChatMessage = {
+  role: ChatRole;
+  content: string;
+};
+
+type TogetherCompletionResponse = {
+  model?: string;
+  choices?: Array<{
+    message?: { content?: string | null };
+    delta?: { content?: string | null };
+  }>;
+};
+
+const assertApiKey = () => {
   if (!env.TOGETHER_API_KEY) {
     throw new Error('TOGETHER_API_KEY is not configured.');
   }
 
-  return new Together({ apiKey: env.TOGETHER_API_KEY });
+  return env.TOGETHER_API_KEY;
 };
 
 const toChatRole = (role: string): ChatRole => {
@@ -44,7 +58,7 @@ const toChatRole = (role: string): ChatRole => {
   return 'user';
 };
 
-const buildMessages = (body: TogetherLegacyBody) => {
+const buildMessages = (body: TogetherLegacyBody): TogetherChatMessage[] => {
   const messages = (body.input ?? []).map((message) => ({
     role: toChatRole(message.role),
     content: message.content,
@@ -67,61 +81,91 @@ const buildMessages = (body: TogetherLegacyBody) => {
   return messages;
 };
 
+const buildRequestBody = (body: TogetherLegacyBody, stream: boolean) => {
+  const wantsJson = body.text?.format?.type === 'json_schema' || body.text?.format?.type === 'json_object';
+
+  return {
+    model: resolveVgTogetherModel(body.model),
+    messages: buildMessages(body),
+    stream,
+    temperature: body.temperature ?? 0.85,
+    max_tokens: body.max_tokens ?? 2048,
+    ...(wantsJson ? { response_format: { type: 'json_object' as const } } : {}),
+  };
+};
+
 const wrapCompletion = (content: string, model: string): Record<string, unknown> => ({
   output_text: content,
   model,
 });
 
-const createCompletion = async (body: TogetherLegacyBody, stream: boolean) => {
-  const client = getClient();
-  const model = resolveVgTogetherModel(body.model);
-  const messages = buildMessages(body);
-  const wantsJson = body.text?.format?.type === 'json_schema' || body.text?.format?.type === 'json_object';
+const postTogetherChat = async (body: TogetherLegacyBody, stream: boolean) => {
+  const apiKey = assertApiKey();
+  const requestBody = buildRequestBody(body, stream);
 
-  return client.chat.completions.create({
-    model,
-    messages,
-    stream,
-    temperature: body.temperature ?? 0.85,
-    max_tokens: body.max_tokens ?? 2048,
-    ...(wantsJson ? { response_format: { type: 'json_object' as const } } : {}),
+  const response = await fetch(TOGETHER_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
   });
+
+  if (!response.ok) {
+    throw new Error(`Together chat API failed (${response.status}): ${await response.text()}`);
+  }
+
+  return { response, model: requestBody.model };
 };
 
 export const callTogetherChat = async (body: TogetherLegacyBody) => {
-  const completion = await createCompletion(body, false);
-  if (!('choices' in completion)) {
-    throw new Error('Together chat completion returned an unexpected payload.');
-  }
+  const { response, model } = await postTogetherChat(body, false);
+  const completion = (await response.json()) as TogetherCompletionResponse;
+  const content = completion.choices?.[0]?.message?.content ?? '';
 
-  const content = completion.choices[0]?.message?.content ?? '';
-  const model = completion.model ?? resolveVgTogetherModel(body.model);
-  return wrapCompletion(typeof content === 'string' ? content : String(content), model);
+  return wrapCompletion(typeof content === 'string' ? content : String(content), completion.model ?? model);
 };
 
 export const streamTogetherChat = async (
   body: TogetherLegacyBody,
   handlers: TogetherStreamHandlers = {},
 ): Promise<Record<string, unknown>> => {
-  const model = resolveVgTogetherModel(body.model);
-  const stream = await createCompletion(body, true);
+  const { response, model } = await postTogetherChat(body, true);
 
+  if (!response.body) {
+    throw new Error('Together chat stream returned an empty body.');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
   let fullText = '';
 
-  if (Symbol.asyncIterator in Object(stream)) {
-    for await (const chunk of stream as AsyncIterable<{
-      choices?: Array<{ delta?: { content?: string | null } }>;
-    }>) {
-      const delta = chunk.choices?.[0]?.delta?.content ?? '';
-      if (delta) {
-        fullText += delta;
-        handlers.onTextDelta?.(delta);
+  while (true) {
+    const next = await reader.read();
+    if (next.done) break;
+
+    buffer += decoder.decode(next.value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === 'data: [DONE]') continue;
+      if (!trimmed.startsWith('data: ')) continue;
+
+      try {
+        const chunk = JSON.parse(trimmed.slice(6)) as TogetherCompletionResponse;
+        const delta = chunk.choices?.[0]?.delta?.content ?? '';
+        if (delta) {
+          fullText += delta;
+          handlers.onTextDelta?.(delta);
+        }
+      } catch {
+        // Ignore malformed SSE chunks.
       }
     }
-  } else if ('choices' in stream) {
-    const content = stream.choices[0]?.message?.content ?? '';
-    fullText = typeof content === 'string' ? content : String(content);
-    if (fullText) handlers.onTextDelta?.(fullText);
   }
 
   const payload = wrapCompletion(fullText, model);
@@ -144,4 +188,3 @@ export const extractResponsesText = (payload: Record<string, unknown>): string =
 
   return '';
 };
-
