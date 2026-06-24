@@ -133,13 +133,13 @@ const resolveVisualIdentitySemanticInput = (input: {
 };
 
 const WARDROBE_BY_STYLE: Record<string, string> = {
-  casual: 'relaxed casual everyday clothing, jeans or simple outfit',
-  elegant: 'elegant refined clothing, polished look with tasteful accessories',
-  edgy: 'edgy streetwear, leather or statement pieces, bold styling',
-  bohemian: 'flowy bohemian clothing, earthy tones, layered textures',
-  sporty: 'athletic activewear, fitted sportswear, clean sneakers',
-  professional: 'sharp professional attire, blazer or tailored clothing',
-  glamorous: 'glamorous evening wear, luxurious fabrics, statement styling',
+  casual: 'effortlessly chic casual outfit — a flattering fitted top or soft cropped knit with well-cut jeans or a mini skirt, trendy and put-together',
+  elegant: 'elegant figure-flattering dress with a refined silhouette, tasteful premium fabrics and styling',
+  edgy: 'trend-forward edgy look — fitted leather or a bold statement piece styled with confidence',
+  bohemian: 'flowy bohemian outfit with a flattering silhouette, sun-kissed layered textures and delicate jewelry',
+  sporty: 'sleek flattering activewear — a fitted matching set that looks athletic and toned',
+  professional: 'sharp tailored look — a fitted blazer or chic figure-flattering dress, polished and confident',
+  glamorous: 'glamorous evening look — a silk slip dress or statement gown in luxurious fabric, red-carpet styling',
 };
 
 const LIGHTING_BY_PERSONALITY: Record<string, string> = {

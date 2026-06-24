@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import {
@@ -290,75 +290,66 @@ export async function POST(request: NextRequest) {
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
 
-  try {
-    console.info('[virtual-girlfriend][setup] visual generation started', { userId: auth.user.id, companionId: companion.id });
+  const imageSetup = {
+    origin: structuredProfile.origin ?? undefined,
+    archetype: structuredProfile.archetype,
+    age: structuredProfile.age ?? undefined,
+    hairColor: structuredProfile.hairColor ?? undefined,
+    tone: structuredProfile.tone,
+    affectionStyle: structuredProfile.affectionStyle,
+    visualAesthetic: structuredProfile.visualAesthetic,
+    occupation: structuredProfile.occupation ?? undefined,
+    personality: structuredProfile.personality ?? undefined,
+    preferenceHints: structuredProfile.preferenceHints ?? undefined,
+    selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt ?? undefined,
+    selectedPortraitImage: structuredProfile.selectedPortraitImage ?? undefined,
+    sex: structuredProfile.sex ?? undefined,
+    hairLength: structuredProfile.hairLength ?? undefined,
+    eyeColor: structuredProfile.eyeColor ?? undefined,
+    skinTone: structuredProfile.skinTone ?? undefined,
+    breastSize: structuredProfile.breastSize ?? undefined,
+    styleVibe: structuredProfile.styleVibe ?? undefined,
+    bodyType: structuredProfile.bodyType ?? structuredProfile.figure ?? undefined,
+    figure: structuredProfile.figure ?? undefined,
+    freeformDetails: structuredProfile.freeformDetails ?? undefined,
+  };
 
-    await generateAndPersistVirtualGirlfriendImagePack({
-      token: auth.accessToken,
-      userId: auth.user.id,
-      companion,
-      setup: {
-        origin: structuredProfile.origin ?? undefined,
-        archetype: structuredProfile.archetype,
-        age: structuredProfile.age ?? undefined,
-        hairColor: structuredProfile.hairColor ?? undefined,
-        tone: structuredProfile.tone,
-        affectionStyle: structuredProfile.affectionStyle,
-        visualAesthetic: structuredProfile.visualAesthetic,
-        occupation: structuredProfile.occupation ?? undefined,
-        personality: structuredProfile.personality ?? undefined,
-        preferenceHints: structuredProfile.preferenceHints ?? undefined,
-        selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt ?? undefined,
-        selectedPortraitImage: structuredProfile.selectedPortraitImage ?? undefined,
-        sex: structuredProfile.sex ?? undefined,
-        hairLength: structuredProfile.hairLength ?? undefined,
-        eyeColor: structuredProfile.eyeColor ?? undefined,
-        skinTone: structuredProfile.skinTone ?? undefined,
-        breastSize: structuredProfile.breastSize ?? undefined,
-        styleVibe: structuredProfile.styleVibe ?? undefined,
-        bodyType: structuredProfile.bodyType ?? structuredProfile.figure ?? undefined,
-        figure: structuredProfile.figure ?? undefined,
-        freeformDetails: structuredProfile.freeformDetails ?? undefined,
-      },
-    });
-
-    await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
-    console.info('[virtual-girlfriend][setup] provider success + persistence complete', { userId: auth.user.id, companionId: companion.id });
-
-    return NextResponse.json({
-      state: 'ready',
-      companionId: companion.id,
-      conversationId: conversation.id,
-      message: 'Companion created with locked portrait and gallery continuity.',
-    } satisfies VirtualGirlfriendSetupResult);
-  } catch (error) {
-    console.error('[virtual-girlfriend][setup] provider failure', error);
-
-    if (error instanceof VirtualGirlfriendImagePackError && error.canonicalImageId) {
-      await setCanonicalReferenceImageId(auth.accessToken, auth.user.id, companion.id, error.canonicalImageId);
-      await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
-      console.info('[virtual-girlfriend][setup] canonical persisted but gallery generation failed', {
+  // Decouple image generation from the request. The companion is persisted in
+  // 'generating' state and the response returns immediately; the canonical +
+  // gallery pack renders in the background and the profile page polls for it.
+  after(async () => {
+    const scope = { userId: auth.user.id, companionId: companion.id };
+    try {
+      console.info('[virtual-girlfriend][setup] background visual generation started', scope);
+      await generateAndPersistVirtualGirlfriendImagePack({
+        token: auth.accessToken,
         userId: auth.user.id,
-        companionId: companion.id,
-        canonicalImageId: error.canonicalImageId,
+        companion,
+        setup: imageSetup,
       });
-
-      return NextResponse.json({
-        state: 'partial_success',
-        companionId: companion.id,
-        conversationId: conversation.id,
-        warning: 'Her locked portrait is ready, but gallery expansion failed this pass. You can continue now and retry gallery moments later.',
-      } satisfies VirtualGirlfriendSetupResult, { status: 207 });
+      await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
+      console.info('[virtual-girlfriend][setup] background generation complete', scope);
+    } catch (error) {
+      console.error('[virtual-girlfriend][setup] background generation failure', error);
+      if (error instanceof VirtualGirlfriendImagePackError && error.canonicalImageId) {
+        // Canonical landed but gallery failed: keep the canonical and mark ready.
+        await setCanonicalReferenceImageId(auth.accessToken, auth.user.id, companion.id, error.canonicalImageId);
+        await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'ready');
+      } else {
+        await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'failed');
+      }
     }
+  });
 
-    await setVirtualGirlfriendGenerationStatus(auth.accessToken, auth.user.id, companion.id, 'failed');
-    console.info('[virtual-girlfriend][setup] persistence complete with failed image status', { userId: auth.user.id, companionId: companion.id });
+  console.info('[virtual-girlfriend][setup] companion ready; images generating in background', {
+    userId: auth.user.id,
+    companionId: companion.id,
+  });
 
-    return NextResponse.json({
-      state: 'failed',
-      companionId: companion.id,
-      conversationId: conversation.id,
-      message: 'Profile was created, but we could not complete image generation. Open the profile to retry from a stable state.',
-    } satisfies VirtualGirlfriendSetupResult, { status: 502 });
-  }
+  return NextResponse.json({
+    state: 'generating',
+    companionId: companion.id,
+    conversationId: conversation.id,
+    message: 'Your companion is being created — her photos are generating now.',
+  } satisfies VirtualGirlfriendSetupResult);
 }

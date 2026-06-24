@@ -9,6 +9,7 @@ import {
 } from '@/lib/virtual-girlfriend/data';
 import { resolveCompanionImageState } from '@/lib/virtual-girlfriend/generation-state';
 import { VirtualGirlfriendProfileView } from '@/components/virtual-girlfriend/profile-view';
+import { GenerationPoller } from '@/components/virtual-girlfriend/generation-poller';
 
 export default async function VirtualGirlfriendProfilePage({
   searchParams,
@@ -47,5 +48,10 @@ export default async function VirtualGirlfriendProfilePage({
 
   const status = resolveCompanionImageState({ companion, images, visualProfile });
 
-  return <VirtualGirlfriendProfileView companion={companion} visualProfile={visualProfile} images={images} status={status} />;
+  return (
+    <>
+      <GenerationPoller companionId={companion.id} status={status} />
+      <VirtualGirlfriendProfileView companion={companion} visualProfile={visualProfile} images={images} status={status} />
+    </>
+  );
 }
