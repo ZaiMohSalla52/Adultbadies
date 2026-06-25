@@ -122,7 +122,7 @@ export default async function ChatsPage() {
               <Link key={thread.id} href={thread.href} className="chats-match-bubble">
                 <div className="chats-match-bubble-avatar">
                   {thread.avatarUrl ? (
-                    <Image src={thread.avatarUrl} alt={thread.title} fill className="chats-match-bubble-img" unoptimized />
+                    <Image src={thread.avatarUrl} alt={thread.title} fill sizes="58px" className="chats-match-bubble-img" />
                   ) : (
                     <div className="chats-match-bubble-fallback">{thread.title.charAt(0).toUpperCase()}</div>
                   )}
@@ -135,7 +135,7 @@ export default async function ChatsPage() {
               <Link key={thread.id} href={thread.href} className="chats-match-bubble">
                 <div className="chats-match-bubble-avatar">
                   {thread.avatarUrl ? (
-                    <Image src={thread.avatarUrl} alt={thread.name} fill className="chats-match-bubble-img" unoptimized />
+                    <Image src={thread.avatarUrl} alt={thread.name} fill sizes="58px" className="chats-match-bubble-img" />
                   ) : (
                     <div className="chats-match-bubble-fallback">{thread.name.charAt(0).toUpperCase()}</div>
                   )}

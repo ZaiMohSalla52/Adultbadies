@@ -185,6 +185,7 @@ export const VirtualGirlfriendChatClient = ({
       | { type: 'text_done'; payload: { content: string; segments?: string[]; contentType: 'text' | 'image' | 'mixed' } }
       | { type: 'image'; payload: { attachment: VirtualGirlfriendMessageAttachment; contentType: 'mixed'; generationMode: string | null } }
       | { type: 'done'; payload: DonePayload }
+      | { type: 'image_failed'; payload: { outcome: VirtualGirlfriendChatImageOutcome; reason: string | null } }
       | { type: 'error'; payload: { error: string } };
 
     const reader = response.body.getReader();
@@ -324,6 +325,15 @@ export const VirtualGirlfriendChatClient = ({
             attachImageToAssistant(event.payload.attachment);
           }
 
+          if (event.type === 'image_failed') {
+            const detail = event.payload.reason ?? event.payload.outcome;
+            setError(
+              detail
+                ? `Could not attach a photo (${detail}). Try again in a moment.`
+                : 'Could not attach a photo this turn — she\'ll still reply in chat. Try again in a moment.',
+            );
+          }
+
           if (event.type === 'error') {
             setMessages((prev) => prev.filter((message) => message.id !== optimisticUser.id));
             setError(event.payload.error);
@@ -346,15 +356,18 @@ export const VirtualGirlfriendChatClient = ({
     }
 
     const attachments = payload.attachments ?? [];
-    const imageAttachment = attachments.find((attachment) => attachment.kind === 'image');
+    const imageAttachment =
+      liveAttachments.find((attachment) => attachment.kind === 'image')
+      ?? attachments.find((attachment) => attachment.kind === 'image');
 
-    if (imageAttachment) {
+    if (imageAttachment && liveAttachments.length === 0) {
       attachImageToAssistant(imageAttachment);
     }
 
     const photoMissing =
       payload.imageGeneration?.requested
-      && !attachments.some((attachment) => attachment.kind === 'image')
+      && !imageAttachment
+      && payload.imageGeneration.outcome !== 'pending'
       && payload.imageGeneration.reason !== 'tease_before_photo'
       && payload.imageGeneration.outcome !== 'not_requested';
 
@@ -929,7 +942,7 @@ export const VirtualGirlfriendChatClient = ({
             </svg>
           </Link>
           <div className={styles.headerAvatar}>
-            {avatarUrl ? <Image src={avatarUrl} alt={companionName} width={36} height={36} unoptimized /> : <span>{companionName.charAt(0)}</span>}
+            {avatarUrl ? <Image src={avatarUrl} alt={companionName} width={36} height={36} sizes="36px" /> : <span>{companionName.charAt(0)}</span>}
           </div>
           <div className={styles.companionHeaderInfo}>
             <span className={styles.headerName}>{companionName}</span>
@@ -1033,7 +1046,7 @@ export const VirtualGirlfriendChatClient = ({
             return (
               <div key={message.id} className={styles.messageCompanion}>
                 <div className={styles.companionAvatar}>
-                  {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} unoptimized /> : <span>{companionName.charAt(0)}</span>}
+                  {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
                 </div>
                 <div className={styles.bubbleGroup}>
                   {renderBubbles.map((part, idx) => (
@@ -1080,7 +1093,7 @@ export const VirtualGirlfriendChatClient = ({
           {isStreaming && !messages.some((message) => message.id.startsWith('temp-assistant-')) ? (
             <div className={styles.messageCompanion}>
               <div className={styles.companionAvatar}>
-                {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} unoptimized /> : <span>{companionName.charAt(0)}</span>}
+                {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
               </div>
               <div className={styles.typingIndicator}>
                 <span className={styles.typingDot} />
@@ -1176,7 +1189,7 @@ export const VirtualGirlfriendChatClient = ({
 
       <aside className={styles.infoPanel}>
         <div className={styles.infoPanelPortrait}>
-          {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={320} height={420} unoptimized /> : null}
+          {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={320} height={420} sizes="320px" /> : null}
         </div>
         <h2 className={styles.infoPanelName}>{companionName}</h2>
         <p className={styles.infoPanelSub}>{disclosureLabel}</p>

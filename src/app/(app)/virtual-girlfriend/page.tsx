@@ -80,7 +80,7 @@ export default async function AIGirlfriendPage() {
                   src={imageUrl}
                   alt={companion.name}
                   fill
-                  unoptimized
+                  sizes="(max-width: 480px) 50vw, 160px"
                   className="ai-gf-card-photo"
                 />
               ) : (

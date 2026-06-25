@@ -1,6 +1,10 @@
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { supabaseRest } from '@/lib/supabase/rest';
 import { env } from '@/lib/env';
+
+const AGE_VERIFIED_COOKIE = 'ab-age-verified';
+const AGE_VERIFIED_MAX_AGE = 60 * 60 * 24;
 
 export const AGE_OF_MAJORITY = 18;
 
@@ -41,6 +45,27 @@ export const isValidDateOfBirth = (dateOfBirth: string): boolean => {
   if (parsed.getTime() > Date.now()) return false;
   // Reject implausible ages (>120y) to catch typos.
   return computeAge(dateOfBirth) <= 120;
+};
+
+export const getCachedAgeVerifiedUserId = async (): Promise<string | null> => {
+  const cookieStore = await cookies();
+  return cookieStore.get(AGE_VERIFIED_COOKIE)?.value ?? null;
+};
+
+export const setCachedAgeVerifiedUserId = async (userId: string) => {
+  const cookieStore = await cookies();
+  cookieStore.set(AGE_VERIFIED_COOKIE, userId, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: AGE_VERIFIED_MAX_AGE,
+  });
+};
+
+export const clearCachedAgeVerifiedUserId = async () => {
+  const cookieStore = await cookies();
+  cookieStore.delete(AGE_VERIFIED_COOKIE);
 };
 
 /** Read the caller's age-verification state from their own profile row. */
@@ -104,8 +129,14 @@ export const requireAgeVerifiedApi = async (auth: {
     return null;
   }
 
+  const cachedUserId = await getCachedAgeVerifiedUserId();
+  if (cachedUserId === auth.user.id) return null;
+
   const verification = await getAgeVerification(auth.accessToken, auth.user.id);
-  if (isAgeVerified(verification)) return null;
+  if (isAgeVerified(verification)) {
+    await setCachedAgeVerifiedUserId(auth.user.id);
+    return null;
+  }
 
   return NextResponse.json(
     {

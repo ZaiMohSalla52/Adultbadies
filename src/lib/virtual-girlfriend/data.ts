@@ -982,6 +982,25 @@ export const getLatestDeliveredVirtualGirlfriendProactiveEvent = async (
 };
 
 
+export const patchVirtualGirlfriendMessage = async (
+  token: string,
+  messageId: string,
+  patch: {
+    contentType?: 'text' | 'image' | 'mixed';
+    attachments?: VirtualGirlfriendMessageAttachment[];
+  },
+) => {
+  await supabaseRest('ai_messages', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ id: `eq.${messageId}` }),
+    body: {
+      ...(patch.contentType ? { content_type: patch.contentType } : {}),
+      ...(patch.attachments ? { attachments: patch.attachments } : {}),
+    },
+    prefer: 'return=minimal',
+  });
+};
+
 export const insertVirtualGirlfriendMessageReturningId = async (
   token: string,
   message: {

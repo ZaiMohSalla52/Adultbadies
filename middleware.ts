@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { isJwtNotExpired } from '@/lib/supabase/jwt';
 import { supabaseAnonKey, supabaseUrl, type SupabaseAuthSession } from '@/lib/supabase/shared';
 
 const ACCESS_COOKIE = 'sb-access-token';
@@ -18,16 +19,6 @@ const createSupabaseHeaders = (accessToken?: string) => ({
   'Content-Type': 'application/json',
   ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
 });
-
-const isAccessTokenValid = async (accessToken: string): Promise<boolean> => {
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    method: 'GET',
-    headers: createSupabaseHeaders(accessToken),
-    cache: 'no-store',
-  });
-
-  return response.ok;
-};
 
 const refreshSession = async (refreshToken: string): Promise<SupabaseAuthSession | null> => {
   const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
@@ -52,7 +43,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (await isAccessTokenValid(accessToken)) {
+  if (isJwtNotExpired(accessToken)) {
     return NextResponse.next();
   }
 
@@ -72,5 +63,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api(?:/|$)).*)'],
 };

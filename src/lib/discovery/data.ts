@@ -116,59 +116,86 @@ export const getDiscoverableVirtualGirlfriends = async (token: string, userId: s
   }));
 };
 
+const DISCOVERY_PROFILE_POOL = 80;
+const DISCOVERY_RESULT_LIMIT = 50;
+
 export const getDiscoveryCandidates = async (token: string, userId: string): Promise<DiscoveryCandidate[]> => {
-  const [profiles, currentProfileRows, currentPreferenceRows, preferenceRows, photoRows, swipeRows, blockedIds] =
-    await Promise.all([
-      supabaseRest<DiscoveryProfileRecord[]>('profiles', token, {
-        searchParams: new URLSearchParams({
-          select: 'id,display_name,bio,birth_date,gender,interested_in,location_text,onboarding_completed',
-          onboarding_completed: 'eq.true',
-          id: `neq.${userId}`,
-        }),
+  const [currentProfileRows, currentPreferenceRows, swipeRows, blockedIds] = await Promise.all([
+    supabaseRest<DiscoveryProfileRecord[]>('profiles', token, {
+      searchParams: new URLSearchParams({
+        select: 'id,display_name,bio,birth_date,gender,interested_in,location_text,onboarding_completed',
+        id: `eq.${userId}`,
+        limit: '1',
       }),
-      supabaseRest<DiscoveryProfileRecord[]>('profiles', token, {
-        searchParams: new URLSearchParams({
-          select: 'id,display_name,bio,birth_date,gender,interested_in,location_text,onboarding_completed',
-          id: `eq.${userId}`,
-          limit: '1',
-        }),
+    }),
+    supabaseRest<DiscoveryPreferenceRecord[]>('dating_preferences', token, {
+      searchParams: new URLSearchParams({
+        select: 'user_id,min_age,max_age,interested_in',
+        user_id: `eq.${userId}`,
+        limit: '1',
       }),
-      supabaseRest<DiscoveryPreferenceRecord[]>('dating_preferences', token, {
-        searchParams: new URLSearchParams({
-          select: 'user_id,min_age,max_age,interested_in',
-          user_id: `eq.${userId}`,
-          limit: '1',
-        }),
+    }),
+    supabaseRest<SwipeRecord[]>('swipes', token, {
+      searchParams: new URLSearchParams({
+        select: 'target_user_id',
+        swiper_id: `eq.${userId}`,
+        limit: '500',
       }),
-      supabaseRest<DiscoveryPreferenceRecord[]>('dating_preferences', token, {
-        searchParams: new URLSearchParams({ select: 'user_id,min_age,max_age,interested_in' }),
-      }),
-      supabaseRest<DiscoveryPhotoRecord[]>('profile_photos', token, {
-        searchParams: new URLSearchParams({
-          select: 'user_id,storage_path,is_primary',
-          is_primary: 'eq.true',
-        }),
-      }),
-      supabaseRest<SwipeRecord[]>('swipes', token, {
-        searchParams: new URLSearchParams({ select: 'swiper_id,target_user_id,direction' }),
-      }),
-      getBlockedUserIds(token, userId),
-    ]);
+    }),
+    getBlockedUserIds(token, userId),
+  ]);
 
   const currentProfile = currentProfileRows[0] ?? null;
   const currentPreference = currentPreferenceRows[0] ?? null;
+  const alreadySwipedIds = new Set(swipeRows.map((swipe) => swipe.target_user_id));
 
-  const alreadySwipedIds = new Set(
-    swipeRows.filter((swipe) => swipe.swiper_id === userId).map((swipe) => swipe.target_user_id),
-  );
+  const profileParams = new URLSearchParams({
+    select: 'id,display_name,bio,birth_date,gender,interested_in,location_text,onboarding_completed',
+    onboarding_completed: 'eq.true',
+    id: `neq.${userId}`,
+    order: 'updated_at.desc',
+    limit: String(DISCOVERY_PROFILE_POOL),
+  });
+
+  const interest = normalizeToken(currentPreference?.interested_in);
+  if (interest && interest !== 'everyone') {
+    profileParams.set('gender', `eq.${interest}`);
+  }
+
+  const profiles = await supabaseRest<DiscoveryProfileRecord[]>('profiles', token, {
+    searchParams: profileParams,
+  });
+
+  const filteredProfiles = profiles
+    .filter((profile) => !alreadySwipedIds.has(profile.id))
+    .filter((profile) => !blockedIds.has(profile.id))
+    .slice(0, DISCOVERY_PROFILE_POOL);
+
+  if (filteredProfiles.length === 0) return [];
+
+  const candidateIds = filteredProfiles.map((profile) => profile.id);
+  const [photoRows, preferenceRows] = await Promise.all([
+    supabaseRest<DiscoveryPhotoRecord[]>('profile_photos', token, {
+      searchParams: new URLSearchParams({
+        select: 'user_id,storage_path,is_primary',
+        is_primary: 'eq.true',
+        user_id: `in.(${candidateIds.join(',')})`,
+      }),
+    }),
+    supabaseRest<DiscoveryPreferenceRecord[]>('dating_preferences', token, {
+      searchParams: new URLSearchParams({
+        select: 'user_id,min_age,max_age,interested_in',
+        user_id: `in.(${candidateIds.join(',')})`,
+      }),
+    }),
+  ]);
 
   const photoByUser = new Map(photoRows.map((photo) => [photo.user_id, photo]));
   const preferenceByUser = new Map(preferenceRows.map((preference) => [preference.user_id, preference]));
 
-  return profiles
-    .filter((profile) => !alreadySwipedIds.has(profile.id))
-    .filter((profile) => !blockedIds.has(profile.id))
+  return filteredProfiles
     .filter((profile) => isMutualInterest(currentProfile, currentPreference, profile, preferenceByUser.get(profile.id) ?? null))
+    .slice(0, DISCOVERY_RESULT_LIMIT)
     .map((profile) => {
       const photo = photoByUser.get(profile.id);
 

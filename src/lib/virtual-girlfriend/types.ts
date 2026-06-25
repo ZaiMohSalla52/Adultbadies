@@ -224,7 +224,8 @@ export type VirtualGirlfriendChatImageOutcome =
   | 'generated_new'
   | 'skipped_prerequisites'
   | 'failed_generation'
-  | 'not_requested';
+  | 'not_requested'
+  | 'pending';
 
 export type VirtualGirlfriendCompanionImageRecord = {
   id: string;

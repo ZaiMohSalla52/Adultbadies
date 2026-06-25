@@ -98,7 +98,7 @@ function CanonicalReviewCard({
       <div className="grid gap-4 lg:grid-cols-[220px,1fr]">
         <div className="overflow-hidden rounded-lg border border-border bg-muted/30">
           {canonical?.delivery_url ? (
-            <Image src={canonical.delivery_url} alt={`${companion?.name ?? 'Companion'} canonical portrait`} width={560} height={560} className="h-56 w-full object-cover" unoptimized />
+            <Image src={canonical.delivery_url} alt={`${companion?.name ?? 'Companion'} canonical portrait`} width={560} height={560} sizes="(max-width: 768px) 100vw, 560px" className="h-56 w-full object-cover" />
           ) : (
             <div className="flex h-56 items-center justify-center text-xs text-muted">Canonical preview unavailable</div>
           )}

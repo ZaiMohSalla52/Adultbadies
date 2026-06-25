@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
-import { isValidDateOfBirth, submitAgeAttestation } from '@/lib/safety/age';
+import { isValidDateOfBirth, setCachedAgeVerifiedUserId, submitAgeAttestation } from '@/lib/safety/age';
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await setCachedAgeVerifiedUserId(auth.user.id);
     return NextResponse.json({ ok: true, status: verification.status });
   } catch (error) {
     console.error('[safety] age attestation failed', error);

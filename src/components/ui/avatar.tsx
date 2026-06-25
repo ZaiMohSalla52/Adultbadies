@@ -63,7 +63,7 @@ export const Avatar = ({
       aria-label={`${name} profile image`}
     >
       {imageUrl ? (
-        <Image src={imageUrl} alt={name} fill sizes="96px" className="avatar-image" style={{ objectPosition }} unoptimized />
+        <Image src={imageUrl} alt={name} fill sizes="96px" className="avatar-image" style={{ objectPosition }} />
       ) : (
         <div className="avatar-fallback" aria-hidden>
           <span>{getInitials(name)}</span>

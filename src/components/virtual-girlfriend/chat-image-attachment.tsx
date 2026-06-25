@@ -82,7 +82,7 @@ export const ChatImageAttachment = ({
         alt={`${companionName} photo`}
         width={attachment.width ?? 1024}
         height={attachment.height ?? 1024}
-        unoptimized
+        sizes="(max-width: 768px) 90vw, 420px"
         style={
           unlocked
             ? { filter: 'brightness(1.06) contrast(1.03)' }

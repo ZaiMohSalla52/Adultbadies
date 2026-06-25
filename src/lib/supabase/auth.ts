@@ -1,5 +1,6 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
-import { env } from '@/lib/env';
+import { getUserFromAccessToken } from '@/lib/supabase/jwt';
 
 const tryParseAccessToken = (raw: string): string | null => {
   if (!raw) return null;
@@ -39,26 +40,17 @@ export const getAccessTokenFromCookies = async (): Promise<string | null> => {
   return tryParseAccessToken(authCookie.value);
 };
 
-export const getAuthenticatedUser = async () => {
+export const getAuthenticatedUser = cache(async () => {
   const accessToken = await getAccessTokenFromCookies();
 
   if (!accessToken) {
     return { user: null, accessToken: null };
   }
 
-  const response = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`, {
-    headers: {
-      apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
+  const user = getUserFromAccessToken(accessToken);
+  if (!user) {
     return { user: null, accessToken: null };
   }
 
-  const user = (await response.json()) as { id: string; email?: string };
-
   return { user, accessToken };
-};
+});

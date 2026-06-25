@@ -2,7 +2,12 @@ import type { PropsWithChildren } from 'react';
 import { redirect } from 'next/navigation';
 import { AppShellNav } from '@/components/layout/app-shell-nav';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
-import { getAgeVerification, isAgeVerified } from '@/lib/safety/age';
+import {
+  getAgeVerification,
+  getCachedAgeVerifiedUserId,
+  isAgeVerified,
+  setCachedAgeVerifiedUserId,
+} from '@/lib/safety/age';
 
 const appNavItems = [
   { label: 'Discovery', href: '/discovery' },
@@ -20,9 +25,13 @@ export default async function AppLayout({ children }: PropsWithChildren) {
     redirect('/sign-in');
   }
 
-  const ageVerification = await getAgeVerification(accessToken, user.id);
-  if (!isAgeVerified(ageVerification)) {
-    redirect('/age-verification');
+  const cachedAgeUserId = await getCachedAgeVerifiedUserId();
+  if (cachedAgeUserId !== user.id) {
+    const ageVerification = await getAgeVerification(accessToken, user.id);
+    if (!isAgeVerified(ageVerification)) {
+      redirect('/age-verification');
+    }
+    await setCachedAgeVerifiedUserId(user.id);
   }
 
   return (

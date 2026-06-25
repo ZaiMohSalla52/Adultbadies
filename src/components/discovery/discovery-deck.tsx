@@ -197,8 +197,8 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday, re
                     src={match.avatarUrl}
                     alt={match.otherUserName}
                     fill
+                    sizes="64px"
                     className="encounters-match-thumb-img"
-                    unoptimized
                   />
                 ) : (
                   <div className="encounters-match-thumb-fallback">
@@ -267,8 +267,8 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday, re
                   src={currentCandidate.photoUrl}
                   alt={currentCandidate.displayName}
                   fill
+                  sizes="(max-width: 768px) 100vw, 480px"
                   className="avatar-image"
-                  unoptimized
                   priority
                 />
               ) : (

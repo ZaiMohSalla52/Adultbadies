@@ -12,6 +12,8 @@ import {
   getVirtualGirlfriendMessages,
   getVirtualGirlfriendUserMessageCountForToday,
   insertVirtualGirlfriendMessage,
+  insertVirtualGirlfriendMessageReturningId,
+  patchVirtualGirlfriendMessage,
   recordRecalledVirtualGirlfriendMemories,
   retrieveRelevantVirtualGirlfriendMemories,
   touchVirtualGirlfriendConversation,
@@ -29,7 +31,10 @@ import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
 import type { IntimateImageMoment } from '@/lib/virtual-girlfriend/intimacy';
-import type { VirtualGirlfriendMessageAttachment } from '@/lib/virtual-girlfriend/types';
+import type {
+  VirtualGirlfriendChatImageOutcome,
+  VirtualGirlfriendMessageAttachment,
+} from '@/lib/virtual-girlfriend/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -56,7 +61,7 @@ const splitIntoMessages = (text: string): string[] => {
 };
 
 type ImageTaskResult = {
-  outcome: string;
+  outcome: VirtualGirlfriendChatImageOutcome;
   attachment: VirtualGirlfriendMessageAttachment | null;
   reason: string | null;
 };
@@ -80,15 +85,18 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: 'Message is required.' }), { status: 400 });
   }
 
-  const companion = requestedCompanionId
-    ? await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
-    : await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
+  const [companion, entitlements, usedToday] = await Promise.all([
+    requestedCompanionId
+      ? getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
+      : getActiveVirtualGirlfriend(auth.accessToken, auth.user.id),
+    getUserEntitlements(auth.accessToken, auth.user.id),
+    getVirtualGirlfriendUserMessageCountForToday(auth.accessToken, auth.user.id),
+  ]);
+
   if (!companion || !companion.setup_completed) {
     return new Response(JSON.stringify({ error: 'Complete Virtual Girlfriend setup first.' }), { status: 400 });
   }
 
-  const entitlements = await getUserEntitlements(auth.accessToken, auth.user.id);
-  const usedToday = await getVirtualGirlfriendUserMessageCountForToday(auth.accessToken, auth.user.id);
   const limit = entitlements.limits.virtualGirlfriendMessagesPerDay;
 
   if (limit !== null && usedToday >= limit) {
@@ -228,24 +236,96 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        let imageAttachment: VirtualGirlfriendMessageAttachment | null = null;
-        let imageOutcome = imageMoment.teaseOnly ? 'not_requested' : 'not_requested';
+        const imagePending = imageStarted && !imageMoment.teaseOnly && photoRequestedThisTurn;
+        let imageOutcome: VirtualGirlfriendChatImageOutcome = imageMoment.teaseOnly
+          ? 'not_requested'
+          : imagePending
+            ? 'pending'
+            : 'not_requested';
         let imageOutcomeReason: string | null = imageMoment.teaseOnly ? 'tease_before_photo' : null;
 
-        const resolvedImage = imageTask ? await imageTask : null;
-        if (
-          !resolvedImage
-          && imageMoment.shouldSendImage
-          && !imageMoment.teaseOnly
-          && photoRequestedThisTurn
-        ) {
-          // shouldSendImage means startImageIfNeeded ran, so the task exists but
-          // produced nothing — a real failure worth surfacing.
-          imageOutcome = 'skipped_prerequisites';
-          imageOutcomeReason = 'image_task_missing';
-        }
-        if (resolvedImage) {
-          imageAttachment = resolvedImage.attachment;
+        await insertVirtualGirlfriendMessage(auth.accessToken, {
+          conversationId: conversation.id,
+          userId: auth.user.id,
+          role: 'user',
+          content: message,
+          moderation: turn.moderation,
+        });
+
+        const assistantMessage = await insertVirtualGirlfriendMessageReturningId(auth.accessToken, {
+          conversationId: conversation.id,
+          userId: auth.user.id,
+          role: 'assistant',
+          content: combinedContent,
+          model: turn.model,
+          moderation: {},
+          contentType: 'text',
+          attachments: [],
+        });
+
+        const finalizeTurn = async () => {
+          await Promise.all([
+            touchVirtualGirlfriendConversation(auth.accessToken, conversation.id),
+            recordRecalledVirtualGirlfriendMemories(
+              auth.accessToken,
+              retrievedMemories.map((memory) => memory.id),
+            ),
+            learnAndPersistVirtualGirlfriendStyle({
+              token: auth.accessToken,
+              userId: auth.user.id,
+              companionId: companion.id,
+              current: styleProfile,
+              userMessage: message,
+              assistantMessage: turn.assistantText,
+            }),
+          ]);
+
+          const candidates = extractVirtualGirlfriendMemoryCandidates({
+            userMessage: message,
+            assistantMessage: turn.assistantText,
+          });
+
+          if (candidates.length > 0) {
+            await persistVirtualGirlfriendMemories({
+              token: auth.accessToken,
+              userId: auth.user.id,
+              companionId: companion.id,
+              conversationId: conversation.id,
+              candidates,
+            });
+          }
+
+          await maybeScheduleVirtualGirlfriendProactiveEvent({
+            token: auth.accessToken,
+            userId: auth.user.id,
+            companion,
+            latestUserMessage: message,
+          });
+        };
+
+        void finalizeTurn().catch((finalizeError) => {
+          console.error('[virtual-girlfriend] post-turn finalize failed', finalizeError);
+        });
+
+        enqueueEvent(controller, {
+          type: 'done',
+          payload: {
+            content: combinedContent,
+            segments,
+            contentType: 'text',
+            attachments: [],
+            generationMode: null,
+            imageGeneration: {
+              requested: photoRequestedThisTurn,
+              outcome: imageMoment.teaseOnly ? 'not_requested' : imageOutcome,
+              reason: imageMoment.teaseOnly ? 'tease_before_photo' : imageOutcomeReason,
+            },
+          },
+        });
+
+        if (imageTask) {
+          const resolvedImage = await imageTask;
+          let imageAttachment = resolvedImage.attachment;
           imageOutcome = resolvedImage.outcome;
           imageOutcomeReason = resolvedImage.reason;
 
@@ -268,6 +348,15 @@ export async function POST(request: NextRequest) {
               },
             });
 
+            try {
+              await patchVirtualGirlfriendMessage(auth.accessToken, assistantMessage.id, {
+                contentType: 'mixed',
+                attachments: [imageAttachment],
+              });
+            } catch (patchError) {
+              console.warn('[virtual-girlfriend] failed to persist late chat image attachment', patchError);
+            }
+
             if (
               imageAttachment.imageId
               && imageAttachment.source === 'fresh-generation'
@@ -279,100 +368,27 @@ export async function POST(request: NextRequest) {
                 console.warn('[virtual-girlfriend] failed to auto-grant chat image gallery access', grantError);
               }
             }
+          } else if (
+            imageStarted
+            && photoRequestedThisTurn
+            && !imageMoment.teaseOnly
+          ) {
+            if (imageOutcome === 'not_requested') {
+              imageOutcome = 'skipped_prerequisites';
+            }
+            if (!imageOutcomeReason) {
+              imageOutcomeReason = 'image_not_attached';
+            }
+
+            enqueueEvent(controller, {
+              type: 'image_failed',
+              payload: {
+                outcome: imageOutcome,
+                reason: imageOutcomeReason,
+              },
+            });
           }
         }
-
-        // Only surface a photo-failure when the pipeline actually ran and came
-        // back empty. If imageStarted is false, the companion deliberately chose
-        // not to send this beat (e.g. intent classified wantsPhoto but
-        // photoDelivery 'none'); that is a conversational choice, not an error,
-        // so leave the outcome as 'not_requested' and show the user nothing.
-        if (
-          imageStarted
-          && photoRequestedThisTurn
-          && !imageMoment.teaseOnly
-          && !imageAttachment
-        ) {
-          if (imageOutcome === 'not_requested') {
-            imageOutcome = 'skipped_prerequisites';
-          }
-          if (!imageOutcomeReason) {
-            imageOutcomeReason = 'image_not_attached';
-          }
-        }
-
-        await insertVirtualGirlfriendMessage(auth.accessToken, {
-          conversationId: conversation.id,
-          userId: auth.user.id,
-          role: 'user',
-          content: message,
-          moderation: turn.moderation,
-        });
-
-        await insertVirtualGirlfriendMessage(auth.accessToken, {
-          conversationId: conversation.id,
-          userId: auth.user.id,
-          role: 'assistant',
-          content: combinedContent,
-          model: turn.model,
-          moderation: {},
-          contentType: imageAttachment ? 'mixed' : 'text',
-          attachments: imageAttachment ? [imageAttachment] : [],
-        });
-
-        await Promise.all([
-          touchVirtualGirlfriendConversation(auth.accessToken, conversation.id),
-          recordRecalledVirtualGirlfriendMemories(
-            auth.accessToken,
-            retrievedMemories.map((memory) => memory.id),
-          ),
-          learnAndPersistVirtualGirlfriendStyle({
-            token: auth.accessToken,
-            userId: auth.user.id,
-            companionId: companion.id,
-            current: styleProfile,
-            userMessage: message,
-            assistantMessage: turn.assistantText,
-          }),
-        ]);
-
-        const candidates = extractVirtualGirlfriendMemoryCandidates({
-          userMessage: message,
-          assistantMessage: turn.assistantText,
-        });
-
-        if (candidates.length > 0) {
-          await persistVirtualGirlfriendMemories({
-            token: auth.accessToken,
-            userId: auth.user.id,
-            companionId: companion.id,
-            conversationId: conversation.id,
-            candidates,
-          });
-        }
-
-        await maybeScheduleVirtualGirlfriendProactiveEvent({
-          token: auth.accessToken,
-          userId: auth.user.id,
-          companion,
-          latestUserMessage: message,
-        });
-
-        enqueueEvent(controller, {
-          type: 'done',
-          payload: {
-            content: combinedContent,
-            segments,
-            contentType: imageAttachment ? 'mixed' : 'text',
-            attachments: imageAttachment ? [imageAttachment] : [],
-            generationMode: imageAttachment?.source ?? null,
-            imageGeneration: {
-              requested: photoRequestedThisTurn,
-              outcome: imageMoment.teaseOnly ? 'not_requested' : imageOutcome,
-              reason: imageMoment.teaseOnly ? 'tease_before_photo' : imageOutcomeReason,
-            },
-          },
-        });
       } catch (error) {
         console.error('[virtual-girlfriend] stream failed', error);
         enqueueEvent(controller, {
