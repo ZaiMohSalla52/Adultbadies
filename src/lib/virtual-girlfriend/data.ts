@@ -965,6 +965,11 @@ export const getVirtualGirlfriendUserStyleProfile = async (
   return rows[0] ?? null;
 };
 
+const isSupabaseDuplicateKeyError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /23505|409/.test(message) || /duplicate key/i.test(message);
+};
+
 export const getOrCreateVirtualGirlfriendUserStyleProfile = async (
   token: string,
   userId: string,
@@ -973,16 +978,28 @@ export const getOrCreateVirtualGirlfriendUserStyleProfile = async (
   const existing = await getVirtualGirlfriendUserStyleProfile(token, userId, companionId);
   if (existing) return existing;
 
-  const rows = await supabaseRest<VirtualGirlfriendUserStyleProfileRecord[]>('ai_user_style_profiles', token, {
-    method: 'POST',
-    body: {
-      user_id: userId,
-      companion_id: companionId,
-    },
-    prefer: 'return=representation',
-  });
+  try {
+    const rows = await supabaseRest<VirtualGirlfriendUserStyleProfileRecord[]>('ai_user_style_profiles', token, {
+      method: 'POST',
+      searchParams: new URLSearchParams({ on_conflict: 'user_id,companion_id' }),
+      body: {
+        user_id: userId,
+        companion_id: companionId,
+      },
+      prefer: 'resolution=ignore-duplicates,return=representation',
+    });
 
-  return rows[0]!;
+    if (rows?.[0]) return rows[0];
+  } catch (error) {
+    if (!isSupabaseDuplicateKeyError(error)) throw error;
+  }
+
+  const resolved = await getVirtualGirlfriendUserStyleProfile(token, userId, companionId);
+  if (!resolved) {
+    throw new Error('Unable to load companion style profile.');
+  }
+
+  return resolved;
 };
 
 export const patchVirtualGirlfriendUserStyleProfile = async (
