@@ -35,6 +35,13 @@ const FORBIDDEN_PATTERNS: RegExp[] = [
 export const containsForbiddenReplyLanguage = (text: string) =>
   FORBIDDEN_PATTERNS.some((pattern) => pattern.test(text));
 
+const SMIRK_ACTION_PATTERN = /\*smirks?\*/gi;
+
+const polishRoleplayActions = (text: string) => {
+  const withoutSmirk = text.replace(SMIRK_ACTION_PATTERN, '').replace(/\n{3,}/g, '\n\n').trim();
+  return withoutSmirk;
+};
+
 const stripForbiddenSentences = (text: string) =>
   text
     .replace(/[^.!?\n]*\bcan'?t share[^.!?\n]*[.!?]/gi, '')
@@ -57,11 +64,11 @@ export const sanitizeAssistantReply = (input: {
   if (!trimmed) return '';
 
   if (!containsForbiddenReplyLanguage(trimmed)) {
-    return trimmed;
+    return polishRoleplayActions(trimmed);
   }
 
   if (input.imageAttached) {
-    return '*smirks*\n\nThere — just for you. Tell me what you think.';
+    return 'There — just for you.\n\nTell me what you think.';
   }
 
   if (input.photoRequested) {
@@ -74,7 +81,7 @@ export const sanitizeAssistantReply = (input: {
 
   const stripped = stripForbiddenSentences(trimmed);
   if (stripped && !containsForbiddenReplyLanguage(stripped)) {
-    return stripped;
+    return polishRoleplayActions(stripped);
   }
 
   return 'You know exactly what you do to me.\n\nKeep talking — I\'m right here with you.';

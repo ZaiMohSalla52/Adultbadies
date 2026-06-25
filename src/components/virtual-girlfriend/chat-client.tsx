@@ -81,6 +81,8 @@ export const VirtualGirlfriendChatClient = ({
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [companionActivity, setCompanionActivity] = useState<'idle' | 'typing' | 'sending_photo'>('idle');
+  const [photoGenerating, setPhotoGenerating] = useState(false);
   const [sidebarImages, setSidebarImages] = useState(galleryImages);
   const [sidebarUnlocked, setSidebarUnlocked] = useState(unlockedImageIds);
   const [stylePending, setStylePending] = useState<VirtualGirlfriendStyleControlPreset | null>(null);
@@ -142,6 +144,8 @@ export const VirtualGirlfriendChatClient = ({
 
     setPending(true);
     setIsStreaming(true);
+    setCompanionActivity('typing');
+    setPhotoGenerating(false);
     setError(null);
     setDraft('');
     setOutfitMenuOpen(false);
@@ -188,6 +192,7 @@ export const VirtualGirlfriendChatClient = ({
     type StreamEvent =
       | { type: 'token'; payload: { token: string } }
       | { type: 'text_done'; payload: { content: string; segments?: string[]; contentType: 'text' | 'image' | 'mixed' } }
+      | { type: 'image_generating'; payload: { active: boolean } }
       | { type: 'image'; payload: { attachment: VirtualGirlfriendMessageAttachment; contentType: 'mixed'; generationMode: string | null } }
       | { type: 'done'; payload: DonePayload }
       | { type: 'image_failed'; payload: { outcome: VirtualGirlfriendChatImageOutcome; reason: string | null } }
@@ -324,13 +329,23 @@ export const VirtualGirlfriendChatClient = ({
                 ? event.payload.segments
                 : [event.payload.content];
             finalizeSegments(segments, event.payload.contentType);
+            setCompanionActivity((current) => (current === 'typing' ? 'idle' : current));
+          }
+
+          if (event.type === 'image_generating') {
+            setPhotoGenerating(event.payload.active);
+            setCompanionActivity('sending_photo');
           }
 
           if (event.type === 'image') {
+            setPhotoGenerating(false);
+            setCompanionActivity('idle');
             attachImageToAssistant(event.payload.attachment);
           }
 
           if (event.type === 'image_failed') {
+            setPhotoGenerating(false);
+            setCompanionActivity('idle');
             const detail = event.payload.reason ?? event.payload.outcome;
             setError(
               detail
@@ -399,6 +414,8 @@ export const VirtualGirlfriendChatClient = ({
 
     setPending(false);
     setIsStreaming(false);
+    setCompanionActivity('idle');
+    setPhotoGenerating(false);
     scrollToBottom();
   };
 
@@ -952,7 +969,19 @@ export const VirtualGirlfriendChatClient = ({
           </div>
           <div className={styles.companionHeaderInfo}>
             <span className={styles.headerName}>{companionName}</span>
-            <span className={styles.companionHeaderStatus}>Online</span>
+            <span
+              className={
+                companionActivity === 'idle'
+                  ? styles.companionHeaderStatus
+                  : `${styles.companionHeaderStatus} ${styles.companionHeaderStatusActive}`
+              }
+            >
+              {companionActivity === 'typing'
+                ? 'typing…'
+                : companionActivity === 'sending_photo'
+                  ? 'sending a photo…'
+                  : 'online'}
+            </span>
           </div>
           <span className={styles.pointsPill} aria-label={`${pointBalance} points`}>
             💜 {pointBalance}
@@ -1110,15 +1139,27 @@ export const VirtualGirlfriendChatClient = ({
             );
           })}
 
-          {isStreaming && !messages.some((message) => message.id.startsWith('temp-assistant-')) ? (
+          {isStreaming && companionActivity === 'typing' && !messages.some((message) => message.id.startsWith('temp-assistant-')) ? (
             <div className={styles.messageCompanion}>
               <div className={styles.companionAvatar}>
                 {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
               </div>
-              <div className={styles.typingIndicator}>
+              <div className={styles.typingIndicator} aria-label={`${companionName} is typing`}>
                 <span className={styles.typingDot} />
                 <span className={styles.typingDot} />
                 <span className={styles.typingDot} />
+              </div>
+            </div>
+          ) : null}
+
+          {photoGenerating ? (
+            <div className={styles.messageCompanion}>
+              <div className={styles.companionAvatar}>
+                {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
+              </div>
+              <div className={styles.photoSendingIndicator} aria-label={`${companionName} is sending a photo`}>
+                <div className={styles.photoSendingShimmer} />
+                <span className={styles.photoSendingLabel}>Sending photo…</span>
               </div>
             </div>
           ) : null}

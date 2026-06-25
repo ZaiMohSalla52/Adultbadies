@@ -76,7 +76,7 @@ export const ChatImageAttachment = ({
   };
 
   return (
-    <div className={styles.chatImage}>
+    <div className={`${styles.chatImage} ${styles.chatImageReveal}`}>
       <Image
         src={attachment.imageUrl}
         alt={`${companionName} photo`}

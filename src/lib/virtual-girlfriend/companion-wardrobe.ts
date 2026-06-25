@@ -124,7 +124,7 @@ const FEMALE_FALLBACK = [
 
 const MALE_FALLBACK = [
   'fitted tee emphasizing athletic build with candid selfie energy',
-  'shirtless torso with natural window light and relaxed smirk',
+  'shirtless torso with natural window light and relaxed confident expression',
   'tailored casual outfit with confident direct gaze',
   'towel at waist with steamy bathroom post-shower light',
   'open jacket over bare chest with nightlife mood',

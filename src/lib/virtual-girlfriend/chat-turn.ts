@@ -49,6 +49,7 @@ const chatTurnSchema = {
   type: 'object',
   additionalProperties: false,
   properties: {
+    reply: { type: 'string' },
     intimacyActive: { type: 'boolean' },
     wantsPhoto: { type: 'boolean' },
     photoDelivery: { type: 'string', enum: ['none', 'tease_first', 'send_now', 'reward_compliance'] },
@@ -56,9 +57,9 @@ const chatTurnSchema = {
     imageCategory: { type: 'string', enum: IMAGE_CATEGORIES },
     powerDynamic: { type: 'string', enum: ['balanced', 'companion_leads', 'user_leads'] },
     companionGuidance: { type: 'string' },
-    reply: { type: 'string' },
   },
   required: [
+    'reply',
     'intimacyActive',
     'wantsPhoto',
     'photoDelivery',
@@ -66,7 +67,6 @@ const chatTurnSchema = {
     'imageCategory',
     'powerDynamic',
     'companionGuidance',
-    'reply',
   ],
 };
 
@@ -143,7 +143,9 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
           role: 'system',
           content: [
             buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile, 'text'),
-            'Return ONE JSON object for this turn. Classify user intent semantically from conversation meaning — never keyword lists.',
+            'Return ONE JSON object for this turn. Emit reply as the FIRST JSON field so the user sees text immediately, then fill intent fields.',
+            'Classify user intent semantically from conversation meaning — never keyword lists.',
+            'In reply: natural texting voice — no stock *smirks* action, vary tone every turn, react specifically to what they said.',
             'Intent fields:',
             '- intimacyActive: adult intimacy scene is active.',
             '- wantsPhoto: user wants to see her or scene deserves a visual.',

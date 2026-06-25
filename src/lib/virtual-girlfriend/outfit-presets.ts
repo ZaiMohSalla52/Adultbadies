@@ -12,7 +12,7 @@ const FEMALE_OUTFITS: OutfitPreset[] = [
     label: 'Selfie',
     icon: '📷',
     message: 'Send me a cute selfie 😊',
-    sceneHint: 'Warm natural-light mirror selfie, playful smirk, same face and identity.',
+    sceneHint: 'Warm natural-light mirror selfie, playful flirty expression, same face and identity.',
   },
   {
     id: 'casual',
@@ -85,7 +85,7 @@ const MALE_OUTFITS: OutfitPreset[] = [
     label: 'Selfie',
     icon: '📷',
     message: 'Send me a selfie 😊',
-    sceneHint: 'Natural-light mirror selfie, relaxed smirk, same face and identity.',
+    sceneHint: 'Natural-light mirror selfie, relaxed warm smile, same face and identity.',
   },
   {
     id: 'casual',

@@ -164,6 +164,7 @@ export async function POST(request: NextRequest) {
         }
 
         imageStarted = true;
+        enqueueEvent(controller, { type: 'image_generating', payload: { active: true } });
         imageTask = resolveVirtualGirlfriendChatImage({
           token: auth.accessToken,
           userId: auth.user.id,

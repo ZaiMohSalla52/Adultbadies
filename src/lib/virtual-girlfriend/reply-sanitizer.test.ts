@@ -24,6 +24,17 @@ describe('reply sanitizer', () => {
     expect(cleaned.length > 0).toBe(true);
   });
 
+  it('strips repetitive smirk roleplay actions from clean replies', () => {
+    const cleaned = sanitizeAssistantReply({
+      text: '*smirks*\n\nYou like that view?',
+      imageAttached: false,
+      photoRequested: false,
+      teaseOnly: false,
+    });
+    expect(cleaned.toLowerCase()).not.toContain('smirk');
+    expect(cleaned).toContain('You like that view?');
+  });
+
   it('replaces explicit refusals on photo requests with in-character delivery', () => {
     const cleaned = sanitizeAssistantReply({
       text: "I can't share explicit nudity or sexual content, but I can keep things warm. Which one should I send?",

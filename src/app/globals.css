@@ -2618,6 +2618,93 @@ img {
   gap: 14px;
 }
 
+.ai-gf-card-wrap {
+  position: relative;
+}
+
+.ai-gf-card-delete {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(7, 11, 20, 0.72);
+  color: rgba(255, 255, 255, 0.88);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.ai-gf-card-delete:hover {
+  background: rgba(239, 68, 68, 0.92);
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.ai-gf-card-delete-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  padding: 14px;
+  background: rgba(7, 11, 20, 0.94);
+  backdrop-filter: blur(8px);
+}
+
+.ai-gf-card-delete-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ai-gf-card-delete-copy {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.ai-gf-card-delete-error {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #f87171;
+}
+
+.ai-gf-card-delete-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ai-gf-card-delete-cancel,
+.ai-gf-card-delete-confirm-btn {
+  flex: 1;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ai-gf-card-delete-cancel {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.ai-gf-card-delete-confirm-btn {
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  border-color: transparent;
+}
+
 .ai-gf-card {
   display: flex;
   flex-direction: column;
