@@ -109,6 +109,7 @@ export const VirtualGirlfriendChatClient = ({
   const [isStreaming, setIsStreaming] = useState(false);
   const [companionActivity, setCompanionActivity] = useState<'idle' | 'typing' | 'sending_photo'>('idle');
   const [awaitingPhoto, setAwaitingPhoto] = useState(false);
+  const [companionSheetOpen, setCompanionSheetOpen] = useState(false);
   const [sidebarImages, setSidebarImages] = useState(galleryImages);
   const [sidebarUnlocked, setSidebarUnlocked] = useState(unlockedImageIds);
   const [stylePending, setStylePending] = useState<VirtualGirlfriendStyleControlPreset | null>(null);
@@ -166,6 +167,18 @@ export const VirtualGirlfriendChatClient = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (!awaitingPhoto) return undefined;
+
+    const timeout = window.setTimeout(() => {
+      setAwaitingPhoto(false);
+      setCompanionActivity('idle');
+      setError('Photo is taking longer than expected. Try asking again in a moment.');
+    }, 120_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [awaitingPhoto]);
 
   useEffect(() => {
     scrollToBottom();
@@ -331,7 +344,7 @@ export const VirtualGirlfriendChatClient = ({
           ? prev
           : [{ id: attachment.imageId, url: attachment.imageUrl }, ...prev],
       );
-      if (!attachment.locked) {
+      if (attachment.locked !== true) {
         setSidebarUnlocked((prev) => (prev.includes(attachment.imageId) ? prev : [attachment.imageId, ...prev]));
         setChatUnlockedIds((prev) => new Set(prev).add(attachment.imageId));
       }
@@ -361,44 +374,6 @@ export const VirtualGirlfriendChatClient = ({
       setAwaitingPhoto(false);
       return null;
     };
-
-    const ensureStreamingAssistant = (token: string) => {
-      const streamId = streamState.assistantId ?? `temp-assistant-${Date.now()}`;
-      streamState.assistantId = streamId;
-
-      setMessages((prev) => {
-        const existing = prev.find((message) => message.id === streamId);
-        const rawContent = existing ? `${existing.content}${token}` : token;
-        const content = polishChatDisplayText(rawContent);
-        if (existing) {
-          return prev.map((message) =>
-            message.id === streamId
-              ? { ...message, content }
-              : message,
-          );
-        }
-
-        return [
-          ...prev,
-          {
-            id: streamId,
-            role: 'assistant' as const,
-            content,
-            conversation_id: 'temp',
-            user_id: 'temp',
-            created_at: new Date().toISOString(),
-            moderation: {},
-            model: null,
-            token_count: null,
-            content_type: 'text' as const,
-            attachments: [],
-          },
-        ];
-      });
-      scrollToBottom();
-    };
-
-    const replyPacer = createChatReplyPacer((token) => ensureStreamingAssistant(token));
 
     const attachImageToAssistant = (attachment: VirtualGirlfriendMessageAttachment) => {
       const targetId = streamState.assistantId;
@@ -466,6 +441,52 @@ export const VirtualGirlfriendChatClient = ({
       scrollToBottom();
     };
 
+    const revealAssistantReply = async (segments: string[], contentType: DonePayload['contentType']) => {
+      const streamId = `temp-assistant-${Date.now()}`;
+      streamState.assistantId = streamId;
+      const polishedSegments = segments.map((segment) => polishChatDisplayText(segment));
+      const revealText = polishedSegments.join('\n\n');
+      let built = '';
+
+      await new Promise<void>((resolve) => {
+        const pacer = createChatReplyPacer((char) => {
+          built += char;
+          const content = polishChatDisplayText(built);
+          setMessages((prev) => {
+            const existing = prev.find((message) => message.id === streamId);
+            if (existing) {
+              return prev.map((message) =>
+                message.id === streamId ? { ...message, content } : message,
+              );
+            }
+
+            return [
+              ...prev,
+              {
+                id: streamId,
+                role: 'assistant' as const,
+                content,
+                conversation_id: 'temp',
+                user_id: 'temp',
+                created_at: new Date().toISOString(),
+                moderation: {},
+                model: null,
+                token_count: null,
+                content_type: 'text' as const,
+                attachments: [],
+              },
+            ];
+          });
+          scrollToBottom();
+        });
+
+        pacer.push(revealText);
+        void pacer.flush().then(() => resolve());
+      });
+
+      finalizeSegments(polishedSegments, contentType);
+    };
+
     while (!streamDone) {
       const next = await reader.read();
       streamDone = next.done;
@@ -477,17 +498,12 @@ export const VirtualGirlfriendChatClient = ({
           if (!line.trim()) continue;
           const event = JSON.parse(line) as StreamEvent;
 
-          if (event.type === 'token') {
-            replyPacer.push(event.payload.token);
-          }
-
           if (event.type === 'text_done') {
-            await replyPacer.flush();
             const segments =
               event.payload.segments && event.payload.segments.length > 0
                 ? event.payload.segments
                 : [event.payload.content];
-            finalizeSegments(segments, event.payload.contentType);
+            await revealAssistantReply(segments, event.payload.contentType);
             photoPending = photoPending || Boolean(event.payload.photoPending);
             if (photoPending) {
               setAwaitingPhoto(true);
@@ -588,16 +604,10 @@ export const VirtualGirlfriendChatClient = ({
       );
     }
 
-    const stillAwaitingPhoto = Boolean(
-      payload.imageGeneration?.requested
-      && !imageAttachment
-      && payload.imageGeneration.outcome === 'pending',
-    );
-
     setPending(false);
     setIsStreaming(false);
-    setAwaitingPhoto(stillAwaitingPhoto);
-    setCompanionActivity(stillAwaitingPhoto ? 'sending_photo' : 'idle');
+    setAwaitingPhoto(false);
+    setCompanionActivity('idle');
     scrollToBottom();
   };
 
@@ -1138,6 +1148,94 @@ export const VirtualGirlfriendChatClient = ({
 
   let lastRenderedDate = '';
 
+  const companionPanel = (
+    <>
+      <div className={styles.infoPanelPortrait}>
+        {backdropUrl ? <ChatAvatarImage src={backdropUrl} alt={companionName} width={320} height={420} sizes="320px" /> : null}
+      </div>
+      <h2 className={styles.infoPanelName}>{companionName}</h2>
+      <p className={styles.infoPanelSub}>{panelBio}</p>
+
+      <div className={styles.infoPanelActions}>
+        <button type="button" className={styles.shareBtn}>↑ Share</button>
+        <button type="button" className={styles.resetBtn} onClick={() => setMessages(initialMessages)}>Reset chat</button>
+      </div>
+
+      <div className={styles.infoTabs}>
+        <button
+          type="button"
+          className={`${styles.infoTab} ${infoTab === 'photos' ? styles.infoTabActive : ''}`}
+          onClick={() => setInfoTab('photos')}
+        >
+          Photos
+        </button>
+        <button
+          type="button"
+          className={`${styles.infoTab} ${infoTab === 'profile' ? styles.infoTabActive : ''}`}
+          onClick={() => setInfoTab('profile')}
+        >
+          Profile
+        </button>
+      </div>
+
+      {infoTab === 'photos' ? (
+        sidebarImages.length > 0 ? (
+          <div className={styles.photosWrap}>
+            <UnlockableGallery
+              companionName={companionName}
+              images={sidebarImages}
+              initialUnlockedIds={sidebarUnlocked}
+              balance={pointBalance}
+              cost={unblurCost}
+              isPremium={isPremium}
+              onBalanceChange={setPointBalance}
+            />
+          </div>
+        ) : (
+          <p className={styles.infoPanelSub}>No photos yet — {labels.chatSelfieHint}</p>
+        )
+      ) : (
+        <div className={styles.infoPanelTraits}>
+          <div className={styles.wardrobeList}>
+            {outfitPresets.slice(0, 4).map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className={styles.wardrobeItem}
+                disabled={pending}
+                onClick={() => void send(preset.message)}
+              >
+                <span aria-hidden>{preset.icon}</span>
+                <span>{preset.label}</span>
+              </button>
+            ))}
+            <Link href={`/virtual-girlfriend/generate?companionId=${companionId}`} className={styles.studioLink}>
+              Generate photo →
+            </Link>
+          </div>
+          {occupation ? (
+            <div className={styles.traitCard}>
+              <span className={styles.traitLabel}>Occupation</span>
+              <span className={styles.traitValue}>{occupation}</span>
+            </div>
+          ) : null}
+          {personality ? (
+            <div className={styles.traitCard}>
+              <span className={styles.traitLabel}>Personality</span>
+              <span className={styles.traitValue}>{personality}</span>
+            </div>
+          ) : null}
+          {sexuality ? (
+            <div className={styles.traitCard}>
+              <span className={styles.traitLabel}>Sexuality</span>
+              <span className={styles.traitValue}>{sexuality}</span>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className={styles.chatLayout}>
       <main className={styles.chatMain}>
@@ -1153,25 +1251,32 @@ export const VirtualGirlfriendChatClient = ({
               <path d="m15 18-6-6 6-6" />
             </svg>
           </Link>
-          <div className={styles.headerAvatar}>
-            {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={36} height={36} sizes="36px" /> : <span>{companionName.charAt(0)}</span>}
-          </div>
-          <div className={styles.companionHeaderInfo}>
-            <span className={styles.headerName}>{companionName}</span>
-            <span
-              className={
-                companionActivity === 'idle'
-                  ? styles.companionHeaderStatus
-                  : `${styles.companionHeaderStatus} ${styles.companionHeaderStatusActive}`
-              }
-            >
-              {companionActivity === 'typing'
-                ? 'typing…'
-                : companionActivity === 'sending_photo'
-                  ? 'sending a photo…'
-                  : 'online'}
-            </span>
-          </div>
+          <button
+            type="button"
+            className={styles.companionHeaderTap}
+            onClick={() => setCompanionSheetOpen(true)}
+            aria-label={`Open ${companionName} profile`}
+          >
+            <div className={styles.headerAvatar}>
+              {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={36} height={36} sizes="36px" /> : <span>{companionName.charAt(0)}</span>}
+            </div>
+            <div className={styles.companionHeaderInfo}>
+              <span className={styles.headerName}>{companionName}</span>
+              <span
+                className={
+                  companionActivity === 'idle'
+                    ? styles.companionHeaderStatus
+                    : `${styles.companionHeaderStatus} ${styles.companionHeaderStatusActive}`
+                }
+              >
+                {companionActivity === 'typing'
+                  ? 'typing…'
+                  : companionActivity === 'sending_photo'
+                    ? 'sending a photo…'
+                    : 'online'}
+              </span>
+            </div>
+          </button>
           <span className={styles.pointsPill} aria-label={`${pointBalance} points`}>
             💜 {pointBalance}
           </span>
@@ -1304,7 +1409,9 @@ export const VirtualGirlfriendChatClient = ({
                                 key={attachment.imageId}
                                 attachment={attachment}
                                 companionName={companionName}
-                                initialUnlocked={chatUnlockedIds.has(attachment.imageId) || !attachment.locked}
+                                initialUnlocked={
+                                  chatUnlockedIds.has(attachment.imageId) || attachment.locked === false
+                                }
                                 balance={pointBalance}
                                 unblurCost={unblurCost}
                                 isPremium={isPremium}
@@ -1456,91 +1563,24 @@ export const VirtualGirlfriendChatClient = ({
         {error ? <p className={styles.errorText}>{error}</p> : null}
       </main>
 
-      <aside className={styles.infoPanel}>
-        <div className={styles.infoPanelPortrait}>
-          {backdropUrl ? <ChatAvatarImage src={backdropUrl} alt={companionName} width={320} height={420} sizes="320px" /> : null}
-        </div>
-        <h2 className={styles.infoPanelName}>{companionName}</h2>
-        <p className={styles.infoPanelSub}>{panelBio}</p>
+      <aside className={styles.infoPanel}>{companionPanel}</aside>
 
-        <div className={styles.infoPanelActions}>
-          <button type="button" className={styles.shareBtn}>↑ Share</button>
-          <button type="button" className={styles.resetBtn} onClick={() => setMessages(initialMessages)}>Reset chat</button>
-        </div>
-
-        <div className={styles.infoTabs}>
+      {companionSheetOpen ? (
+        <div className={styles.mobileCompanionOverlay} role="dialog" aria-modal="true" aria-label={`${companionName} profile`}>
           <button
             type="button"
-            className={`${styles.infoTab} ${infoTab === 'photos' ? styles.infoTabActive : ''}`}
-            onClick={() => setInfoTab('photos')}
-          >
-            Photos
-          </button>
-          <button
-            type="button"
-            className={`${styles.infoTab} ${infoTab === 'profile' ? styles.infoTabActive : ''}`}
-            onClick={() => setInfoTab('profile')}
-          >
-            Profile
-          </button>
-        </div>
-
-        {infoTab === 'photos' ? (
-          sidebarImages.length > 0 ? (
-            <div className={styles.photosWrap}>
-              <UnlockableGallery
-                companionName={companionName}
-                images={sidebarImages}
-                initialUnlockedIds={sidebarUnlocked}
-                balance={pointBalance}
-                cost={unblurCost}
-                isPremium={isPremium}
-                onBalanceChange={setPointBalance}
-              />
-            </div>
-          ) : (
-            <p className={styles.infoPanelSub}>No photos yet — {labels.chatSelfieHint}</p>
-          )
-        ) : (
-          <div className={styles.infoPanelTraits}>
-            <div className={styles.wardrobeList}>
-              {outfitPresets.slice(0, 4).map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  className={styles.wardrobeItem}
-                  disabled={pending}
-                  onClick={() => void send(preset.message)}
-                >
-                  <span aria-hidden>{preset.icon}</span>
-                  <span>{preset.label}</span>
-                </button>
-              ))}
-              <Link href={`/virtual-girlfriend/generate?companionId=${companionId}`} className={styles.studioLink}>
-                Generate photo →
-              </Link>
-            </div>
-            {occupation ? (
-              <div className={styles.traitCard}>
-                <span className={styles.traitLabel}>Occupation</span>
-                <span className={styles.traitValue}>{occupation}</span>
-              </div>
-            ) : null}
-            {personality ? (
-              <div className={styles.traitCard}>
-                <span className={styles.traitLabel}>Personality</span>
-                <span className={styles.traitValue}>{personality}</span>
-              </div>
-            ) : null}
-            {sexuality ? (
-              <div className={styles.traitCard}>
-                <span className={styles.traitLabel}>Sexuality</span>
-                <span className={styles.traitValue}>{sexuality}</span>
-              </div>
-            ) : null}
+            className={styles.mobileCompanionBackdrop}
+            aria-label="Close profile"
+            onClick={() => setCompanionSheetOpen(false)}
+          />
+          <div className={styles.mobileCompanionSheet}>
+            <button type="button" className={styles.mobileCompanionBack} onClick={() => setCompanionSheetOpen(false)}>
+              ‹
+            </button>
+            {companionPanel}
           </div>
-        )}
-      </aside>
+        </div>
+      ) : null}
     </div>
   );
 };

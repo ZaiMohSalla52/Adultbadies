@@ -67,7 +67,7 @@ const MACHINE_TIMEOUT_MS = {
   /** Portrait / canonical / gallery — typically finishes under 60s. */
   providerRequest: 60_000,
   /** In-chat photos (Face Gen / Kontext) — aligned with Vercel Pro maxDuration 300. */
-  chatProviderRequest: 300_000,
+  chatProviderRequest: 120_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;

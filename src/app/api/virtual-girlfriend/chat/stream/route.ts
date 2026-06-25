@@ -19,7 +19,8 @@ import {
 } from '@/lib/virtual-girlfriend/data';
 import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
-import { grantCompanionImageAccess, spendChatMessagePoint } from '@/lib/points/data';
+import { getUnlockedImageIds, grantCompanionImageAccess, spendChatMessagePoint } from '@/lib/points/data';
+import { applyChatImageLock } from '@/lib/virtual-girlfriend/chat-image-lock';
 import { POINTS } from '@/lib/points/constants';
 import { resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
 import { streamVirtualGirlfriendChatTurn } from '@/lib/virtual-girlfriend/chat-turn';
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
   }
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
-  const [history, retrievedMemories, styleProfile, companionImages, visualProfile] = await Promise.all([
+  const [history, retrievedMemories, styleProfile, companionImages, visualProfile, unlockedImageIds] = await Promise.all([
     getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
     retrieveRelevantVirtualGirlfriendMemories(auth.accessToken, {
       userId: auth.user.id,
@@ -124,6 +125,7 @@ export async function POST(request: NextRequest) {
     getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
     getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
     getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id),
+    getUnlockedImageIds(auth.accessToken, auth.user.id, companion.id),
   ]);
 
   const photoRequested = looksLikePhotoRequest(message) || isOutfitPhotoRequest(message);
@@ -357,13 +359,11 @@ export async function POST(request: NextRequest) {
             imageOutcome = resolvedImage.outcome;
             imageOutcomeReason = resolvedImage.reason;
 
-            if (
-              imageAttachment
-              && imageAttachment.source === 'fresh-generation'
-              && !entitlements.isPremium
-              && !explicitPhotoRequest
-            ) {
-              imageAttachment = { ...imageAttachment, locked: true };
+            if (imageAttachment) {
+              imageAttachment = applyChatImageLock(imageAttachment, {
+                isPremium: entitlements.isPremium,
+                unlockedImageIds,
+              });
             }
 
             if (imageAttachment) {

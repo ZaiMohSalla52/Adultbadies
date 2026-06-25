@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { VirtualGirlfriendMessageAttachment } from '@/lib/virtual-girlfriend/types';
 import styles from './chat-client.module.css';
 
@@ -23,10 +23,24 @@ export const ChatImageAttachment = ({
   isPremium: boolean;
   onUnlocked?: (imageId: string, nextBalance: number) => void;
 }) => {
-  const [unlocked, setUnlocked] = useState(initialUnlocked || !attachment.locked);
+  const [unlocked, setUnlocked] = useState(initialUnlocked);
   const [balance, setBalance] = useState(initialBalance);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    setUnlocked(initialUnlocked);
+  }, [initialUnlocked, attachment.imageId]);
+
+  useEffect(() => {
+    if (!expanded) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpanded(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [expanded]);
 
   const handleUnlock = async () => {
     setError(null);
@@ -76,36 +90,71 @@ export const ChatImageAttachment = ({
   };
 
   return (
-    <div className={`${styles.chatImage} ${styles.chatImageReveal}`}>
-      <Image
-        src={attachment.imageUrl}
-        alt={`${companionName} photo`}
-        width={attachment.width ?? 1024}
-        height={attachment.height ?? 1024}
-        sizes="(max-width: 768px) 90vw, 420px"
-        className={unlocked ? styles.chatImageSharp : styles.chatImageBlurred}
-      />
-      {!unlocked ? (
-        <div className={styles.chatImageLock}>
-          <button type="button" className={styles.chatImageUnlockBtn} onClick={() => void handleUnlock()} disabled={pending}>
-            {pending ? 'Unblurring…' : `Unblur for 💜 ${unblurCost}`}
-          </button>
-        </div>
-      ) : (
-        <button type="button" className={styles.chatImageDownload} onClick={() => void handleDownload()} aria-label="Download photo">
-          ↓
+    <>
+      <div className={`${styles.chatImage} ${styles.chatImageReveal}`}>
+        <button
+          type="button"
+          className={styles.chatImageTap}
+          onClick={() => setExpanded(true)}
+          aria-label={unlocked ? `View ${companionName} photo` : `View blurred ${companionName} photo`}
+        >
+          <Image
+            src={attachment.imageUrl}
+            alt={`${companionName} photo`}
+            width={attachment.width ?? 768}
+            height={attachment.height ?? 1024}
+            sizes="(max-width: 768px) 220px, 240px"
+            className={unlocked ? styles.chatImageSharp : styles.chatImageBlurred}
+          />
         </button>
-      )}
-      {error ? (
-        <p className={styles.chatImageError}>
-          {error}{' '}
-          {!isPremium ? (
-            <Link href="/premium" className={styles.chatImageUpgrade}>
-              Get Premium
-            </Link>
-          ) : null}
-        </p>
+        {!unlocked ? (
+          <div className={styles.chatImageLock}>
+            <button type="button" className={styles.chatImageUnlockBtn} onClick={() => void handleUnlock()} disabled={pending}>
+              {pending ? 'Unblurring…' : `Unblur for 💜 ${unblurCost}`}
+            </button>
+          </div>
+        ) : (
+          <button type="button" className={styles.chatImageDownload} onClick={() => void handleDownload()} aria-label="Download photo">
+            ↓
+          </button>
+        )}
+        {error ? (
+          <p className={styles.chatImageError}>
+            {error}{' '}
+            {!isPremium ? (
+              <Link href="/premium" className={styles.chatImageUpgrade}>
+                Get Premium
+              </Link>
+            ) : null}
+          </p>
+        ) : null}
+      </div>
+
+      {expanded ? (
+        <div className={styles.chatImageLightbox} role="dialog" aria-modal="true" aria-label={`${companionName} photo`}>
+          <button type="button" className={styles.chatImageLightboxBackdrop} aria-label="Close photo" onClick={() => setExpanded(false)} />
+          <div className={styles.chatImageLightboxBody}>
+            <button type="button" className={styles.chatImageLightboxClose} onClick={() => setExpanded(false)} aria-label="Close photo">
+              ✕
+            </button>
+            <Image
+              src={attachment.imageUrl}
+              alt={`${companionName} photo full view`}
+              width={attachment.width ?? 1024}
+              height={attachment.height ?? 1024}
+              sizes="100vw"
+              className={unlocked ? styles.chatImageLightboxSharp : styles.chatImageLightboxBlurred}
+            />
+            {!unlocked ? (
+              <div className={styles.chatImageLightboxLock}>
+                <button type="button" className={styles.chatImageUnlockBtn} onClick={() => void handleUnlock()} disabled={pending}>
+                  {pending ? 'Unblurring…' : `Unblur for 💜 ${unblurCost}`}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
       ) : null}
-    </div>
+    </>
   );
 };
