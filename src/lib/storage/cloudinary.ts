@@ -62,3 +62,35 @@ export const uploadToCloudinary = async (input: {
     height: payload.height ?? null,
   };
 };
+
+/** Best-effort destroy; logs and swallows errors so DB deletion is not blocked. */
+export const destroyCloudinaryImage = async (publicId: string) => {
+  const trimmed = publicId.trim();
+  if (!trimmed) return;
+
+  try {
+    const cloudName = getRequired(env.CLOUDINARY_CLOUD_NAME, 'CLOUDINARY_CLOUD_NAME');
+    const apiKey = getRequired(env.CLOUDINARY_API_KEY, 'CLOUDINARY_API_KEY');
+    const apiSecret = getRequired(env.CLOUDINARY_API_SECRET, 'CLOUDINARY_API_SECRET');
+    const timestamp = Math.floor(Date.now() / 1000);
+    const toSign = `public_id=${trimmed}&timestamp=${timestamp}${apiSecret}`;
+    const signature = crypto.createHash('sha1').update(toSign).digest('hex');
+
+    const form = new FormData();
+    form.append('public_id', trimmed);
+    form.append('api_key', apiKey);
+    form.append('timestamp', String(timestamp));
+    form.append('signature', signature);
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, {
+      method: 'POST',
+      body: form,
+    });
+
+    if (!response.ok) {
+      console.warn('[storage] Cloudinary destroy failed', { publicId: trimmed, status: response.status });
+    }
+  } catch (error) {
+    console.warn('[storage] Cloudinary destroy error', { publicId: trimmed, error });
+  }
+};

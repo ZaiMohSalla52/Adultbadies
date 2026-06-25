@@ -137,6 +137,29 @@ export const listVirtualGirlfriendCompanionsByIds = async (
   });
 };
 
+export type DeleteCompanionRpcResult = {
+  deleted: boolean;
+  companion_id: string;
+  promoted_companion_id: string | null;
+  remaining_count: number;
+};
+
+export const deleteVirtualGirlfriendCompanion = async (
+  token: string,
+  companionId: string,
+): Promise<DeleteCompanionRpcResult> => {
+  const result = await supabaseRest<DeleteCompanionRpcResult>('rpc/delete_companion', token, {
+    method: 'POST',
+    body: { p_companion_id: companionId },
+  });
+
+  if (!result?.deleted) {
+    throw new Error('Companion deletion did not complete.');
+  }
+
+  return result;
+};
+
 export const setActiveVirtualGirlfriend = async (token: string, userId: string, companionId: string) => {
   await supabaseRest('ai_companions', token, {
     method: 'PATCH',

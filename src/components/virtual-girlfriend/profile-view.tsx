@@ -10,6 +10,7 @@ import type {
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import { UnlockableGallery } from '@/components/virtual-girlfriend/unlockable-gallery';
 import { RegenerateImagesButton } from '@/components/virtual-girlfriend/regenerate-images-button';
+import { DeleteCompanionButton } from '@/components/virtual-girlfriend/delete-companion-button';
 import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import styles from './profile-view.module.css';
 
@@ -149,6 +150,8 @@ export const VirtualGirlfriendProfileView = ({
           </div>
         </div>
       </section>
+
+      <DeleteCompanionButton companionId={companion.id} companionName={companion.name} />
 
       <section className={styles.gallerySection}>
         <div className={styles.sectionHeader}>
