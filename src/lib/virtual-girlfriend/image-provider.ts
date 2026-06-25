@@ -15,6 +15,7 @@ import {
   generateCanonicalImageFromReferenceWithModelsLab,
   generateGalleryImageFromReferenceWithModelsLab,
   generateChatImageFromReferenceWithModelsLab,
+  generateExplicitChatImageWithModelsLabFaceGen,
 } from '@/lib/virtual-girlfriend/image-modelslab';
 
 export type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
@@ -80,3 +81,14 @@ export const generateChatImageFromReference = (input: {
   isModelsLabImageProvider()
     ? generateChatImageFromReferenceWithModelsLab(input)
     : generateChatImageFromReferenceWithFlux(input);
+
+export const generateExplicitChatImageFromReference = (input: {
+  userMessage: string;
+  reference: PortraitReferenceImage;
+  numInferenceSteps?: number;
+}): Promise<GeneratedImage> => {
+  if (!isModelsLabImageProvider()) {
+    throw new Error('Face Gen explicit chat images require ModelsLab (MODELSLAB_API_KEY).');
+  }
+  return generateExplicitChatImageWithModelsLabFaceGen(input);
+};

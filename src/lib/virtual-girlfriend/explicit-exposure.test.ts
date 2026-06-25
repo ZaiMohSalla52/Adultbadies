@@ -7,7 +7,14 @@ describe('parseExplicitExposure', () => {
     const spec = parseExplicitExposure('i want to see your tits with no bra on');
     expect(spec.level).toBe('topless');
     expect(spec.wardrobeInstruction.toLowerCase()).toContain('no bra');
-    expect(spec.kontextEditInstruction.toLowerCase()).toContain('remove');
+    expect(spec.kontextEditInstruction.toLowerCase()).toContain('topless');
+  });
+
+  it('forces phone selfie pose when user asks for selfie', () => {
+    const spec = parseExplicitExposure('send me your tits no bra, holding phone taking selfie');
+    expect(spec.level).toBe('topless');
+    expect(spec.kontextEditInstruction.toLowerCase()).toContain('smartphone');
+    expect(spec.framing.toLowerCase()).toContain('selfie');
   });
 
   it('does not inject lingerie wardrobe into explicit photo spec', () => {

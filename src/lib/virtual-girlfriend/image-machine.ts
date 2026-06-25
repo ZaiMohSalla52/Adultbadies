@@ -5,9 +5,11 @@ import {
   generatePortraitPreviewImage,
   generateGalleryImageFromReference,
   generateChatImageFromReference,
+  generateExplicitChatImageFromReference,
   type GeneratedImage,
   type PortraitReferenceImage,
 } from '@/lib/virtual-girlfriend/image-provider';
+import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
 import {
   buildCanonicalPrompt,
   canonicalPromptVersion,
@@ -1124,6 +1126,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       highExposure: chatPromptInput.explicitExposureLevel
         ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
         : false,
+      preferFaceGen: resolveVgImageProvider() === 'modelslab',
     });
     logImageMachine(scope, 'generation_route', {
       provider: route.provider,
@@ -1132,18 +1135,33 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       explicit: chatPromptInput.explicitIntent,
       requestedLook: chatPromptInput.requestedLook,
     });
-    const generated = await runProviderGeneration({
-      scope,
-      mode: 'chat_from_reference',
-      prompt,
-      reference: { bytes: reference.bytes, mimeType: reference.mimeType },
-      kontextOptions: {
-        guidanceScale: route.guidanceScale,
-        numInferenceSteps: route.numInferenceSteps,
-        enableSafetyChecker: route.enableSafetyChecker,
-      },
-      preferDevModel: route.modelKind === 'kontext_dev',
-    });
+
+    const faceReference: PortraitReferenceImage =
+      /^https?:\/\//i.test(canonical.delivery_url.trim())
+        ? { url: canonical.delivery_url.trim() }
+        : { bytes: reference.bytes, mimeType: reference.mimeType };
+
+    const generated =
+      route.provider === 'face_gen' && input.userMessage?.trim()
+        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
+            generateExplicitChatImageFromReference({
+              userMessage: input.userMessage!.trim(),
+              reference: faceReference,
+              numInferenceSteps: route.numInferenceSteps,
+            }),
+          )
+        : await runProviderGeneration({
+            scope,
+            mode: 'chat_from_reference',
+            prompt,
+            reference: { bytes: reference.bytes, mimeType: reference.mimeType },
+            kontextOptions: {
+              guidanceScale: route.guidanceScale,
+              numInferenceSteps: route.numInferenceSteps,
+              enableSafetyChecker: route.enableSafetyChecker,
+            },
+            preferDevModel: route.modelKind === 'kontext_dev',
+          });
 
     const chatImage = await buildImageRecord({
       token: input.token,

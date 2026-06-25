@@ -1,12 +1,14 @@
 import { env } from '@/lib/env';
 import { isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
 import {
+  callModelsLabFaceGen,
   callModelsLabV6Images,
   callModelsLabV7ImageToImage,
   downloadModelsLabImage,
   type ModelsLabApiResponse,
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';
+import { buildFaceGenExplicitPrompt } from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import {
   applyModelsLabPortraitPrompt,
@@ -30,6 +32,9 @@ export type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-ty
 const MODELSLAB_PORTRAIT_MODEL = resolveModelsLabPortraitModel();
 const MODELSLAB_KONTEXT_PRO_MODEL = env.MODELSLAB_KONTEXT_PRO_MODEL ?? 'flux-kontext-pro';
 const MODELSLAB_KONTEXT_DEV_MODEL = env.MODELSLAB_KONTEXT_DEV_MODEL ?? 'flux-kontext-dev';
+const MODELSLAB_FACE_GEN_MODEL = env.MODELSLAB_FACE_GEN_MODEL ?? 'ai-avatar-generatorface-gen';
+const FACE_GEN_NEGATIVE_PROMPT =
+  'drawing, cartoon, anime, big nose, long nose, fat, ugly, bad anatomy, worst quality, low quality, blurry, censored, black bar, mosaic, watermark, text, logo, bra, shirt covering chest when topless requested';
 const MODELSLAB_NEGATIVE_PROMPT = buildModelsLabNegativePrompt();
 
 const PREVIEW_POLL = { maxAttempts: 28, intervalMs: 1_000 } as const;
@@ -252,7 +257,7 @@ const generateKontextFromReference = async (input: {
         num_inference_steps: numInferenceSteps,
         guidance: guidanceScale ?? 5,
         strength: strengthForKontext({ surface: input.surface, guidanceScale }),
-        safety_checker: safetyChecker,
+        safety_checker: safetyChecker ? 'yes' : 'no',
         ...(input.seed !== undefined ? { seed: input.seed } : {}),
       },
       input.errorLabel,
@@ -322,6 +327,39 @@ export const generateGalleryImageFromReferenceWithModelsLab = async (input: {
     surface: 'gallery',
     errorLabel: 'ModelsLab reference gallery generation failed',
   });
+
+const resolveFaceImageUrl = async (reference: { bytes: Buffer; mimeType: string } | { url: string }) => {
+  if ('url' in reference && /^https?:\/\//i.test(reference.url.trim())) {
+    return reference.url.trim();
+  }
+  if ('bytes' in reference && reference.bytes.byteLength) {
+    return uploadReferenceImageUrl(reference.bytes, reference.mimeType);
+  }
+  throw new Error('Face Gen requires a hosted face URL or reference image bytes.');
+};
+
+export const generateExplicitChatImageWithModelsLabFaceGen = async (input: {
+  userMessage: string;
+  reference: { bytes: Buffer; mimeType: string } | { url: string };
+  numInferenceSteps?: number;
+}): Promise<GeneratedImage> => {
+  const faceImage = await resolveFaceImageUrl(input.reference);
+  const prompt = buildFaceGenExplicitPrompt(input.userMessage);
+  const payload = await callModelsLabFaceGen(
+    {
+      model_id: MODELSLAB_FACE_GEN_MODEL,
+      face_image: faceImage,
+      prompt,
+      style: 'realistic',
+      negative_prompt: FACE_GEN_NEGATIVE_PROMPT,
+      num_inference_steps: input.numInferenceSteps ?? 41,
+    },
+    'ModelsLab Face Gen explicit chat generation failed',
+    { maxAttempts: 32, intervalMs: 1_500 },
+  );
+
+  return extractGeneratedImage(payload, MODELSLAB_FACE_GEN_MODEL, '/v6/image_editing/face_gen');
+};
 
 export const generateChatImageFromReferenceWithModelsLab = async (input: {
   prompt: string;

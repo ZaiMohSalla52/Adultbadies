@@ -1,6 +1,7 @@
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import {
   parseExplicitExposure,
+  resolveExplicitPoseFromMessage,
   type ExplicitExposureLevel,
 } from '@/lib/virtual-girlfriend/explicit-exposure';
 import {
@@ -106,17 +107,30 @@ const inferCategory = (message: string, explicit: boolean, presetId: string | nu
 
 const buildExplicitDirective = (message: string) => {
   const exposure = parseExplicitExposure(message);
+  const forcedPose = resolveExplicitPoseFromMessage(message);
   return [
     exposure.kontextEditInstruction,
     `User request: "${message.trim()}".`,
     exposure.wardrobeInstruction,
     `Framing: ${exposure.framing}.`,
-    `Pose: ${choose(POSES)}.`,
+    forcedPose ? `Pose: ${forcedPose}.` : `Pose: ${choose(POSES)}.`,
     `Setting: ${choose(LOCATIONS)}.`,
     `Lighting: ${choose(LIGHTING)}.`,
     'Do not substitute lingerie, bikini, or modest clothing when the user asked for nudity or topless.',
     'Same face and identity — brand new explicit shot, not a recycled profile portrait.',
   ].join(' ');
+};
+
+/** Compact prompt for ModelsLab Face Gen — matches playground style, not Kontext essay prompts. */
+export const buildFaceGenExplicitPrompt = (message: string) => {
+  const exposure = parseExplicitExposure(message);
+  const parts = [
+    exposure.kontextEditInstruction,
+    exposure.wardrobeInstruction,
+    `Framing: ${exposure.framing}.`,
+    'Photorealistic adult photography, uncensored, same woman as reference face.',
+  ];
+  return parts.join(' ');
 };
 
 const buildPresetDirective = (sceneHint: string, wardrobe: string) =>

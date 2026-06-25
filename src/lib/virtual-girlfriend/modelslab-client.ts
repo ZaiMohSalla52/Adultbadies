@@ -2,6 +2,7 @@ import { env } from '@/lib/env';
 
 const MODELSLAB_V6_BASE = 'https://modelslab.com/api/v6';
 const MODELSLAB_V7_BASE = 'https://modelslab.com/api/v7/images';
+const MODELSLAB_FACE_GEN_URL = `${MODELSLAB_V6_BASE}/image_editing/face_gen`;
 
 export type ModelsLabApiResponse = {
   status: 'success' | 'processing' | 'error';
@@ -154,6 +155,16 @@ export const callModelsLabV6Images = async (
 ) => {
   const key = assertModelsLabApiKey();
   const initial = await postModelsLabJson(`${MODELSLAB_V6_BASE}/images/${path}`, { key, ...body }, errorLabel);
+  return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
+};
+
+export const callModelsLabFaceGen = async (
+  body: Record<string, unknown>,
+  errorLabel: string,
+  pollOptions?: ModelsLabPollOptions,
+) => {
+  const key = assertModelsLabApiKey();
+  const initial = await postModelsLabJson(MODELSLAB_FACE_GEN_URL, { key, ...body }, errorLabel);
   return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
 };
 

@@ -1,19 +1,20 @@
 /*
  * Single routing policy for in-chat image generation.
  *
- * Today: Flux Kontext via ModelsLab or fal.ai for all chat surfaces.
- * - SFW / identity-heavy: hosted Kontext pro (default safety on).
- * - Adult explicit chat: open-weights Kontext dev (safety checker off).
+ * ModelsLab explicit high-exposure chat (topless / full nude) routes to Face Gen
+ * (`/api/v6/image_editing/face_gen`) — the same family the ModelsLab playground
+ * uses for face-locked explicit selfies. Flux Kontext dev is kept for softer
+ * explicit and wardrobe-change requests.
  *
  * guidance_scale tunes prompt vs reference adherence on Kontext:
  * higher values honor wardrobe/scene directives over the reference outfit.
- * Stable Diffusion is intentionally not wired yet — add a second provider here
- * only if Kontext dev still fails explicit adherence after prompt/routing fixes.
  */
 
+export type ChatGenerationProvider = 'face_gen' | 'flux_kontext';
+
 export type ChatGenerationRoute = {
-  provider: 'flux_kontext';
-  modelKind: 'kontext_pro' | 'kontext_dev';
+  provider: ChatGenerationProvider;
+  modelKind: 'face_gen' | 'kontext_pro' | 'kontext_dev';
   guidanceScale: number;
   numInferenceSteps: number;
   enableSafetyChecker: boolean;
@@ -24,8 +25,20 @@ export const resolveChatGenerationRoute = (input: {
   requestedLook: boolean;
   adultContentEnabled: boolean;
   highExposure?: boolean;
+  preferFaceGen?: boolean;
 }): ChatGenerationRoute => {
   const adultChat = input.adultContentEnabled && input.explicit;
+  const useFaceGen = adultChat && input.highExposure && (input.preferFaceGen ?? true);
+
+  if (useFaceGen) {
+    return {
+      provider: 'face_gen',
+      modelKind: 'face_gen',
+      guidanceScale: 7.5,
+      numInferenceSteps: 41,
+      enableSafetyChecker: false,
+    };
+  }
 
   if (adultChat) {
     return {
