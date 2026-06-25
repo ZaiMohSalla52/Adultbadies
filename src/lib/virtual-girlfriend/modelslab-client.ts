@@ -157,8 +157,12 @@ export const callModelsLabV6Images = async (
   return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
 };
 
-export const callModelsLabV7ImageToImage = async (body: Record<string, unknown>, errorLabel: string) => {
+export const callModelsLabV7ImageToImage = async (
+  body: Record<string, unknown>,
+  errorLabel: string,
+  pollOptions?: ModelsLabPollOptions,
+) => {
   const key = assertModelsLabApiKey();
   const initial = await postModelsLabJson(`${MODELSLAB_V7_BASE}/image-to-image`, { key, ...body }, errorLabel);
-  return awaitModelsLabImageResult(initial, errorLabel);
+  return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
 };

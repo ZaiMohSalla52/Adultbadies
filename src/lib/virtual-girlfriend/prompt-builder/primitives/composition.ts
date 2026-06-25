@@ -2,7 +2,7 @@ import type { SurfaceType } from '../versions';
 
 export const COMPOSITION_ANCHORS: Record<SurfaceType, string> = {
   preview:
-    'Single person portrait, centered frame. Real-world setting with soft shallow depth of field and a gently blurred background. Flattering natural light. Sharp eyes, lifelike skin texture, genuine relaxed expression.',
+    'Single person portrait photograph of a real human, centered frame. Real-world setting with soft shallow depth of field and a gently blurred background. Flattering natural light. Sharp eyes, lifelike skin texture with pores and natural imperfections, genuine relaxed expression. Must look like an unedited real photograph, not artwork.',
   canonical:
     'Upper body to waist portrait. Subject centered at natural eye-level. Flattering natural light, soft shallow depth of field, real-world background. Sharp lifelike face with natural skin texture.',
   regenerate:
@@ -25,7 +25,7 @@ export const getCompositionAnchor = (surface: SurfaceType): string => COMPOSITIO
  * realism aesthetic can be tuned in one place.
  */
 export const PHOTO_REALISM_TAIL =
-  'Candid amateur photo, shot on a full-frame 35mm camera, natural available light, well-exposed subject with clear visible facial features, balanced brightness, true-to-life skin tones with realistic texture and subtle natural imperfections, soft shallow depth of field, authentic unposed feel.';
+  'Candid amateur photograph of a real person, shot on a full-frame 35mm camera, natural available light, well-exposed subject with clear visible facial features, balanced brightness, true-to-life skin tones with realistic texture and subtle natural imperfections, soft shallow depth of field, authentic unposed feel. Photorealistic only — not illustration, not animation, not CGI.';
 
 export const EXPOSURE_LIGHTING_TAIL =
   'Face and body clearly lit — no underexposure, no muddy darkness, no silhouette.';

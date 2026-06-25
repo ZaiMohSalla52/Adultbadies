@@ -68,6 +68,14 @@ describe('buildPreviewPrompt', () => {
     expect(p.includes('no bilateral face split')).toBe(true);
   });
 
+  it('rejects anime and illustration styling', () => {
+    const p = buildPreviewPrompt(femaleTraits, 0).toLowerCase();
+    expect(p.includes('no anime')).toBe(true);
+    expect(p.includes('no cartoon')).toBe(true);
+    expect(p.includes('no illustration')).toBe(true);
+    expect(p.includes('photorealistic only')).toBe(true);
+  });
+
   it('three axes differ between variants', () => {
     const p0 = buildPreviewPrompt(femaleTraits, 0).toLowerCase();
     const p1 = buildPreviewPrompt(femaleTraits, 1).toLowerCase();

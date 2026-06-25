@@ -39,15 +39,18 @@ export const generatePortraitPreviewImage = (prompt: string, seed?: number): Pro
     ? generatePortraitPreviewImageWithModelsLab(prompt, seed)
     : generatePortraitPreviewImageWithFlux(prompt, seed);
 
+export type PortraitReferenceImage =
+  | { bytes: Buffer; mimeType: string }
+  | { url: string };
+
 export const generatePreviewWithCharacterReference = (
   prompt: string,
-  referenceImageBytes: Buffer,
-  referenceMimeType: string,
+  reference: PortraitReferenceImage,
   seed?: number,
 ): Promise<GeneratedImage> =>
   isModelsLabImageProvider()
-    ? generatePreviewWithCharacterReferenceModelsLab(prompt, referenceImageBytes, referenceMimeType, seed)
-    : generatePreviewWithCharacterReferenceFlux(prompt, referenceImageBytes, referenceMimeType, seed);
+    ? generatePreviewWithCharacterReferenceModelsLab(prompt, reference, seed)
+    : generatePreviewWithCharacterReferenceFlux(prompt, reference, seed);
 
 export const generateCanonicalImageFromReference = (input: {
   prompt: string;

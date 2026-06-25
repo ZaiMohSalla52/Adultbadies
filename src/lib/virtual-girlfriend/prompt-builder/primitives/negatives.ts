@@ -52,6 +52,24 @@ export const HARD_NEGATIVES = {
     'no silhouette subject',
     'no unreadable low-light face',
   ],
+  style: [
+    'no anime',
+    'no cartoon',
+    'no illustration',
+    'no drawn',
+    'no painted',
+    'no CGI',
+    'no 3d render',
+    'no cel shading',
+    'no manga',
+    'no stylized art',
+    'no doll',
+    'no plastic skin',
+    'no video game character',
+    'no animated',
+    'no digital art',
+    'no airbrushed fantasy portrait',
+  ],
 } as const;
 
 export const buildNegatives = (categories: Array<keyof typeof HARD_NEGATIVES>): string =>

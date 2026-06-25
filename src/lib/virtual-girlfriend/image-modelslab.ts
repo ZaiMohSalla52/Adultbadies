@@ -7,7 +7,6 @@ import {
   type ModelsLabApiResponse,
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';
-import { buildPreviewNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
@@ -27,7 +26,8 @@ const MODELSLAB_FLUX_MODEL = env.MODELSLAB_FLUX_MODEL ?? 'flux';
 const MODELSLAB_KONTEXT_PRO_MODEL = env.MODELSLAB_KONTEXT_PRO_MODEL ?? 'flux-kontext-pro';
 const MODELSLAB_KONTEXT_DEV_MODEL = env.MODELSLAB_KONTEXT_DEV_MODEL ?? 'flux-kontext-dev';
 
-const PREVIEW_POLL = { maxAttempts: 22, intervalMs: 1_000 } as const;
+const PREVIEW_POLL = { maxAttempts: 28, intervalMs: 1_000 } as const;
+const PREVIEW_KONTEXT_POLL = { maxAttempts: 24, intervalMs: 1_000 } as const;
 
 const DIMENSIONS_BY_ASPECT: Record<string, { width: number; height: number }> = {
   '1x1': { width: 1024, height: 1024 },
@@ -48,22 +48,10 @@ const KONTEXT_ASPECT_BY_SURFACE: Record<string, string> = {
 const resolveDimensions = (aspectRatio: string) =>
   DIMENSIONS_BY_ASPECT[aspectRatio] ?? DIMENSIONS_BY_ASPECT['3x4']!;
 
-/** Smaller preview size keeps setup portrait generation under serverless limits. */
-const PREVIEW_DIMENSIONS_BY_ASPECT: Record<string, { width: number; height: number }> = {
-  '1x1': { width: 768, height: 768 },
-  '3x4': { width: 576, height: 768 },
-  '4x3': { width: 768, height: 576 },
-  '9x16': { width: 432, height: 768 },
-  '16x9': { width: 768, height: 432 },
-};
-
-const resolvePreviewDimensions = (aspectRatio: string) =>
-  PREVIEW_DIMENSIONS_BY_ASPECT[aspectRatio] ?? PREVIEW_DIMENSIONS_BY_ASPECT['3x4']!;
+/** Portrait previews use full surface dimensions for photorealism. */
+const resolvePreviewDimensions = (aspectRatio: string) => resolveDimensions(aspectRatio);
 
 const resolveKontextAspect = (aspectRatio: string) => KONTEXT_ASPECT_BY_SURFACE[aspectRatio] ?? '3:4';
-
-const withNegatives = (prompt: string, negatives: string) =>
-  negatives.trim() ? `${prompt}\nAvoid: ${negatives}` : prompt;
 
 const isAdultChatSurface = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') =>
   surface === 'chat' && isVirtualGirlfriendAdultContentEnabled();
@@ -167,12 +155,12 @@ export const generatePortraitPreviewImageWithModelsLab = async (
     'text2img',
     {
       model_id: MODELSLAB_FLUX_MODEL,
-      prompt: withNegatives(prompt, buildPreviewNegativePrompt()),
+      prompt,
       width,
       height,
       samples: previewParams.num_images,
-      num_inference_steps: 22,
-      guidance_scale: 7,
+      num_inference_steps: 28,
+      guidance_scale: 7.5,
       safety_checker: 'yes',
       ...(seed !== undefined ? { seed } : {}),
     },
@@ -183,23 +171,39 @@ export const generatePortraitPreviewImageWithModelsLab = async (
   return extractGeneratedImage(payload, MODELSLAB_FLUX_MODEL, '/v6/images/text2img', { skipDownload: true });
 };
 
+const resolveReferenceInitImage = async (input: {
+  referenceImageBytes?: Buffer;
+  referenceMimeType?: string;
+  referenceImageUrl?: string;
+}) => {
+  const hostedUrl = input.referenceImageUrl?.trim();
+  if (hostedUrl && /^https?:\/\//i.test(hostedUrl)) {
+    return hostedUrl;
+  }
+
+  if (!input.referenceImageBytes?.byteLength || !input.referenceMimeType) {
+    throw new Error('Reference image bytes or hosted URL are required for Kontext generation.');
+  }
+
+  return uploadReferenceImageUrl(input.referenceImageBytes, input.referenceMimeType);
+};
+
 const generateKontextFromReference = async (input: {
   prompt: string;
-  referenceImageBytes: Buffer;
-  referenceMimeType: string;
+  referenceImageBytes?: Buffer;
+  referenceMimeType?: string;
+  referenceImageUrl?: string;
   surface: 'preview' | 'canonical' | 'gallery' | 'chat';
-  withPreviewNegatives?: boolean;
   seed?: number;
   errorLabel: string;
   kontextOptions?: KontextGenerationOptions;
   preferDevModel?: boolean;
+  skipDownload?: boolean;
 }): Promise<GeneratedImage> => {
   const surfaceParams = SURFACE_PARAMS[input.surface];
   const model = kontextModelForSurface(input.surface, { preferDevModel: input.preferDevModel });
-  const prompt = input.withPreviewNegatives
-    ? withNegatives(input.prompt, buildPreviewNegativePrompt())
-    : input.prompt;
-  const initImage = await uploadReferenceImageUrl(input.referenceImageBytes, input.referenceMimeType);
+  const prompt = input.prompt;
+  const initImage = await resolveReferenceInitImage(input);
 
   const defaultSafety = isAdultChatSurface(input.surface) ? false : true;
   const safetyChecker = input.kontextOptions?.enableSafetyChecker ?? defaultSafety;
@@ -229,6 +233,7 @@ const generateKontextFromReference = async (input: {
     return extractGeneratedImage(payload, model, '/v6/images/img2img');
   }
 
+  const pollOptions = input.surface === 'preview' ? PREVIEW_KONTEXT_POLL : undefined;
   const payload = await callModelsLabV7ImageToImage(
     {
       model_id: model,
@@ -237,25 +242,28 @@ const generateKontextFromReference = async (input: {
       aspect_ratio: resolveKontextAspect(surfaceParams.aspect_ratio),
     },
     input.errorLabel,
+    pollOptions,
   );
 
-  return extractGeneratedImage(payload, model, '/v7/images/image-to-image');
+  return extractGeneratedImage(payload, model, '/v7/images/image-to-image', {
+    skipDownload: input.skipDownload,
+  });
 };
 
 export const generatePreviewWithCharacterReferenceModelsLab = async (
   prompt: string,
-  referenceImageBytes: Buffer,
-  referenceMimeType: string,
+  reference: { bytes: Buffer; mimeType: string } | { url: string },
   seed?: number,
 ): Promise<GeneratedImage> =>
   generateKontextFromReference({
     prompt,
-    referenceImageBytes,
-    referenceMimeType,
+    ...( 'url' in reference
+      ? { referenceImageUrl: reference.url }
+      : { referenceImageBytes: reference.bytes, referenceMimeType: reference.mimeType }),
     surface: 'preview',
-    withPreviewNegatives: true,
     seed,
     errorLabel: 'ModelsLab character reference generation failed',
+    skipDownload: true,
   });
 
 export const generateCanonicalImageFromReferenceWithModelsLab = async (input: {

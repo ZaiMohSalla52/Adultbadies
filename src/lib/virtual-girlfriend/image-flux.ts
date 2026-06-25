@@ -226,21 +226,34 @@ const generateKontextFromReference = async (input: {
   return extractGeneratedImage(response, model);
 };
 
+type PortraitReferenceImage = { bytes: Buffer; mimeType: string } | { url: string };
+
+const resolvePortraitReferenceImageUrl = (reference: PortraitReferenceImage) =>
+  'url' in reference ? reference.url : toDataUri(reference.bytes, reference.mimeType);
+
 export const generatePreviewWithCharacterReferenceFlux = async (
   prompt: string,
-  referenceImageBytes: Buffer,
-  referenceMimeType: string,
+  reference: PortraitReferenceImage,
   seed?: number,
-): Promise<GeneratedImage> =>
-  generateKontextFromReference({
-    prompt,
-    referenceImageBytes,
-    referenceMimeType,
-    surface: 'preview',
-    withPreviewNegatives: true,
-    seed,
-    errorLabel: 'Flux character reference generation failed',
-  });
+): Promise<GeneratedImage> => {
+  const surfaceParams = SURFACE_PARAMS.preview;
+  const model = kontextModelForSurface('preview');
+  const response = await callFal(
+    model,
+    {
+      prompt,
+      image_url: resolvePortraitReferenceImageUrl(reference),
+      aspect_ratio: resolveKontextAspect(surfaceParams.aspect_ratio),
+      num_images: surfaceParams.num_images,
+      output_format: 'png',
+      enable_safety_checker: true,
+      ...(seed !== undefined ? { seed } : {}),
+    },
+    'Flux character reference generation failed',
+  );
+
+  return extractGeneratedImage(response, model);
+};
 
 export const generateCanonicalImageFromReferenceWithFlux = async (input: {
   prompt: string;

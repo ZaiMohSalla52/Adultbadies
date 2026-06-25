@@ -1191,11 +1191,76 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
 const portraitPreviewDeliveryUrl = (generated: GeneratedImage) =>
   generated.temporaryUrl?.trim() || toDataUrl(generated.bytes, generated.mimeType);
 
+const portraitPreviewReference = (generated: GeneratedImage): { url: string } | { bytes: Buffer; mimeType: string } => {
+  const url = generated.temporaryUrl?.trim();
+  if (url && /^https?:\/\//i.test(url)) {
+    return { url };
+  }
+  if (!generated.bytes.byteLength) {
+    throw new Error('Portrait preview reference image is missing bytes and hosted URL.');
+  }
+  return { bytes: generated.bytes, mimeType: generated.mimeType };
+};
+
 export const runPortraitPreviewImageMachine = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
 ): Promise<VirtualGirlfriendPortraitPreviewResult> => {
   const count = Math.min(Math.max(input.count ?? 3, 2), 4);
-  const candidates = await fallbackParallelGeneration(input, count);
+  const leaderPrompt = buildPreviewPrompt(input, 0);
+  const leaderSeed = Math.floor(Math.random() * 2147483647);
+
+  let leaderGenerated: GeneratedImage;
+  try {
+    leaderGenerated = await withRetries({
+      attempts: 1,
+      scope: 'portrait_preview',
+      stage: 'provider_request',
+      reason: 'provider_error',
+      run: () =>
+        withTimeout('provider_generation', 55_000, () => generatePortraitPreviewImage(leaderPrompt, leaderSeed)),
+    });
+  } catch {
+    const candidates = await fallbackParallelGeneration(input, count);
+    return { kind: 'portrait_preview', status: 'ready', candidates };
+  }
+
+  const leaderCandidate = {
+    id: 'candidate-1',
+    label: 'Candidate 1',
+    prompt: leaderPrompt,
+    promptVersion: PROMPT_VERSION.preview,
+    imageDataUrl: portraitPreviewDeliveryUrl(leaderGenerated),
+  } satisfies VirtualGirlfriendPortraitPreviewCandidate;
+
+  const followerIndices = Array.from({ length: Math.max(count - 1, 0) }, (_, i) => i + 1);
+  const leaderReference = portraitPreviewReference(leaderGenerated);
+  const followerResults = await Promise.allSettled(
+    followerIndices.map(async (variantIndex) => {
+      const prompt = buildPreviewPrompt(input, variantIndex);
+      const seed = Math.floor(Math.random() * 2147483647);
+      const generated = await withTimeout('provider_generation', 45_000, () =>
+        generatePreviewWithCharacterReference(prompt, leaderReference, seed),
+      );
+      return {
+        id: `candidate-${variantIndex + 1}`,
+        label: `Candidate ${variantIndex + 1}`,
+        prompt,
+        promptVersion: PROMPT_VERSION.preview,
+        imageDataUrl: portraitPreviewDeliveryUrl(generated),
+      } satisfies VirtualGirlfriendPortraitPreviewCandidate;
+    }),
+  );
+
+  const followerCandidates = followerResults
+    .filter((result): result is PromiseFulfilledResult<VirtualGirlfriendPortraitPreviewCandidate> => result.status === 'fulfilled')
+    .map((result) => result.value);
+
+  const candidates = [leaderCandidate, ...followerCandidates];
+  if (candidates.length < 2) {
+    const fallbackCandidates = await fallbackParallelGeneration(input, count);
+    return { kind: 'portrait_preview', status: 'ready', candidates: fallbackCandidates };
+  }
+
   return { kind: 'portrait_preview', status: 'ready', candidates };
 };
 
