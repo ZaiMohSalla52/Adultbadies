@@ -970,6 +970,59 @@ const isSupabaseDuplicateKeyError = (error: unknown) => {
   return /23505|409/.test(message) || /duplicate key/i.test(message);
 };
 
+const isMissingStyleProfileRpc = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('PGRST202') || message.includes('get_or_create_user_style_profile');
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const serviceRoleRest = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  const key = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!key) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
+  }
+
+  const response = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(`Supabase service request failed (${response.status}): ${message}`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const raw = await response.text();
+  return (raw.trim() ? JSON.parse(raw) : undefined) as T;
+};
+
+const upsertStyleProfileViaServiceRole = async (userId: string, companionId: string) => {
+  const rows = await serviceRoleRest<VirtualGirlfriendUserStyleProfileRecord[]>(
+    `ai_user_style_profiles?on_conflict=user_id,companion_id`,
+    {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({
+        user_id: userId,
+        companion_id: companionId,
+      }),
+    },
+  );
+
+  return rows?.[0] ?? null;
+};
+
 export const getOrCreateVirtualGirlfriendUserStyleProfile = async (
   token: string,
   userId: string,
@@ -979,6 +1032,19 @@ export const getOrCreateVirtualGirlfriendUserStyleProfile = async (
   if (existing) return existing;
 
   try {
+    const rpcResult = await supabaseRest<
+      VirtualGirlfriendUserStyleProfileRecord | VirtualGirlfriendUserStyleProfileRecord[]
+    >('rpc/get_or_create_user_style_profile', token, {
+      method: 'POST',
+      body: { p_companion_id: companionId },
+    });
+    const rpcRow = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
+    if (rpcRow) return rpcRow;
+  } catch (error) {
+    if (!isMissingStyleProfileRpc(error)) throw error;
+  }
+
+  try {
     const rows = await supabaseRest<VirtualGirlfriendUserStyleProfileRecord[]>('ai_user_style_profiles', token, {
       method: 'POST',
       searchParams: new URLSearchParams({ on_conflict: 'user_id,companion_id' }),
@@ -986,7 +1052,7 @@ export const getOrCreateVirtualGirlfriendUserStyleProfile = async (
         user_id: userId,
         companion_id: companionId,
       },
-      prefer: 'resolution=ignore-duplicates,return=representation',
+      prefer: 'resolution=merge-duplicates,return=representation',
     });
 
     if (rows?.[0]) return rows[0];
@@ -994,12 +1060,23 @@ export const getOrCreateVirtualGirlfriendUserStyleProfile = async (
     if (!isSupabaseDuplicateKeyError(error)) throw error;
   }
 
-  const resolved = await getVirtualGirlfriendUserStyleProfile(token, userId, companionId);
-  if (!resolved) {
-    throw new Error('Unable to load companion style profile.');
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const resolved = await getVirtualGirlfriendUserStyleProfile(token, userId, companionId);
+    if (resolved) return resolved;
+    await sleep(120 * (attempt + 1));
   }
 
-  return resolved;
+  try {
+    const serviceRow = await upsertStyleProfileViaServiceRole(userId, companionId);
+    if (serviceRow) {
+      const resolved = await getVirtualGirlfriendUserStyleProfile(token, userId, companionId);
+      if (resolved) return resolved;
+    }
+  } catch (serviceError) {
+    console.warn('[virtual-girlfriend] service-role style profile upsert failed', serviceError);
+  }
+
+  throw new Error('Unable to load companion style profile.');
 };
 
 export const patchVirtualGirlfriendUserStyleProfile = async (

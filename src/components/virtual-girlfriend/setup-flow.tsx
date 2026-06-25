@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { STYLE_VIBE_OPTIONS } from '@/lib/virtual-girlfriend/outfit-presets';
 import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
@@ -97,15 +97,22 @@ const PortraitPhoto = ({
     setFailed(false);
   }, [src]);
 
+  const markLoadedIfCached = useCallback((img: HTMLImageElement | null) => {
+    if (img?.complete && img.naturalWidth > 0) {
+      setLoaded(true);
+    }
+  }, []);
+
   if (failed) return null;
 
   return (
     <div className={wrapClassName}>
       {!loaded ? <div className={styles.portraitPhotoSkeleton} aria-hidden /> : null}
       <img
+        ref={markLoadedIfCached}
         src={src}
         alt={alt}
-        className={`${imageClassName}${loaded ? ` ${styles.portraitPhotoLoaded}` : ` ${styles.portraitPhotoLoading}`}`}
+        className={`${imageClassName}${loaded ? ` ${styles.portraitPhotoLoaded}` : ''}`}
         loading="eager"
         decoding="async"
         referrerPolicy="origin"
