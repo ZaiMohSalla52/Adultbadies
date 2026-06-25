@@ -445,6 +445,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
   useEffect(() => {
     if (!portraitsForTraitsKey || portraitsForTraitsKey === portraitTraitsKey) return;
+    if (portraitsLoading) return;
+
     setPortraitCandidates([]);
     setPortraitsForTraitsKey(null);
     setState((current) => ({
@@ -452,7 +454,11 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
       selectedPortraitImage: '',
       selectedPortraitPrompt: '',
     }));
-  }, [portraitTraitsKey, portraitsForTraitsKey]);
+
+    if (step === 'portrait') {
+      void maybeGeneratePortraits(true);
+    }
+  }, [portraitTraitsKey, portraitsForTraitsKey, portraitsLoading, step]);
 
   useEffect(() => {
     if (step !== 'portrait' || !carouselRef.current) return;
@@ -499,15 +505,18 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     return null;
   };
 
-  const maybeGeneratePortraits = async (force = false) => {
-    if (!force && portraitCandidates.length > 0 && portraitsForTraitsKey === portraitTraitsKey) return;
+  const maybeGeneratePortraits = async (force = false, stateSnapshot?: CreatorState) => {
+    const workingState = stateSnapshot ?? state;
+    const traitsKey = portraitTraitsKeyFromState(workingState);
 
-    if (!state.name.trim()) {
+    if (!force && portraitCandidates.length > 0 && portraitsForTraitsKey === traitsKey) return;
+
+    if (!workingState.name.trim()) {
       setError('Enter a name before generating portraits.');
       return;
     }
 
-    const derived = buildDerivedFromState(state);
+    const derived = buildDerivedFromState(workingState);
     setPortraitsLoading(true);
     setError(null);
     setConflictHelp(null);
@@ -519,25 +528,25 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           createNew,
-          name: state.name.trim(),
-          sex: state.sex,
-          age: state.age,
-          origin: state.origin,
-          hairColor: state.hairColor,
-          hairLength: state.hairLength,
-          eyeColor: state.eyeColor,
+          name: workingState.name.trim(),
+          sex: workingState.sex,
+          age: workingState.age,
+          origin: workingState.origin,
+          hairColor: workingState.hairColor,
+          hairLength: workingState.hairLength,
+          eyeColor: workingState.eyeColor,
           skinTone: derived.skinTone,
-          bodyType: state.bodyType,
-          styleVibe: state.styleVibe,
-          occupation: state.occupation,
-          personality: state.personality,
-          breastSize: state.breastSize,
-          sexuality: state.sexuality,
+          bodyType: workingState.bodyType,
+          styleVibe: workingState.styleVibe,
+          occupation: workingState.occupation,
+          personality: workingState.personality,
+          breastSize: workingState.breastSize,
+          sexuality: workingState.sexuality,
           affectionStyle: derived.affectionStyle,
           tone: derived.tone,
           archetype: derived.archetype,
           visualAesthetic: derived.visualAesthetic,
-          freeformDetails: state.freeformDetails,
+          freeformDetails: workingState.freeformDetails,
         }),
       });
 
@@ -557,26 +566,26 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sex: state.sex,
-          origin: state.origin,
-          hairColor: state.hairColor,
-          hairLength: state.hairLength,
-          eyeColor: state.eyeColor,
+          sex: workingState.sex,
+          origin: workingState.origin,
+          hairColor: workingState.hairColor,
+          hairLength: workingState.hairLength,
+          eyeColor: workingState.eyeColor,
           skinTone: derived.skinTone,
-          bodyType: state.bodyType,
-          breastSize: state.breastSize,
-          age: state.age,
-          styleVibe: state.styleVibe,
-          personality: state.personality,
-          occupation: state.occupation,
-          freeformDetails: state.freeformDetails,
+          bodyType: workingState.bodyType,
+          breastSize: workingState.breastSize,
+          age: workingState.age,
+          styleVibe: workingState.styleVibe,
+          personality: workingState.personality,
+          occupation: workingState.occupation,
+          freeformDetails: workingState.freeformDetails,
         }),
       });
 
       const body = await readJsonResponse<{ candidates?: PortraitCandidate[]; error?: string }>(response);
       if (!response.ok || !body.candidates?.length) throw new Error(body.error ?? 'Unable to generate portraits now.');
       setPortraitCandidates(body.candidates);
-      setPortraitsForTraitsKey(portraitTraitsKey);
+      setPortraitsForTraitsKey(traitsKey);
       if (force) {
         setField('selectedPortraitImage', '');
         setField('selectedPortraitPrompt', '');
@@ -610,9 +619,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     }
   };
 
-  const advanceToNextStep = () => {
+  const advanceToNextStep = (stateSnapshot?: CreatorState) => {
+    const workingState = stateSnapshot ?? state;
     let next = stepIndex + 1;
-    if (STEPS[next] === 'breastSize' && state.sex !== 'female') {
+    if (STEPS[next] === 'breastSize' && workingState.sex !== 'female') {
       next += 1;
     }
     next = Math.min(STEPS.length - 1, next);
@@ -622,7 +632,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     setStepIndex(next);
 
     if (STEPS[next] === 'portrait') {
-      void maybeGeneratePortraits();
+      void maybeGeneratePortraits(false, workingState);
     }
   };
 
@@ -638,12 +648,17 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     setError(null);
     setConflictHelp(null);
     setStepIndex(prev);
+
+    if (STEPS[prev] === 'portrait' && portraitCandidates.length === 0 && !portraitsLoading) {
+      void maybeGeneratePortraits();
+    }
   };
 
   const handleOptionSelect = <K extends keyof CreatorState>(field: K, value: CreatorState[K]) => {
+    const nextState = { ...state, [field]: value };
     setField(field, value);
     setError(null);
-    advanceToNextStep();
+    advanceToNextStep(nextState);
   };
 
   const appendDetailChip = (chip: string) => {
@@ -986,6 +1001,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                       ) : null}
                     </div>
                   </div>
+                ) : portraitCandidates.length === 0 ? (
+                  <div className={styles.portraitEmptyState}>
+                    <h2 className={styles.stepTitle}>{nameOr(`Pick {name}'s portrait`, labels.pickPortrait)}</h2>
+                    <p className={styles.loadingSubtext}>
+                      {error ?? 'Portrait previews did not load. Tap below to generate looks.'}
+                    </p>
+                    <button type="button" className={styles.regeneratePrimaryButton} onClick={regeneratePortraits} disabled={portraitsLoading}>
+                      {portraitsLoading ? 'Generating looks…' : 'Generate looks'}
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <h2 className={styles.stepTitle}>{nameOr(`Pick {name}'s portrait`, labels.pickPortrait)}</h2>
@@ -994,6 +1019,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                       const previewUrl =
                         state.selectedPortraitImage
                         || portraitCandidates[activeDotIndex]?.imageDataUrl
+                        || portraitCandidates[0]?.imageDataUrl
                         || null;
                       return previewUrl ? (
                         <div className={styles.portraitPreviewWrap}>
@@ -1013,11 +1039,29 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                     <button type="button" className={styles.skipButton} onClick={regeneratePortraits} disabled={portraitsLoading}>
                       Regenerate looks
                     </button>
+                    <div className={styles.portraitPickerGrid}>
+                      {portraitCandidates.map((candidate) => (
+                        <button
+                          key={candidate.id}
+                          type="button"
+                          className={`${styles.portraitPickerCard} ${
+                            state.selectedPortraitImage === candidate.imageDataUrl ? styles.portraitPickerCardSelected : ''
+                          }`}
+                          onClick={() => {
+                            setField('selectedPortraitPrompt', candidate.prompt);
+                            setField('selectedPortraitImage', candidate.imageDataUrl);
+                          }}
+                        >
+                          <img src={candidate.imageDataUrl} alt={candidate.label} className={styles.portraitPickerImage} />
+                          <span className={styles.portraitPickerLabel}>{candidate.label}</span>
+                        </button>
+                      ))}
+                    </div>
                     <div className={styles.carouselContainer}>
                       <div className={styles.carouselTrack} ref={carouselRef}>
                         {portraitCandidates.map((candidate) => (
                           <button
-                            key={candidate.id}
+                            key={`carousel-${candidate.id}`}
                             type="button"
                             className={`${styles.carouselCard} ${
                               state.selectedPortraitImage === candidate.imageDataUrl ? styles.carouselCardSelected : ''
