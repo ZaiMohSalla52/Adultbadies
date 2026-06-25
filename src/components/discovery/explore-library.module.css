@@ -1,6 +1,5 @@
 .frame {
-  width: min(1160px, 100%);
-  margin: 0 auto;
+  composes: app-content-frame from global;
   display: grid;
   gap: 20px;
 }

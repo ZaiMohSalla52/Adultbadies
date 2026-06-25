@@ -92,7 +92,7 @@ export default async function ChatsPage() {
   const isEmpty = !hasNewChats && !hasConversations;
 
   return (
-    <div className="chats-page chats-page--fullbleed">
+    <div className="chats-page">
       <div className="chats-frame">
         <div className="chats-header">
           <h1 className="my-0">Chats</h1>

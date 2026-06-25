@@ -79,7 +79,7 @@ export default async function VirtualGirlfriendChatPage({
   const canonicalUrl = curated.canonical?.delivery_url ?? null;
 
   return (
-    <div className="chat-page-shell">
+    <div className="chat-page-frame">
     <VirtualGirlfriendChatClient
       companionId={companion.id}
       companionName={companion.name}
