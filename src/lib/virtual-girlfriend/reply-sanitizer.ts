@@ -44,6 +44,42 @@ const META_ACTION_PATTERNS: RegExp[] = [
   /\*attaching(?:\s+photo)?\*/gi,
 ];
 
+const INTENT_METADATA_FIELDS = [
+  'intimacyActive',
+  'wantsPhoto',
+  'photoDelivery',
+  'visualSceneHint',
+  'imageCategory',
+  'powerDynamic',
+  'companionGuidance',
+] as const;
+
+const intentFieldPattern = INTENT_METADATA_FIELDS.join('|');
+
+const parenIntentLeakPattern = new RegExp(
+  `\\(\\s*(?:${intentFieldPattern})\\s*:\\s*(?:true|false|null|"(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*'|[^)]+)\\s*\\)`,
+  'gi',
+);
+
+const lineIntentLeakPattern = new RegExp(
+  `^\\s*\\(\\s*(?:${intentFieldPattern})\\s*:.*\\)\\s*$`,
+  'gim',
+);
+
+const jsonIntentLeakPattern = new RegExp(
+  `^\\s*"(?:${intentFieldPattern})"\\s*:\\s*(?:true|false|null|"(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*'|[^,\\n]+)\\s*,?\\s*$`,
+  'gim',
+);
+
+const stripIntentMetadataLeaks = (text: string) =>
+  text
+    .replace(parenIntentLeakPattern, '')
+    .replace(lineIntentLeakPattern, '')
+    .replace(jsonIntentLeakPattern, '')
+    .replace(/^\s*"reply"\s*:\s*"/gm, '')
+    .replace(/^\s*[\[{]\s*$/gm, '')
+    .replace(/^\s*[\]}],?\s*$/gm, '');
+
 const extractReplyFromStructuredLeak = (text: string) => {
   if (!/"reply"\s*:/.test(text) || !/wantsPhoto|intimacyActive/.test(text)) return null;
   const match = text.match(/"reply"\s*:\s*"((?:\\.|[^"\\])*)"/);
@@ -58,7 +94,7 @@ const extractReplyFromStructuredLeak = (text: string) => {
 /** Strip roleplay/meta noise and markdown so chat reads like plain texting. */
 export const polishChatDisplayText = (text: string) => {
   const structuredReply = extractReplyFromStructuredLeak(text);
-  let cleaned = structuredReply ?? text;
+  let cleaned = stripIntentMetadataLeaks(structuredReply ?? text);
   for (const pattern of META_ACTION_PATTERNS) {
     cleaned = cleaned.replace(pattern, '');
   }

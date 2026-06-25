@@ -107,6 +107,7 @@ export const VirtualGirlfriendChatClient = ({
   const [pending, setPending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [companionActivity, setCompanionActivity] = useState<'idle' | 'typing' | 'sending_photo'>('idle');
+  const [awaitingPhoto, setAwaitingPhoto] = useState(false);
   const [sidebarImages, setSidebarImages] = useState(galleryImages);
   const [sidebarUnlocked, setSidebarUnlocked] = useState(unlockedImageIds);
   const [stylePending, setStylePending] = useState<VirtualGirlfriendStyleControlPreset | null>(null);
@@ -146,6 +147,13 @@ export const VirtualGirlfriendChatClient = ({
   const insufficientPoints = pointBalance < messageCost;
   const outfitPresets = useMemo(() => getOutfitPresetsForSex(companionSex), [companionSex]);
   const labels = useMemo(() => getCompanionLabels(companionSex), [companionSex]);
+
+  const lastAssistantMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]?.role === 'assistant') return messages[index]!.id;
+    }
+    return null;
+  }, [messages]);
 
   const scrollToBottom = () => {
     scrollRef.current?.scrollTo({
@@ -237,6 +245,7 @@ export const VirtualGirlfriendChatClient = ({
     setPending(true);
     setIsStreaming(true);
     setCompanionActivity('typing');
+    setAwaitingPhoto(false);
     setError(null);
     setDraft('');
     setOutfitMenuOpen(false);
@@ -295,7 +304,7 @@ export const VirtualGirlfriendChatClient = ({
 
     type StreamEvent =
       | { type: 'token'; payload: { token: string } }
-      | { type: 'text_done'; payload: { content: string; segments?: string[]; contentType: 'text' | 'image' | 'mixed' } }
+      | { type: 'text_done'; payload: { content: string; segments?: string[]; contentType: 'text' | 'image' | 'mixed'; photoPending?: boolean } }
       | { type: 'image_generating'; payload: { active: boolean } }
       | { type: 'image'; payload: { attachment: VirtualGirlfriendMessageAttachment; contentType: 'mixed'; generationMode: string | null } }
       | { type: 'done'; payload: DonePayload }
@@ -340,6 +349,7 @@ export const VirtualGirlfriendChatClient = ({
           if (data.attachment?.imageUrl) {
             attachImageToAssistant(data.attachment);
             registerChatImage(data.attachment);
+            setAwaitingPhoto(false);
             setCompanionActivity('idle');
             return data.attachment;
           }
@@ -347,6 +357,7 @@ export const VirtualGirlfriendChatClient = ({
           // keep polling through transient mobile network drops
         }
       }
+      setAwaitingPhoto(false);
       return null;
     };
 
@@ -419,7 +430,7 @@ export const VirtualGirlfriendChatClient = ({
             {
               id: streamId,
               role: 'assistant' as const,
-              content: segments[0] ?? '',
+              content: polishChatDisplayText(segments[0] ?? ''),
               conversation_id: 'temp',
               user_id: 'temp',
               created_at: createdAt,
@@ -437,7 +448,7 @@ export const VirtualGirlfriendChatClient = ({
           ...segments.map((segment, index) => ({
             id: `${streamId}-${index}`,
             role: 'assistant' as const,
-            content: segment,
+            content: polishChatDisplayText(segment),
             conversation_id: 'temp',
             user_id: 'temp',
             created_at: createdAt,
@@ -473,20 +484,33 @@ export const VirtualGirlfriendChatClient = ({
                 ? event.payload.segments
                 : [event.payload.content];
             finalizeSegments(segments, event.payload.contentType);
-            setCompanionActivity(photoPending ? 'sending_photo' : 'idle');
+            photoPending = photoPending || Boolean(event.payload.photoPending);
+            if (photoPending) {
+              setAwaitingPhoto(true);
+              setCompanionActivity('sending_photo');
+            } else {
+              setCompanionActivity('idle');
+            }
           }
 
           if (event.type === 'image_generating') {
             photoPending = event.payload.active;
-            if (photoPending) setCompanionActivity('sending_photo');
+            if (photoPending) {
+              setAwaitingPhoto(true);
+              setCompanionActivity('sending_photo');
+            }
           }
 
           if (event.type === 'ping') {
-            if (photoPending) setCompanionActivity('sending_photo');
+            if (photoPending) {
+              setAwaitingPhoto(true);
+              setCompanionActivity('sending_photo');
+            }
           }
 
           if (event.type === 'image') {
             photoPending = false;
+            setAwaitingPhoto(false);
             setCompanionActivity('idle');
             attachImageToAssistant(event.payload.attachment);
             registerChatImage(event.payload.attachment);
@@ -494,6 +518,7 @@ export const VirtualGirlfriendChatClient = ({
 
           if (event.type === 'image_failed') {
             photoPending = false;
+            setAwaitingPhoto(false);
             setCompanionActivity('idle');
             const detail = event.payload.reason ?? event.payload.outcome;
             setError(
@@ -535,6 +560,7 @@ export const VirtualGirlfriendChatClient = ({
     }
 
     if (payload.imageGeneration?.requested && !imageAttachment && payload.assistantMessageId) {
+      setAwaitingPhoto(true);
       setCompanionActivity('sending_photo');
       const polled = await pollForMessageAttachment(payload.assistantMessageId);
       if (polled) imageAttachment = polled;
@@ -558,9 +584,16 @@ export const VirtualGirlfriendChatClient = ({
       );
     }
 
+    const stillAwaitingPhoto = Boolean(
+      payload.imageGeneration?.requested
+      && !imageAttachment
+      && payload.imageGeneration.outcome === 'pending',
+    );
+
     setPending(false);
     setIsStreaming(false);
-    setCompanionActivity('idle');
+    setAwaitingPhoto(stillAwaitingPhoto);
+    setCompanionActivity(stillAwaitingPhoto ? 'sending_photo' : 'idle');
     scrollToBottom();
   };
 
@@ -1250,6 +1283,11 @@ export const VirtualGirlfriendChatClient = ({
 
             const bubbles = (message.content || '').split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
             const renderBubbles = bubbles.length > 0 ? bubbles : [''];
+            const hasImageAttachment = message.attachments?.some((attachment) => attachment.kind === 'image') ?? false;
+            const showPhotoPlaceholder =
+              awaitingPhoto
+              && message.id === lastAssistantMessageId
+              && !hasImageAttachment;
 
             return (
               <div key={message.id}>
@@ -1289,6 +1327,12 @@ export const VirtualGirlfriendChatClient = ({
                             ) : null,
                           )
                         : null}
+                      {idx === 0 && showPhotoPlaceholder ? (
+                        <div className={styles.photoSendingIndicator} role="status" aria-live="polite" aria-label={`${companionName} is sending a photo`}>
+                          <div className={styles.photoSendingShimmer} aria-hidden />
+                          <span className={styles.photoSendingLabel}>Sending photo…</span>
+                        </div>
+                      ) : null}
                       {part ? <p>{polishChatDisplayText(part)}</p> : null}
                       {idx === renderBubbles.length - 1 ? (
                         <div className={styles.messageActions}>
@@ -1318,6 +1362,18 @@ export const VirtualGirlfriendChatClient = ({
                 <span className={styles.typingDot} />
                 <span className={styles.typingDot} />
                 <span className={styles.typingDot} />
+              </div>
+            </div>
+          ) : null}
+
+          {awaitingPhoto && !lastAssistantMessageId ? (
+            <div className={styles.messageCompanion}>
+              <div className={styles.companionAvatar}>
+                {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
+              </div>
+              <div className={styles.photoSendingIndicator} role="status" aria-live="polite" aria-label={`${companionName} is sending a photo`}>
+                <div className={styles.photoSendingShimmer} aria-hidden />
+                <span className={styles.photoSendingLabel}>Sending photo…</span>
               </div>
             </div>
           ) : null}

@@ -241,15 +241,6 @@ export async function POST(request: NextRequest) {
         const photoRequestedThisTurn =
           turn.intent.wantsPhoto || imageMoment.shouldSendImage || imageMoment.teaseOnly || photoRequested;
 
-        enqueueEvent(controller, {
-          type: 'text_done',
-          payload: {
-            content: combinedContent,
-            segments,
-            contentType: 'text',
-          },
-        });
-
         const imagePending = imageStarted && !imageMoment.teaseOnly && photoRequestedThisTurn;
         let imageOutcome: VirtualGirlfriendChatImageOutcome = imageMoment.teaseOnly
           ? 'not_requested'
@@ -258,7 +249,17 @@ export async function POST(request: NextRequest) {
             : 'not_requested';
         let imageOutcomeReason: string | null = imageMoment.teaseOnly ? 'tease_before_photo' : null;
 
-        await insertVirtualGirlfriendMessage(auth.accessToken, {
+        enqueueEvent(controller, {
+          type: 'text_done',
+          payload: {
+            content: combinedContent,
+            segments,
+            contentType: 'text',
+            photoPending: imagePending,
+          },
+        });
+
+        const userMessagePromise = insertVirtualGirlfriendMessage(auth.accessToken, {
           conversationId: conversation.id,
           userId: auth.user.id,
           role: 'user',
@@ -266,7 +267,7 @@ export async function POST(request: NextRequest) {
           moderation: turn.moderation,
         });
 
-        const assistantMessage = await insertVirtualGirlfriendMessageReturningId(auth.accessToken, {
+        const assistantMessagePromise = insertVirtualGirlfriendMessageReturningId(auth.accessToken, {
           conversationId: conversation.id,
           userId: auth.user.id,
           role: 'assistant',
@@ -325,17 +326,33 @@ export async function POST(request: NextRequest) {
         let streamContentType: 'text' | 'mixed' = 'text';
         let streamGenerationMode: string | null = null;
 
+        let heartbeat: ReturnType<typeof setInterval> | null = null;
         if (imageTask) {
-          const heartbeat = setInterval(() => {
+          heartbeat = setInterval(() => {
             try {
               enqueueEvent(controller, { type: 'ping', payload: { active: true } });
             } catch {
-              clearInterval(heartbeat);
+              if (heartbeat) clearInterval(heartbeat);
             }
           }, 7000);
+        }
 
-          try {
-            const resolvedImage = await imageTask;
+        let assistantMessage: { id: string };
+
+        try {
+          const [, insertedAssistantMessage, resolvedImage] = await Promise.all([
+            userMessagePromise,
+            assistantMessagePromise,
+            imageTask
+              ?? Promise.resolve({
+                outcome: 'not_requested' as VirtualGirlfriendChatImageOutcome,
+                attachment: null as VirtualGirlfriendMessageAttachment | null,
+                reason: null as string | null,
+              }),
+          ]);
+          assistantMessage = insertedAssistantMessage;
+
+          if (imageTask) {
             let imageAttachment = resolvedImage.attachment;
             imageOutcome = resolvedImage.outcome;
             imageOutcomeReason = resolvedImage.reason;
@@ -403,9 +420,9 @@ export async function POST(request: NextRequest) {
                 },
               });
             }
-          } finally {
-            clearInterval(heartbeat);
           }
+        } finally {
+          if (heartbeat) clearInterval(heartbeat);
         }
 
         enqueueEvent(controller, {

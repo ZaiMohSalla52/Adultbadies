@@ -46,6 +46,26 @@ describe('reply sanitizer', () => {
     expect(cleaned).toContain('You like that view?');
   });
 
+  it('strips parenthetical intent metadata leaks from display text', () => {
+    const leaked = [
+      'Hey babe 😘',
+      '',
+      '(intimacyActive: true)',
+      '(wantsPhoto: true)',
+      '(photoDelivery: "send_now")',
+      '(visualSceneHint: "bedroom mirror selfie, soft light")',
+      '(companionGuidance: "Stay flirty and confident.")',
+    ].join('\n');
+
+    const cleaned = polishChatDisplayText(leaked);
+    expect(cleaned.toLowerCase()).not.toContain('intimacyactive');
+    expect(cleaned.toLowerCase()).not.toContain('wantsphoto');
+    expect(cleaned.toLowerCase()).not.toContain('photodelivery');
+    expect(cleaned.toLowerCase()).not.toContain('visualscenehint');
+    expect(cleaned.toLowerCase()).not.toContain('companionguidance');
+    expect(cleaned).toContain('Hey babe');
+  });
+
   it('replaces explicit refusals on photo requests with in-character delivery', () => {
     const cleaned = sanitizeAssistantReply({
       text: "I can't share explicit nudity or sexual content, but I can keep things warm. Which one should I send?",
