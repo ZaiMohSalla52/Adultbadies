@@ -22,11 +22,26 @@ const ORIGINS: readonly Origin[] = ['asian', 'latina', 'black', 'white', 'mixed'
 const BODY_TYPES: readonly BodyType[] = ['slim', 'athletic', 'curvy', 'petite'];
 const AGES = [18, 21, 24, 27, 30, 35] as const;
 const SKIN_TONES = ['fair', 'light', 'medium', 'tan', 'dark', 'deep'] as const;
-const STYLE_VIBES = ['casual', 'elegant', 'edgy', 'bohemian', 'sporty', 'professional'] as const;
+const STYLE_VIBES = [
+  'casual',
+  'elegant',
+  'seductive',
+  'lingerie',
+  'glamorous',
+  'edgy',
+  'bohemian',
+  'athletic',
+  'sporty',
+  'professional',
+] as const;
 const PERSONALITIES = [
   'warm_romantic',
   'playful_tease',
   'confident_bold',
+  'sultry_seductive',
+  'dominant_tease',
+  'submissive_eager',
+  'wild_uninhibited',
   'intellectual',
   'sweet_caring',
   'sarcastic_witty',

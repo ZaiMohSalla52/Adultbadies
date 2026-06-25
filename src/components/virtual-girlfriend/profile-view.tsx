@@ -9,6 +9,8 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import { UnlockableGallery } from '@/components/virtual-girlfriend/unlockable-gallery';
+import { RegenerateImagesButton } from '@/components/virtual-girlfriend/regenerate-images-button';
+import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import styles from './profile-view.module.css';
 
 export const VirtualGirlfriendProfileView = ({
@@ -38,6 +40,7 @@ export const VirtualGirlfriendProfileView = ({
   const unlockedSet = new Set(unlockedImageIds);
   const unlockedThumbnails = gallery.filter((image) => unlockedSet.has(image.id));
   const structured = companion.structured_profile;
+  const labels = getCompanionLabels(structured?.sex);
 
   const cleanValue = (value: unknown): string | null => {
     if (typeof value === 'number') return `${value}`;
@@ -50,11 +53,11 @@ export const VirtualGirlfriendProfileView = ({
 
   const softStatusMessage =
     status === 'generating'
-      ? 'Her image set is still generating. We will show her portrait as soon as it is ready.'
+      ? labels.statusGenerating
       : status === 'partial_success'
-        ? 'Her locked portrait is ready, but some gallery moments did not finish yet.'
+        ? labels.statusPartial
         : status === 'failed'
-          ? 'Image generation failed for this profile. You can still chat and open her profile while we retry later.'
+          ? labels.statusFailed
           : status === 'review_pending'
             ? 'Portrait is usable now and currently marked as pending internal review.'
             : null;
@@ -95,9 +98,7 @@ export const VirtualGirlfriendProfileView = ({
             </ProfileMediaFrame>
           ) : (
             <div className={styles.mainEmpty}>
-              {status === 'failed'
-                ? 'Image generation failed for this profile. You can retry from a stable state later.'
-                : 'Her portrait is being prepared. Please check back in a moment.'}
+              {status === 'failed' ? labels.statusFailed : labels.portraitPending}
             </div>
           )}
 
@@ -118,6 +119,7 @@ export const VirtualGirlfriendProfileView = ({
           <p className={styles.vibe}>{vibeDescriptor}</p>
 
           {softStatusMessage ? <p className={styles.statusNote}>{softStatusMessage}</p> : null}
+          {status === 'failed' ? <RegenerateImagesButton companionId={companion.id} /> : null}
 
           <div className={styles.traitsGrid}>
             {traits.map((trait) => (
@@ -152,7 +154,7 @@ export const VirtualGirlfriendProfileView = ({
       <section className={styles.gallerySection}>
         <div className={styles.sectionHeader}>
           <h2>Gallery moments</h2>
-          <p>More moments will appear here as her gallery expands.</p>
+          <p>{labels.galleryExpand}</p>
         </div>
 
         {gallery.length > 0 ? (

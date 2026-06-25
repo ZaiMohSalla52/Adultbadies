@@ -12,7 +12,8 @@ import type {
   VirtualGirlfriendChatImageOutcome,
   VirtualGirlfriendGenerationStatus,
 } from '@/lib/virtual-girlfriend/types';
-import { OUTFIT_PRESETS } from '@/lib/virtual-girlfriend/outfit-presets';
+import { getOutfitPresetsForSex } from '@/lib/virtual-girlfriend/outfit-presets';
+import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import { ChatImageAttachment } from './chat-image-attachment';
 import { UnlockableGallery } from './unlockable-gallery';
 import styles from './chat-client.module.css';
@@ -31,6 +32,7 @@ type ChatClientProps = {
   occupation?: string | null;
   personality?: string | null;
   sexuality?: string | null;
+  companionSex?: string | null;
   galleryImages: Array<{ id: string; url: string }>;
   unlockedImageIds: string[];
   pointBalance: number;
@@ -64,6 +66,7 @@ export const VirtualGirlfriendChatClient = ({
   occupation,
   personality,
   sexuality,
+  companionSex,
   galleryImages,
   unlockedImageIds,
   pointBalance: initialPointBalance,
@@ -115,6 +118,8 @@ export const VirtualGirlfriendChatClient = ({
 
   const limit = entitlements.limits.virtualGirlfriendMessagesPerDay;
   const reachedLimit = limit !== null && usedToday >= limit;
+  const outfitPresets = useMemo(() => getOutfitPresetsForSex(companionSex), [companionSex]);
+  const labels = useMemo(() => getCompanionLabels(companionSex), [companionSex]);
 
   const scrollToBottom = () => {
     scrollRef.current?.scrollTo({
@@ -1105,7 +1110,7 @@ export const VirtualGirlfriendChatClient = ({
         </div>
 
         <div className={styles.quickChipRow}>
-          {OUTFIT_PRESETS.slice(0, 5).map((preset) => (
+          {outfitPresets.slice(0, 5).map((preset) => (
             <button
               key={preset.id}
               type="button"
@@ -1121,7 +1126,7 @@ export const VirtualGirlfriendChatClient = ({
         <div className={styles.composerArea}>
           {outfitMenuOpen ? (
             <div className={styles.outfitMenu}>
-              {OUTFIT_PRESETS.map((preset) => (
+              {outfitPresets.map((preset) => (
                 <button
                   key={preset.id}
                   type="button"
@@ -1225,7 +1230,7 @@ export const VirtualGirlfriendChatClient = ({
 
         {infoTab === 'wardrobe' ? (
           <div className={styles.wardrobeList}>
-            {OUTFIT_PRESETS.map((preset) => (
+            {outfitPresets.map((preset) => (
               <button
                 key={preset.id}
                 type="button"
@@ -1255,7 +1260,7 @@ export const VirtualGirlfriendChatClient = ({
               />
             </div>
           ) : (
-            <p className={styles.infoPanelSub}>No photos yet — ask her for a selfie.</p>
+            <p className={styles.infoPanelSub}>No photos yet — {labels.chatSelfieHint}</p>
           )
         ) : (
           <div className={styles.infoPanelTraits}>

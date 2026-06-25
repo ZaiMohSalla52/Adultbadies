@@ -3,23 +3,26 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import type { VirtualGirlfriendMessageAttachment } from '@/lib/virtual-girlfriend/types';
-import { OUTFIT_PRESETS, POSE_PRESETS } from '@/lib/virtual-girlfriend/outfit-presets';
+import { getOutfitPresetsForSex, POSE_PRESETS } from '@/lib/virtual-girlfriend/outfit-presets';
 import { ChatImageAttachment } from '@/components/virtual-girlfriend/chat-image-attachment';
 import styles from './generate-photo-studio.module.css';
 
 export const GeneratePhotoStudio = ({
   companionId,
   companionName,
+  companionSex,
   pointBalance,
   unblurCost,
   isPremium,
 }: {
   companionId: string;
   companionName: string;
+  companionSex?: string | null;
   pointBalance: number;
   unblurCost: number;
   isPremium: boolean;
 }) => {
+  const outfitPresets = getOutfitPresetsForSex(companionSex);
   const [prompt, setPrompt] = useState('');
   const [selectedPose, setSelectedPose] = useState<string>(POSE_PRESETS[0].id);
   const [pending, setPending] = useState(false);
@@ -87,7 +90,7 @@ export const GeneratePhotoStudio = ({
       <section className={styles.panel}>
         <h2 className={styles.sectionTitle}>Quick looks</h2>
         <div className={styles.presetGrid}>
-          {OUTFIT_PRESETS.map((preset) => (
+          {outfitPresets.map((preset) => (
             <button
               key={preset.id}
               type="button"

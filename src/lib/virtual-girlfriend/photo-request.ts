@@ -1,6 +1,6 @@
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import type { ChatTurnIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
-import { OUTFIT_PRESETS } from '@/lib/virtual-girlfriend/outfit-presets';
+import { getOutfitPresetsForSex } from '@/lib/virtual-girlfriend/outfit-presets';
 
 const PHOTO_REQUEST_HEURISTIC =
   /\b(selfie|selfies|photo|photos?|pic|pics?|picture|pictures?|snap|send me|show me|see you|what do you look|another (shot|image|photo)|more of you|closer peek|want to see)\b/i;
@@ -12,7 +12,8 @@ export const looksLikePhotoRequest = (message: string) => {
 
 const resolvePresetSceneHint = (message: string) => {
   const normalized = message.trim().toLowerCase();
-  const preset = OUTFIT_PRESETS.find((entry) => entry.message.toLowerCase() === normalized);
+  const preset = getOutfitPresetsForSex('female').concat(getOutfitPresetsForSex('male'))
+    .find((entry) => entry.message.toLowerCase() === normalized);
   return preset?.sceneHint ?? null;
 };
 

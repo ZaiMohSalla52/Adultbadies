@@ -20,6 +20,7 @@ export const resolvePersonaSemanticInput = (input: {
   ) {
     return {
       name: structuredProfile.name.trim(),
+      sex: structuredProfile.sex ?? fallback.sex,
       archetype: structuredProfile.archetype.trim(),
       tone: structuredProfile.tone.trim(),
       affectionStyle: structuredProfile.affectionStyle.trim(),
@@ -132,9 +133,12 @@ const fallbackPersona = (input: VirtualGirlfriendSetupPayload): PersonaProfile =
 export const generateVirtualGirlfriendPersona = async (input: VirtualGirlfriendSetupPayload): Promise<PersonaProfile> => {
   const guide = preferenceStyleGuide(input);
 
-  const prompt = `Create a premium virtual girlfriend persona as strict JSON. It must feel specific to the selected preference and not generic.
+  const sexLabel = (input.sex ?? 'female').toLowerCase() === 'male' ? 'AI boyfriend' : 'AI girlfriend';
+
+  const prompt = `Create a premium virtual ${sexLabel} persona as strict JSON. It must feel specific to the selected preference and not generic. This is an adult companion app — flirt, chemistry, and sensual confidence are encouraged when they fit the archetype.
 Use these setup directives:
 - Name: ${input.name.trim()}
+- Sex/presentation: ${input.sex ?? 'female'}
 - Archetype: ${input.archetype}
 - Tone: ${input.tone}
 - Affection/flirt direction: ${input.affectionStyle}

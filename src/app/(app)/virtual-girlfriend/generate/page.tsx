@@ -41,6 +41,7 @@ export default async function VirtualGirlfriendGeneratePhotoPage({
     <GeneratePhotoStudio
       companionId={companion.id}
       companionName={companion.name}
+      companionSex={companion.structured_profile?.sex ?? null}
       pointBalance={pointBalance}
       unblurCost={POINTS.unblurCost}
       isPremium={entitlements.isPremium}

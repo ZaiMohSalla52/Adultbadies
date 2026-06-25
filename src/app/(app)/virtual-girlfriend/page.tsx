@@ -60,9 +60,9 @@ export default async function AIGirlfriendPage() {
     <div className="app-page-stack">
       <div className="ai-gf-header">
         <div>
-          <h1 className="my-0">AI Girlfriend</h1>
+          <h1 className="my-0">AI Companions</h1>
           <p className="my-0 text-muted text-sm">
-            {uniqueCompanions.length} companion{uniqueCompanions.length !== 1 ? 's' : ''}
+            Girlfriends & boyfriends · {uniqueCompanions.length} companion{uniqueCompanions.length !== 1 ? 's' : ''}
             {entitlements.isPremium ? ' · Premium' : ''}
           </p>
         </div>

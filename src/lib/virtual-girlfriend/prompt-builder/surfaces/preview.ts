@@ -75,6 +75,9 @@ function resolveAppearanceCue(styleVibe?: string, personality?: string, occupati
       sporty: 'athletic sporty activewear look',
       professional: 'sharp composed professional appearance',
       glamorous: 'glamorous high-fashion sophisticated look',
+      seductive: 'sultry seductive styling with adult glamour energy',
+      lingerie: 'lingerie-forward intimate styling, tasteful adult allure',
+      athletic: 'athletic thirst-trap physique emphasis, fitted activewear cues',
     };
     const mapped = styleMap[styleVibe.toLowerCase()];
     if (mapped) parts.push(mapped);
@@ -90,6 +93,10 @@ function resolveAppearanceCue(styleVibe?: string, personality?: string, occupati
       sarcastic_witty: 'sharp wit in her expression, knowing half-smile',
       mysterious: 'mysterious intense smoldering gaze, alluring presence',
       bubbly_energetic: 'bright radiant energetic smile, vibrant presence',
+      sultry_seductive: 'smoldering seductive gaze, parted lips, magnetic adult allure',
+      dominant_tease: 'commanding confident stare, controlled sensual power',
+      submissive_eager: 'soft eager expression, inviting vulnerable warmth',
+      wild_uninhibited: 'uninhibited flirtatious energy, raw adult chemistry in the eyes',
     };
     const mapped = personalityMap[personality.toLowerCase()];
     if (mapped) parts.push(mapped);

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { STYLE_VIBE_OPTIONS } from '@/lib/virtual-girlfriend/outfit-presets';
+import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import type { VirtualGirlfriendSetupResult } from '@/lib/virtual-girlfriend/types';
 import styles from './setup-flow.module.css';
 
@@ -11,15 +12,17 @@ type BuilderStep =
   | 'name'
   | 'origin'
   | 'hairColor'
+  | 'hairLength'
+  | 'eyeColor'
   | 'bodyType'
   | 'age'
-  | 'portrait'
   | 'breastSize'
   | 'styleVibe'
-  | 'occupation'
   | 'personality'
+  | 'occupation'
   | 'sexuality'
-  | 'freeformDetails';
+  | 'freeformDetails'
+  | 'portrait';
 
 type PortraitCandidate = { id: string; imageDataUrl: string; prompt: string; label: string };
 
@@ -59,15 +62,17 @@ const STEPS: BuilderStep[] = [
   'name',
   'origin',
   'hairColor',
+  'hairLength',
+  'eyeColor',
   'bodyType',
   'age',
-  'portrait',
   'breastSize',
   'styleVibe',
-  'occupation',
   'personality',
+  'occupation',
   'sexuality',
   'freeformDetails',
+  'portrait',
 ];
 
 const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -78,8 +83,8 @@ const makeInitialState = (): CreatorState => ({
   origin: '',
   skinTone: '',
   hairColor: '',
-  hairLength: pickRandom(['short', 'medium', 'long']),
-  eyeColor: pickRandom(['brown', 'dark brown', 'blue', 'green', 'hazel', 'amber']),
+  hairLength: '',
+  eyeColor: '',
   bodyType: '',
   breastSize: '',
   age: '',
@@ -170,9 +175,30 @@ const occupationOptions: PhotoOption[] = [
   { label: 'Random', value: 'random', icon: '🎲' },
 ];
 
+const hairLengthOptions: EmojiOption[] = [
+  { label: 'Short', value: 'short', icon: '✂️' },
+  { label: 'Medium', value: 'medium', icon: '💇' },
+  { label: 'Long', value: 'long', icon: '💫' },
+  { label: 'Random', value: 'random', icon: '🎲' },
+];
+
+const eyeColorOptions: EmojiOption[] = [
+  { label: 'Brown', value: 'brown', icon: '🟤' },
+  { label: 'Dark brown', value: 'dark brown', icon: '🤎' },
+  { label: 'Blue', value: 'blue', icon: '🔵' },
+  { label: 'Green', value: 'green', icon: '🟢' },
+  { label: 'Hazel', value: 'hazel', icon: '🟡' },
+  { label: 'Amber', value: 'amber', icon: '🟠' },
+  { label: 'Random', value: 'random', icon: '🎲' },
+];
+
 const personalityOptions: EmojiOption[] = [
   { label: 'Warm & romantic', value: 'warm_romantic', icon: '❤️' },
   { label: 'Playful & teasing', value: 'playful_tease', icon: '😜' },
+  { label: 'Sultry & seductive', value: 'sultry_seductive', icon: '🔥' },
+  { label: 'Dominant & teasing', value: 'dominant_tease', icon: '⛓️' },
+  { label: 'Submissive & eager', value: 'submissive_eager', icon: '🫦' },
+  { label: 'Wild & uninhibited', value: 'wild_uninhibited', icon: '💋' },
   { label: 'Confident & bold', value: 'confident_bold', icon: '💪' },
   { label: 'Intellectual', value: 'intellectual', icon: '🧠' },
   { label: 'Sweet & caring', value: 'sweet_caring', icon: '🥰' },
@@ -192,15 +218,21 @@ const sexualityOptions: EmojiOption[] = [
 
 const detailChips = [
   'Adventurous',
-  'Bookworm',
-  'Cat lover',
-  'Dog lover',
-  'Gamer',
-  'Foodie',
-  'Night owl',
   'Hopeless romantic',
-  'Sarcastic humor',
+  'High libido',
+  'Slow-burn tease',
+  'Loves lingerie',
+  'Open-minded',
+  'Kinky curious',
+  'Praise kink',
+  'Roleplay lover',
+  'Fitness obsession',
+  'Exhibitionist energy',
+  'Passionate lover',
+  'Night owl',
   'Deep thinker',
+  'Foodie',
+  'Gamer',
 ];
 
 const HAIR_COLOR_SWATCHES: Record<string, string> = {
@@ -226,6 +258,10 @@ const deriveTone = (personality: string): string => {
   const map: Record<string, string> = {
     warm_romantic: 'Warm & caring',
     playful_tease: 'Flirty & witty',
+    sultry_seductive: 'Bold & spicy',
+    dominant_tease: 'Bold & spicy',
+    submissive_eager: 'Warm & caring',
+    wild_uninhibited: 'Bold & spicy',
     confident_bold: 'Bold & spicy',
     intellectual: 'Calm & cozy',
     sweet_caring: 'Warm & caring',
@@ -240,6 +276,10 @@ const deriveAffectionStyle = (personality: string): string => {
   const map: Record<string, string> = {
     warm_romantic: 'Slow-burn romance',
     playful_tease: 'High flirt energy',
+    sultry_seductive: 'High flirt energy',
+    dominant_tease: 'High flirt energy',
+    submissive_eager: 'Slow-burn romance',
+    wild_uninhibited: 'High flirt energy',
     confident_bold: 'High flirt energy',
     intellectual: 'Balanced affection',
     sweet_caring: 'Slow-burn romance',
@@ -280,6 +320,14 @@ const deriveArchetype = (personality: string, tone: string): string => {
     mysterious_direct: 'Power Partner',
     bubbly_energetic_playful: 'Fun Buddy',
     bubbly_energetic_flirty: 'Sultry Tease',
+    sultry_seductive_direct: 'Sultry Tease',
+    sultry_seductive_flirty: 'Sultry Tease',
+    dominant_tease_direct: 'Power Partner',
+    dominant_tease_playful: 'Sultry Tease',
+    submissive_eager_romantic: 'Romantic Muse',
+    submissive_eager_supportive: 'Romantic Muse',
+    wild_uninhibited_direct: 'Sultry Tease',
+    wild_uninhibited_playful: 'Fun Buddy',
   };
   const normalizedTone = normalizeToneKey(tone);
   const key = `${personality}_${normalizedTone}`.toLowerCase();
@@ -300,10 +348,17 @@ const deriveVisualAesthetic = (styleVibe: string, personality: string): string =
     sporty_confident_bold: 'Athletic editorial',
     professional_intellectual: 'Clean minimal',
     professional_confident_bold: 'Corporate power',
+    seductive_sultry_seductive: 'Boudoir glamour',
+    lingerie_sultry_seductive: 'Lace and silk intimacy',
+    glamorous_confident_bold: 'High fashion drama',
+    athletic_confident_bold: 'Athletic thirst-trap editorial',
   };
   const vibeFallbacks: Record<string, string> = {
     casual: 'Natural casual everyday',
     elegant: 'Sophisticated elegant evening',
+    seductive: 'Sultry boudoir glamour',
+    lingerie: 'Lace-forward intimate styling',
+    athletic: 'Athletic thirst-trap realism',
     sporty: 'Athletic active lifestyle',
     glamorous: 'Glam nightlife luxury',
     bohemian: 'Boho free-spirited artistic',
@@ -352,6 +407,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
   const step = STEPS[stepIndex];
   const progress = useMemo(() => ((stepIndex + 1) / STEPS.length) * 100, [stepIndex]);
+  const labels = useMemo(() => getCompanionLabels(state.sex), [state.sex]);
 
   useEffect(() => {
     if (step !== 'portrait' || !carouselRef.current) return;
@@ -385,10 +441,12 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     if (step === 'name' && !state.name.trim()) return 'Name is required.';
     if (step === 'origin' && !state.origin) return 'Choose ethnicity.';
     if (step === 'hairColor' && !state.hairColor) return 'Choose hair color.';
+    if (step === 'hairLength' && !state.hairLength) return 'Choose hair length.';
+    if (step === 'eyeColor' && !state.eyeColor) return 'Choose eye color.';
     if (step === 'bodyType' && !state.bodyType) return 'Choose body type.';
     if (step === 'age' && !state.age) return 'Choose age.';
-    if (step === 'breastSize' && state.sex === 'female' && !state.breastSize) return 'Choose breast size.';
-    if (step === 'styleVibe' && !state.styleVibe) return 'Choose her default style.';
+    if (step === 'breastSize' && state.sex === 'female' && !state.breastSize) return 'Choose chest size.';
+    if (step === 'styleVibe' && !state.styleVibe) return `Choose ${labels.stylePrompt}.`;
     if (step === 'portrait' && !state.selectedPortraitImage) return 'Pick one portrait to continue.';
     if (step === 'occupation' && !state.occupation) return 'Choose occupation.';
     if (step === 'personality' && !state.personality) return 'Choose personality.';
@@ -396,8 +454,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     return null;
   };
 
-  const maybeGeneratePortraits = async () => {
-    if (portraitCandidates.length > 0) return;
+  const maybeGeneratePortraits = async (force = false) => {
+    if (!force && portraitCandidates.length > 0) return;
     setPortraitsLoading(true);
     setError(null);
     setConflictHelp(null);
@@ -418,12 +476,18 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           breastSize: state.breastSize,
           age: state.age,
           styleVibe: state.styleVibe,
+          personality: state.personality,
+          freeformDetails: state.freeformDetails,
         }),
       });
 
       const body = (await response.json()) as { candidates?: PortraitCandidate[]; error?: string };
       if (!response.ok || !body.candidates?.length) throw new Error(body.error ?? 'Unable to generate portraits now.');
       setPortraitCandidates(body.candidates);
+      if (force) {
+        setField('selectedPortraitImage', '');
+        setField('selectedPortraitPrompt', '');
+      }
     } catch (candidateError) {
       setError(candidateError instanceof Error ? candidateError.message : 'Portrait generation failed.');
     } finally {
@@ -553,7 +617,9 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           || body.state === 'partial_success'
           || body.state === 'review_pending'
         ) {
-          const destination = body.companionId ? `/virtual-girlfriend/profile?companionId=${body.companionId}` : '/virtual-girlfriend/profile';
+          const destination =
+            body.redirectTo
+            ?? (body.companionId ? `/virtual-girlfriend/chat?companionId=${body.companionId}` : '/virtual-girlfriend/chat');
           router.push(destination);
           router.refresh();
           return;
@@ -592,8 +658,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     });
   };
 
+  const regeneratePortraits = () => {
+    setPortraitCandidates([]);
+    setField('selectedPortraitImage', '');
+    setField('selectedPortraitPrompt', '');
+    void maybeGeneratePortraits(true);
+  };
+
   const isSubmitting = generationStarted || pending;
-  const showContinue = step === 'name' || step === 'portrait';
+  const showContinue = step === 'name' || step === 'freeformDetails';
+  const showCreate = step === 'portrait';
   const nameOr = (withName: string, withoutName: string) =>
     state.name.trim() ? withName.replace('{name}', state.name.trim()) : withoutName;
 
@@ -623,7 +697,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           <div className={styles.stepTransition} key={step}>
             {step === 'sex' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>Choose gender</h2>
+                <h2 className={styles.stepTitle}>Girlfriend or boyfriend?</h2>
+                <p className={styles.loadingSubtext}>Build your perfect AI companion — fully custom, adult, and yours.</p>
                 <div className={styles.genderGrid}>
                   {sexOptions.map((option) => (
                     <button
@@ -696,6 +771,44 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
               </div>
             )}
 
+            {step === 'hairLength' && (
+              <div className={styles.stepContent}>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s hair length', 'Choose hair length')}</h2>
+                <div className={styles.optionGridThree}>
+                  {hairLengthOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`${styles.textOptionCard} ${state.hairLength === option.value ? styles.optionCardSelected : ''}`}
+                      onClick={() => handleOptionSelect('hairLength', option.value)}
+                    >
+                      <span className={styles.cardIcon}>{option.icon}</span>
+                      <span>{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {step === 'eyeColor' && (
+              <div className={styles.stepContent}>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s eye color', 'Choose eye color')}</h2>
+                <div className={styles.optionGridThree}>
+                  {eyeColorOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`${styles.textOptionCard} ${state.eyeColor === option.value ? styles.optionCardSelected : ''}`}
+                      onClick={() => handleOptionSelect('eyeColor', option.value)}
+                    >
+                      <span className={styles.cardIcon}>{option.icon}</span>
+                      <span>{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {step === 'bodyType' && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>{nameOr('{name}\'s body type', 'Choose body type')}</h2>
@@ -758,7 +871,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                 {portraitsLoading ? (
                   <div className={styles.loadingState}>
                     <div className={styles.loadingOrb} />
-                    <h2 className={styles.stepTitle}>{nameOr('Creating {name}\'s portrait', 'Creating portrait')}</h2>
+                    <h2 className={styles.stepTitle}>{nameOr(`Creating {name}'s portrait`, labels.generatingPortrait)}</h2>
                     <p className={styles.loadingSubtext}>Picking the perfect look...</p>
                     <div className={styles.traitSummary}>
                       {state.sex ? <span className={styles.traitChip}>{state.sex === 'female' ? 'Female' : 'Male'}</span> : null}
@@ -771,7 +884,11 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                   </div>
                 ) : (
                   <>
-                    <h2 className={styles.stepTitle}>{nameOr('Pick {name}\'s portrait', 'Pick the portrait')}</h2>
+                    <h2 className={styles.stepTitle}>{nameOr(`Pick {name}'s portrait`, labels.pickPortrait)}</h2>
+                    <p className={styles.loadingSubtext}>All traits are locked in — pick the face you want to keep forever.</p>
+                    <button type="button" className={styles.skipButton} onClick={regeneratePortraits} disabled={portraitsLoading}>
+                      Regenerate looks
+                    </button>
                     <div className={styles.carouselContainer}>
                       <div className={styles.carouselTrack} ref={carouselRef}>
                         {portraitCandidates.map((candidate) => (
@@ -803,8 +920,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
             {step === 'styleVibe' && (
               <div className={styles.stepContent}>
-                <h2 className={styles.stepTitle}>{nameOr('{name}\'s style', 'Choose her default style')}</h2>
-                <p className={styles.loadingSubtext}>Sets her default wardrobe vibe for photos and chat.</p>
+                <h2 className={styles.stepTitle}>{nameOr('{name}\'s style', `Choose ${labels.stylePrompt}`)}</h2>
+                <p className={styles.loadingSubtext}>{labels.wardrobeHint}</p>
                 <div className={styles.optionGridThree}>
                   {STYLE_VIBE_OPTIONS.map((option) => (
                     <button
@@ -922,9 +1039,9 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                 Continue
               </button>
             ) : null}
-            {step === 'freeformDetails' ? (
-              <button type="button" className={styles.createButton} onClick={submit} disabled={isSubmitting}>
-                Create
+            {showCreate ? (
+              <button type="button" className={styles.createButton} onClick={submit} disabled={isSubmitting || portraitsLoading}>
+                Create {labels.roleShort.toLowerCase()}
               </button>
             ) : null}
           </div>

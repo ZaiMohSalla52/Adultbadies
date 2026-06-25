@@ -314,3 +314,34 @@
     width: 100%;
   }
 }
+
+.pollerBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: rgba(255, 46, 99, 0.1);
+  border: 1px solid rgba(255, 46, 99, 0.28);
+}
+
+.pollerBanner p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.retryRow {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.retryError {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #f87171;
+}

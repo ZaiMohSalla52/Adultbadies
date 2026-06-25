@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { VirtualGirlfriendCompanionStatus } from '@/lib/virtual-girlfriend/types';
+import styles from './profile-view.module.css';
 
 /**
  * While a companion's images are generating in the background, poll the status
@@ -13,7 +14,7 @@ export const GenerationPoller = ({
   companionId,
   status,
   intervalMs = 4000,
-  maxAttempts = 45,
+  maxAttempts = 60,
 }: {
   companionId: string;
   status: VirtualGirlfriendCompanionStatus;
@@ -22,15 +23,21 @@ export const GenerationPoller = ({
 }) => {
   const router = useRouter();
   const attempts = useRef(0);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (status !== 'generating') return;
+    if (status !== 'generating') {
+      setTimedOut(false);
+      attempts.current = 0;
+      return;
+    }
 
     let cancelled = false;
     const interval = setInterval(async () => {
       attempts.current += 1;
       if (attempts.current > maxAttempts) {
         clearInterval(interval);
+        if (!cancelled) setTimedOut(true);
         return;
       }
 
@@ -43,6 +50,7 @@ export const GenerationPoller = ({
         const data = (await response.json()) as { status?: string };
         if (!cancelled && data.status && data.status !== 'generating') {
           clearInterval(interval);
+          setTimedOut(false);
           router.refresh();
         }
       } catch {
@@ -56,5 +64,14 @@ export const GenerationPoller = ({
     };
   }, [companionId, status, intervalMs, maxAttempts, router]);
 
-  return null;
+  if (status !== 'generating' || !timedOut) return null;
+
+  return (
+    <div className={styles.pollerBanner}>
+      <p>Photos are still generating in the background.</p>
+      <button type="button" className={styles.secondaryButton} onClick={() => router.refresh()}>
+        Refresh profile
+      </button>
+    </div>
+  );
 };

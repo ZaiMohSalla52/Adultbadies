@@ -209,6 +209,7 @@ export type VirtualGirlfriendSetupResult = {
   state: VirtualGirlfriendImageGenerationState;
   companionId?: string;
   conversationId?: string;
+  redirectTo?: string;
   message?: string;
   warning?: string;
   conflict?: {

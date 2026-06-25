@@ -3,11 +3,14 @@ import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import {
   getOrCreateVirtualGirlfriendConversation,
+  insertVirtualGirlfriendMessage,
   listVirtualGirlfriends,
   setCanonicalReferenceImageId,
   setVirtualGirlfriendGenerationStatus,
   upsertVirtualGirlfriend,
 } from '@/lib/virtual-girlfriend/data';
+import { buildCompanionOpeningMessage } from '@/lib/virtual-girlfriend/setup-greeting';
+import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import { findDistinctnessConflict, isCharacterDuplicateConflict } from '@/lib/virtual-girlfriend/distinctness';
 import {
   generateAndPersistVirtualGirlfriendImagePack,
@@ -291,6 +294,22 @@ export async function POST(request: NextRequest) {
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
 
+  const openingMessage = buildCompanionOpeningMessage({
+    name: chosenName,
+    sex: structuredProfile.sex,
+    persona,
+    personality: structuredProfile.personality,
+  });
+
+  await insertVirtualGirlfriendMessage(auth.accessToken, {
+    conversationId: conversation.id,
+    userId: auth.user.id,
+    role: 'assistant',
+    content: openingMessage,
+    moderation: {},
+    contentType: 'text',
+  });
+
   const imageSetup = {
     origin: structuredProfile.origin ?? undefined,
     archetype: structuredProfile.archetype,
@@ -347,10 +366,13 @@ export async function POST(request: NextRequest) {
     companionId: companion.id,
   });
 
+  const labels = getCompanionLabels(structuredProfile.sex);
+
   return NextResponse.json({
     state: 'generating',
     companionId: companion.id,
     conversationId: conversation.id,
-    message: 'Your companion is being created — her photos are generating now.',
+    redirectTo: `/virtual-girlfriend/chat?companionId=${companion.id}`,
+    message: `Your ${labels.roleShort.toLowerCase()} is ready to chat — ${labels.photosLabel} are generating now.`,
   } satisfies VirtualGirlfriendSetupResult);
 }

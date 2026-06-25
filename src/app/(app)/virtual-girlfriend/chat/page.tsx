@@ -79,6 +79,7 @@ export default async function VirtualGirlfriendChatPage({
       occupation={companion.structured_profile?.occupation ?? null}
       personality={companion.structured_profile?.personality ?? null}
       sexuality={companion.structured_profile?.sexuality ?? null}
+      companionSex={companion.structured_profile?.sex ?? null}
       galleryImages={curated.gallery.map((image) => ({ id: image.id, url: image.delivery_url }))}
       unlockedImageIds={unlockedImageIds}
       pointBalance={pointBalance}
