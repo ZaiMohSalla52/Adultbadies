@@ -9,8 +9,8 @@ import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import {
   getLatestVirtualGirlfriendConversationBatch,
   getLatestVirtualGirlfriendMessage,
-  getVirtualGirlfriendCompanionImagesBatch,
-  listVirtualGirlfriendCompanions,
+  getVirtualGirlfriendCompanionThumbnailBatch,
+  listVirtualGirlfriendCompanionsForGrid,
 } from '@/lib/virtual-girlfriend/data';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import type { ChatThreadItem } from '@/lib/matches/types';
@@ -36,7 +36,7 @@ export default async function ChatsPage() {
 
   const [humanThreads, companions, incomingLikesCount] = await Promise.all([
     getHumanChatThreads(token, userId),
-    listVirtualGirlfriendCompanions(token, userId),
+    listVirtualGirlfriendCompanionsForGrid(token, userId),
     getIncomingLikesCount(token, userId),
   ]);
 
@@ -45,7 +45,7 @@ export default async function ChatsPage() {
 
   const [conversationMap, imageMap] = await Promise.all([
     getLatestVirtualGirlfriendConversationBatch(token, userId, setupIds),
-    getVirtualGirlfriendCompanionImagesBatch(token, userId, setupIds),
+    getVirtualGirlfriendCompanionThumbnailBatch(token, userId, setupIds),
   ]);
 
   const companionsWithConversation = setupCompanions.filter((c) => conversationMap.has(c.id));

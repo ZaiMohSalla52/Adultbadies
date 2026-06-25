@@ -21,6 +21,13 @@ import type {
 const companionSelect =
   'id,user_id,name,display_bio,persona_profile,structured_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,generation_status,disclosure_label,is_active,created_at,updated_at';
 
+/** Lightweight companion row for grid/list cards — avoids large persona JSON blobs. */
+const companionGridSelect =
+  'id,user_id,name,display_bio,archetype,setup_completed,generation_status,is_active,updated_at';
+
+const companionThumbnailSelect =
+  'id,companion_id,image_kind,delivery_url,width,height,prompt_hash,quality_score,lineage_metadata,created_at';
+
 
 const visualProfileSelect =
   'id,user_id,companion_id,profile_version,style_version,prompt_hash,source_setup,identity_pack,canonical_reference_image_id,canonical_reference_metadata,canonical_review_status,reviewed_by,reviewed_at,review_notes,continuity_notes,moderation_status,provenance,seed_prompt,prompt_version,surface_type,created_at,updated_at';
@@ -114,6 +121,20 @@ export const listVirtualGirlfriendCompanions = async (
   return supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
     searchParams: new URLSearchParams({
       select: companionSelect,
+      user_id: `eq.${userId}`,
+      order: 'is_active.desc,updated_at.desc',
+      limit: '24',
+    }),
+  });
+};
+
+export const listVirtualGirlfriendCompanionsForGrid = async (
+  token: string,
+  userId: string,
+): Promise<VirtualGirlfriendCompanionRecord[]> => {
+  return supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+    searchParams: new URLSearchParams({
+      select: companionGridSelect,
       user_id: `eq.${userId}`,
       order: 'is_active.desc,updated_at.desc',
       limit: '24',
@@ -710,6 +731,40 @@ export const getVirtualGirlfriendCompanionImagesBatch = async (
     const existing = map.get(row.companion_id) ?? [];
     existing.push(row);
     map.set(row.companion_id, existing);
+  }
+  return map;
+};
+
+/**
+ * Card/grid thumbnails only — one canonical portrait per companion.
+ * Avoids scanning hundreds of chat gallery rows (image_kind=gallery) per companion.
+ */
+export const getVirtualGirlfriendCompanionThumbnailBatch = async (
+  token: string,
+  userId: string,
+  companionIds: string[],
+): Promise<Map<string, VirtualGirlfriendCompanionImageRecord[]>> => {
+  const ids = Array.from(new Set(companionIds.filter(Boolean)));
+  if (!ids.length) return new Map();
+
+  const rows = await supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+    searchParams: new URLSearchParams({
+      select: companionThumbnailSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `in.(${ids.join(',')})`,
+      image_kind: 'eq.canonical',
+      order: 'created_at.desc',
+      limit: String(ids.length),
+    }),
+  });
+
+  const map = new Map<string, VirtualGirlfriendCompanionImageRecord[]>();
+  for (const row of rows) {
+    const existing = map.get(row.companion_id) ?? [];
+    if (!existing.some((image) => image.id === row.id)) {
+      existing.push(row);
+      map.set(row.companion_id, existing);
+    }
   }
   return map;
 };

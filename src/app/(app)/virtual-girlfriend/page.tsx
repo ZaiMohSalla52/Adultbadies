@@ -4,8 +4,8 @@ import { CompanionGrid } from '@/components/virtual-girlfriend/companion-grid';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
-  getVirtualGirlfriendCompanionImagesBatch,
-  listVirtualGirlfriendCompanions,
+  getVirtualGirlfriendCompanionThumbnailBatch,
+  listVirtualGirlfriendCompanionsForGrid,
 } from '@/lib/virtual-girlfriend/data';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import { resolveCompanionImageState } from '@/lib/virtual-girlfriend/generation-state';
@@ -20,7 +20,7 @@ export default async function AIGirlfriendPage() {
   }
 
   const [companions, entitlements] = await Promise.all([
-    listVirtualGirlfriendCompanions(auth.accessToken, auth.user.id),
+    listVirtualGirlfriendCompanionsForGrid(auth.accessToken, auth.user.id),
     getUserEntitlements(auth.accessToken, auth.user.id),
   ]);
 
@@ -33,7 +33,7 @@ export default async function AIGirlfriendPage() {
   );
   const activeId = companions.find((c) => c.is_active)?.id ?? null;
 
-  const imageMap = await getVirtualGirlfriendCompanionImagesBatch(
+  const imageMap = await getVirtualGirlfriendCompanionThumbnailBatch(
     auth.accessToken,
     auth.user.id,
     uniqueCompanions.map((c) => c.id),
