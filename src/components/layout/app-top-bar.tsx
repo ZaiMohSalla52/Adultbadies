@@ -9,7 +9,7 @@ export const AppTopBar = () => {
   const isChat = pathname.startsWith('/virtual-girlfriend/chat');
 
   return (
-    <header className={styles.topBar}>
+    <header className={`${styles.topBar}${isChat ? ` ${styles.topBarHiddenOnMobileChat}` : ''}`}>
       <Link href="/discovery" className={styles.brand} aria-label="Adult Badies home">
         <span className={styles.brandIcon} aria-hidden>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">

@@ -83,11 +83,7 @@ export const ChatImageAttachment = ({
         width={attachment.width ?? 1024}
         height={attachment.height ?? 1024}
         sizes="(max-width: 768px) 90vw, 420px"
-        style={
-          unlocked
-            ? { filter: 'brightness(1.06) contrast(1.03)' }
-            : { filter: 'blur(16px) brightness(0.72)', transform: 'scale(1.04)' }
-        }
+        className={unlocked ? styles.chatImageSharp : styles.chatImageBlurred}
       />
       {!unlocked ? (
         <div className={styles.chatImageLock}>

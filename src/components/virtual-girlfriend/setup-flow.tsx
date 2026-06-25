@@ -52,18 +52,13 @@ const PortraitPhoto = ({
   imageClassName: string;
   onFailed?: () => void;
 }) => (
-  <div
-    className={wrapClassName}
-    style={{ backgroundImage: `url("${src.replace(/"/g, '')}")` }}
-    role="img"
-    aria-label={alt}
-  >
+  <div className={wrapClassName}>
     <img
       src={src}
       alt={alt}
       className={imageClassName}
       loading="eager"
-      decoding="sync"
+      decoding="async"
       referrerPolicy="no-referrer"
       onError={() => onFailed?.()}
     />

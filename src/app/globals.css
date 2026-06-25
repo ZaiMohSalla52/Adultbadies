@@ -1972,6 +1972,18 @@ img {
   }
 }
 
+@media (max-width: 767px) {
+  .chat-page-fullscreen {
+    min-height: 100dvh;
+  }
+
+  .app-shell-body:has(.chat-page-fullscreen) {
+    margin-top: 0;
+    padding: 0;
+    padding-bottom: 0;
+  }
+}
+
 .chats-premium-banner {
   display: flex;
   flex-wrap: wrap;

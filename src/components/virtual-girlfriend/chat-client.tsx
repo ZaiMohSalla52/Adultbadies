@@ -16,6 +16,7 @@ import type {
 import { getOutfitPresetsForSex } from '@/lib/virtual-girlfriend/outfit-presets';
 import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import { POINTS } from '@/lib/points/constants';
+import { createChatReplyPacer } from '@/lib/virtual-girlfriend/chat-reply-pace';
 import { polishChatDisplayText } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { ChatAvatarImage } from './chat-avatar-image';
 import { ChatImageAttachment } from './chat-image-attachment';
@@ -397,6 +398,8 @@ export const VirtualGirlfriendChatClient = ({
       scrollToBottom();
     };
 
+    const replyPacer = createChatReplyPacer((token) => ensureStreamingAssistant(token));
+
     const attachImageToAssistant = (attachment: VirtualGirlfriendMessageAttachment) => {
       const targetId = streamState.assistantId;
       if (!targetId) return;
@@ -475,10 +478,11 @@ export const VirtualGirlfriendChatClient = ({
           const event = JSON.parse(line) as StreamEvent;
 
           if (event.type === 'token') {
-            ensureStreamingAssistant(event.payload.token);
+            replyPacer.push(event.payload.token);
           }
 
           if (event.type === 'text_done') {
+            await replyPacer.flush();
             const segments =
               event.payload.segments && event.payload.segments.length > 0
                 ? event.payload.segments
@@ -1283,12 +1287,6 @@ export const VirtualGirlfriendChatClient = ({
 
             const bubbles = (message.content || '').split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
             const renderBubbles = bubbles.length > 0 ? bubbles : [''];
-            const hasImageAttachment = message.attachments?.some((attachment) => attachment.kind === 'image') ?? false;
-            const showPhotoPlaceholder =
-              awaitingPhoto
-              && message.id === lastAssistantMessageId
-              && !hasImageAttachment;
-
             return (
               <div key={message.id}>
                 {showDate ? <div className={styles.datePill}>{dateLabel}</div> : null}
@@ -1327,12 +1325,6 @@ export const VirtualGirlfriendChatClient = ({
                             ) : null,
                           )
                         : null}
-                      {idx === 0 && showPhotoPlaceholder ? (
-                        <div className={styles.photoSendingIndicator} role="status" aria-live="polite" aria-label={`${companionName} is sending a photo`}>
-                          <div className={styles.photoSendingShimmer} aria-hidden />
-                          <span className={styles.photoSendingLabel}>Sending photo…</span>
-                        </div>
-                      ) : null}
                       {part ? <p>{polishChatDisplayText(part)}</p> : null}
                       {idx === renderBubbles.length - 1 ? (
                         <div className={styles.messageActions}>
@@ -1353,27 +1345,27 @@ export const VirtualGirlfriendChatClient = ({
             );
           })}
 
-          {isStreaming && companionActivity === 'typing' && !messages.some((message) => message.id.startsWith('temp-assistant-')) ? (
+          {(companionActivity === 'typing'
+            && isStreaming
+            && !messages.some((message) => message.id.startsWith('temp-assistant-')))
+          || (companionActivity === 'sending_photo' && awaitingPhoto) ? (
             <div className={styles.messageCompanion}>
               <div className={styles.companionAvatar}>
                 {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
               </div>
-              <div className={styles.typingIndicator} aria-label={`${companionName} is typing`}>
+              <div
+                className={styles.typingIndicator}
+                role="status"
+                aria-live="polite"
+                aria-label={
+                  companionActivity === 'sending_photo'
+                    ? `${companionName} is sending a photo`
+                    : `${companionName} is typing`
+                }
+              >
                 <span className={styles.typingDot} />
                 <span className={styles.typingDot} />
                 <span className={styles.typingDot} />
-              </div>
-            </div>
-          ) : null}
-
-          {awaitingPhoto && !lastAssistantMessageId ? (
-            <div className={styles.messageCompanion}>
-              <div className={styles.companionAvatar}>
-                {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
-              </div>
-              <div className={styles.photoSendingIndicator} role="status" aria-live="polite" aria-label={`${companionName} is sending a photo`}>
-                <div className={styles.photoSendingShimmer} aria-hidden />
-                <span className={styles.photoSendingLabel}>Sending photo…</span>
               </div>
             </div>
           ) : null}
