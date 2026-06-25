@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     attachment = { ...attachment, locked: true };
   } else if (attachment.source === 'fresh-generation') {
     try {
-      await grantCompanionImageAccess(auth.accessToken, attachment.imageId);
+      await grantCompanionImageAccess(auth.accessToken, attachment.imageId, auth.user.id);
     } catch (grantError) {
       console.warn('[virtual-girlfriend] generate-photo grant failed', grantError);
     }

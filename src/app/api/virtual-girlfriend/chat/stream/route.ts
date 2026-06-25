@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
               && !imageAttachment.locked
             ) {
               try {
-                await grantCompanionImageAccess(auth.accessToken, imageAttachment.imageId);
+                await grantCompanionImageAccess(auth.accessToken, imageAttachment.imageId, auth.user.id);
               } catch (grantError) {
                 console.warn('[virtual-girlfriend] failed to auto-grant chat image gallery access', grantError);
               }

@@ -1,3 +1,4 @@
+import { env } from '@/lib/env';
 import { supabaseRest } from '@/lib/supabase/rest';
 
 export type UnlockResult = {
@@ -6,6 +7,60 @@ export type UnlockResult = {
   balance: number;
   cost: number;
   reason?: string;
+};
+
+const isMissingGrantRpcError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('PGRST202') || message.includes('grant_companion_image_access');
+};
+
+const serviceRoleFetch = async (path: string, init?: RequestInit) => {
+  const key = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!key) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
+  }
+
+  const response = await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(`Supabase service request failed (${response.status}): ${message}`);
+  }
+
+  if (response.status === 204) return null;
+  const raw = await response.text();
+  return raw.trim() ? (JSON.parse(raw) as unknown) : null;
+};
+
+const grantCompanionImageAccessViaServiceRole = async (userId: string, imageId: string) => {
+  const imageRows = (await serviceRoleFetch(
+    `ai_companion_images?select=companion_id&id=eq.${encodeURIComponent(imageId)}&limit=1`,
+  )) as Array<{ companion_id: string | null }>;
+
+  const companionId = imageRows?.[0]?.companion_id;
+  if (!companionId) {
+    throw new Error('Image not found for gallery grant.');
+  }
+
+  await serviceRoleFetch('image_unlocks', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify({
+      user_id: userId,
+      image_id: imageId,
+      companion_id: companionId,
+      points_spent: 0,
+    }),
+  });
 };
 
 /** Current point balance for the user (0 if no row yet). */
@@ -43,11 +98,25 @@ export const claimPointStipend = async (token: string): Promise<number> => {
 };
 
 /** Grant free gallery access (e.g. a photo already delivered in chat). */
-export const grantCompanionImageAccess = async (token: string, imageId: string): Promise<void> => {
-  await supabaseRest('rpc/grant_companion_image_access', token, {
-    method: 'POST',
-    body: { p_image_id: imageId },
-  });
+export const grantCompanionImageAccess = async (
+  token: string,
+  imageId: string,
+  userId: string,
+): Promise<void> => {
+  try {
+    await supabaseRest('rpc/grant_companion_image_access', token, {
+      method: 'POST',
+      body: { p_image_id: imageId },
+    });
+    return;
+  } catch (error) {
+    if (!isMissingGrantRpcError(error)) throw error;
+    console.warn(
+      '[points] grant_companion_image_access RPC missing — using service-role fallback. Run supabase/migrations/020_grant_chat_image_access.sql.',
+    );
+  }
+
+  await grantCompanionImageAccessViaServiceRole(userId, imageId);
 };
 
 /** Spend points to unlock a gallery image. The DB enforces cost and balance. */
