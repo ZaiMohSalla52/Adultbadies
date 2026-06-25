@@ -68,6 +68,8 @@ type VgCompanionRow = {
   name: string;
   display_bio: string | null;
   disclosure_label: string | null;
+  structured_profile: { sex?: string | null; styleVibe?: string | null; archetype?: string | null } | null;
+  archetype: string | null;
 };
 
 type VgImageRow = {
@@ -79,7 +81,7 @@ type VgImageRow = {
 export const getDiscoverableVirtualGirlfriends = async (token: string, userId: string): Promise<DiscoveryCandidate[]> => {
   const companions = await supabaseRest<VgCompanionRow[]>('ai_companions', token, {
     searchParams: new URLSearchParams({
-      select: 'id,user_id,name,display_bio,disclosure_label',
+      select: 'id,user_id,name,display_bio,disclosure_label,structured_profile,archetype',
       is_discoverable: 'eq.true',
       setup_completed: 'eq.true',
       user_id: `neq.${userId}`,
@@ -101,19 +103,23 @@ export const getDiscoverableVirtualGirlfriends = async (token: string, userId: s
 
   const imageByCompanionId = new Map(images.map((img) => [img.companion_id, img.delivery_url]));
 
-  return companions.map((companion) => ({
-    userId: `vg:${companion.id}`,
-    displayName: companion.name,
-    age: null,
-    bio: companion.display_bio?.trim() || 'Your perfect AI companion.',
-    location: 'Virtual',
-    gender: 'female',
-    interestedIn: null,
-    photoUrl: imageByCompanionId.get(companion.id) ?? null,
-    kind: 'virtual_girlfriend',
-    companionId: companion.id,
-    disclosureLabel: companion.disclosure_label ?? '',
-  }));
+  return companions.map((companion) => {
+    const sex = (companion.structured_profile?.sex ?? 'female').toLowerCase();
+    return {
+      userId: `vg:${companion.id}`,
+      displayName: companion.name,
+      age: null,
+      bio: companion.display_bio?.trim() || companion.archetype?.trim() || 'Your perfect AI companion.',
+      location: 'Virtual',
+      gender: sex === 'male' ? 'male' : 'female',
+      interestedIn: null,
+      photoUrl: imageByCompanionId.get(companion.id) ?? null,
+      kind: 'virtual_girlfriend',
+      companionId: companion.id,
+      disclosureLabel: companion.disclosure_label ?? '',
+      styleVibe: companion.structured_profile?.styleVibe ?? null,
+    };
+  });
 };
 
 const DISCOVERY_PROFILE_POOL = 80;

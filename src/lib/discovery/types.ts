@@ -41,4 +41,7 @@ export type DiscoveryCandidate = {
   kind: 'human' | 'virtual_girlfriend';
   companionId?: string;
   disclosureLabel?: string;
+  styleVibe?: string | null;
 };
+
+export type ExploreTab = 'girlfriends' | 'boyfriends' | 'anime' | 'my';

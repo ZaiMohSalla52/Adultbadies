@@ -10,10 +10,8 @@ import {
 } from '@/lib/safety/age';
 
 const appNavItems = [
-  { label: 'Discovery', href: '/discovery' },
-  { label: 'Matches', href: '/matches' },
+  { label: 'Explore', href: '/discovery' },
   { label: 'Chats', href: '/chats' },
-  { label: 'AI Companions', href: '/virtual-girlfriend' },
   { label: 'Create', href: '/virtual-girlfriend/setup?new=1' },
   { label: 'Account', href: '/account' },
 ] as const;

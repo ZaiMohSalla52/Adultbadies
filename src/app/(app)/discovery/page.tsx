@@ -1,31 +1,32 @@
 import { redirect } from 'next/navigation';
-import { DiscoveryDeck } from '@/components/discovery/discovery-deck';
-import { getDiscoveryCandidates, getDiscoverableVirtualGirlfriends } from '@/lib/discovery/data';
+import { ExploreLibrary } from '@/components/discovery/explore-library';
+import type { CompanionGridCard } from '@/components/virtual-girlfriend/companion-grid';
+import { getDiscoverableVirtualGirlfriends } from '@/lib/discovery/data';
+import type { ExploreTab } from '@/lib/discovery/types';
 import { getOnboardingSnapshot } from '@/lib/onboarding/data';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
-import { getSwipeCountForToday, getUserEntitlements } from '@/lib/subscriptions/data';
-import { getMatchList } from '@/lib/matches/data';
-import type { DiscoveryCandidate } from '@/lib/discovery/types';
+import {
+  getVirtualGirlfriendCompanionThumbnailBatch,
+  listVirtualGirlfriendCompanionsForGrid,
+} from '@/lib/virtual-girlfriend/data';
+import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
+import { resolveCompanionImageState } from '@/lib/virtual-girlfriend/generation-state';
 
-const interleaveVgCandidates = (humans: DiscoveryCandidate[], vgs: DiscoveryCandidate[]): DiscoveryCandidate[] => {
-  if (vgs.length === 0) return humans;
-  const result: DiscoveryCandidate[] = [];
-  let vgIndex = 0;
-  for (let i = 0; i < humans.length; i++) {
-    result.push(humans[i]);
-    // Insert a VG card every 5 human cards
-    if ((i + 1) % 5 === 0 && vgIndex < vgs.length) {
-      result.push(vgs[vgIndex++]);
-    }
-  }
-  // Append remaining VG candidates at the end
-  while (vgIndex < vgs.length) {
-    result.push(vgs[vgIndex++]);
-  }
-  return result;
+const CHAT_READY = ['ready', 'partial_success'] as const;
+
+const parseTab = (value: string | string[] | undefined): ExploreTab => {
+  const raw = (Array.isArray(value) ? value[0] : value)?.trim().toLowerCase();
+  if (raw === 'boyfriends' || raw === 'boyfriend') return 'boyfriends';
+  if (raw === 'anime') return 'anime';
+  if (raw === 'my' || raw === 'my-characters' || raw === 'mine') return 'my';
+  return 'girlfriends';
 };
 
-export default async function DiscoveryPage() {
+export default async function DiscoveryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const auth = await getAuthenticatedUser();
 
   if (!auth.user || !auth.accessToken) {
@@ -38,22 +39,50 @@ export default async function DiscoveryPage() {
     redirect('/onboarding');
   }
 
-  const [candidates, vgCandidates, entitlements, swipesToday, recentMatches] = await Promise.all([
-    getDiscoveryCandidates(auth.accessToken, auth.user.id),
+  const params = await searchParams;
+  const initialTab = parseTab(params.tab);
+
+  const [discoverable, companions] = await Promise.all([
     getDiscoverableVirtualGirlfriends(auth.accessToken, auth.user.id),
-    getUserEntitlements(auth.accessToken, auth.user.id),
-    getSwipeCountForToday(auth.accessToken, auth.user.id),
-    getMatchList(auth.accessToken, auth.user.id),
+    listVirtualGirlfriendCompanionsForGrid(auth.accessToken, auth.user.id),
   ]);
 
-  const allCandidates = interleaveVgCandidates(candidates, vgCandidates);
+  const girlfriends = discoverable.filter((c) => c.gender !== 'male');
+  const boyfriends = discoverable.filter((c) => c.gender === 'male');
+  const anime = discoverable.filter((c) => (c.styleVibe ?? '').toLowerCase().includes('anime'));
+
+  const uniqueCompanions = Array.from(new Map(companions.map((c) => [c.id, c])).values());
+  const activeId = companions.find((c) => c.is_active)?.id ?? null;
+  const imageMap = await getVirtualGirlfriendCompanionThumbnailBatch(
+    auth.accessToken,
+    auth.user.id,
+    uniqueCompanions.map((c) => c.id),
+  );
+
+  const myCharacters: CompanionGridCard[] = uniqueCompanions.map((companion) => {
+    const images = imageMap.get(companion.id) ?? [];
+    const { canonical } = curateVirtualGirlfriendImages(images);
+    const status = resolveCompanionImageState({ companion, images, visualProfile: null });
+    const chatReady = (CHAT_READY as readonly string[]).includes(status);
+    return {
+      companion,
+      imageUrl: canonical?.delivery_url ?? null,
+      status,
+      isActive: companion.id === activeId,
+      chatReady,
+      href: chatReady
+        ? `/virtual-girlfriend/chat?companionId=${companion.id}`
+        : `/virtual-girlfriend/profile?companionId=${companion.id}`,
+    };
+  });
 
   return (
-    <DiscoveryDeck
-      initialCandidates={allCandidates}
-      entitlements={entitlements}
-      swipesToday={swipesToday}
-      recentMatches={recentMatches}
+    <ExploreLibrary
+      initialTab={initialTab}
+      girlfriends={girlfriends}
+      boyfriends={boyfriends}
+      anime={anime}
+      myCharacters={myCharacters}
     />
   );
 }

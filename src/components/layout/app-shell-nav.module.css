@@ -3,7 +3,7 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: 240px;
+  width: 225px;
   background: linear-gradient(180deg, #0d1117 0%, #0a0e14 100%);
   border-right: 1px solid rgba(255,255,255,0.06);
   box-shadow: inset -1px 0 0 rgba(255,255,255,0.04);
@@ -99,10 +99,37 @@
   white-space: nowrap;
 }
 
+.sidebarPromo {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(255, 46, 99, 0.12), rgba(192, 132, 252, 0.08));
+  border: 1px solid rgba(255, 46, 99, 0.2);
+}
+
+.sidebarPromoText {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #cbd5e1;
+}
+
+.sidebarPromoBtn {
+  display: block;
+  text-align: center;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #ff2e63;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .sidebarBottom {
   padding-top: 16px;
   border-top: 1px solid rgba(255,255,255,0.06);
-  margin-top: auto;
+  margin-top: 12px;
 }
 
 .signOutBtn {
@@ -129,8 +156,8 @@
   margin: 8px 0;
 }
 
-/* Hide sidebar on mobile */
-@media (max-width: 767px) {
+/* Hide sidebar on mobile — Romantic AI uses 1100px breakpoint */
+@media (max-width: 1100px) {
   .sidebar { display: none; }
 }
 
@@ -142,7 +169,9 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: #0d1117;
+  background: rgba(13, 17, 23, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255,255,255,0.06);
   padding: 6px 0;
   padding-bottom: env(safe-area-inset-bottom, 6px);
@@ -188,7 +217,7 @@
 }
 
 /* Hide on desktop */
-@media (min-width: 768px) {
+@media (min-width: 1101px) {
   .mobileNav { display: none; }
 }
 

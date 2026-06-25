@@ -30,6 +30,7 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
 
   const NavIcon = ({ label }: { label: string }) => {
     switch (label) {
+      case 'Explore':
       case 'Discovery':
         return (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -37,25 +38,10 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
             <path d="m21 21-4.3-4.3" />
           </svg>
         );
-      case 'Matches':
-        return (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-          </svg>
-        );
       case 'Chats':
         return (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-          </svg>
-        );
-      case 'AI Girlfriend':
-        return (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
         );
       case 'Create':
@@ -78,16 +64,13 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
   };
 
   if (mobile) {
-    // Hide mobile nav on VG chat page (full screen chat)
     if (pathname.startsWith('/virtual-girlfriend/chat')) {
       return null;
     }
 
-    const mobileTabs = items.filter((item) => item.label !== 'Matches');
-
     return (
       <nav className={styles.mobileNav} aria-label="Authenticated navigation mobile">
-        {mobileTabs.map((item) => {
+        {items.map((item) => {
           const hrefPath = item.href.split('?')[0];
           const isActive = pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
           const isItemPending = isPending && pendingHref === item.href;
@@ -114,7 +97,7 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
-        <Link href="/discovery" className={styles.brandLink} aria-label="Adult Badies discovery">
+        <Link href="/discovery" className={styles.brandLink} aria-label="Adult Badies explore">
           <span className={styles.brandMark} aria-hidden>
             AB
           </span>
@@ -146,6 +129,13 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
           );
         })}
       </nav>
+
+      <div className={styles.sidebarPromo}>
+        <p className={styles.sidebarPromoText}>Create a custom girlfriend or boyfriend in minutes.</p>
+        <Link href="/virtual-girlfriend/setup?new=1" className={styles.sidebarPromoBtn}>
+          Create character
+        </Link>
+      </div>
 
       <div className={styles.sidebarBottom}>
         <form action={signOutAction}>

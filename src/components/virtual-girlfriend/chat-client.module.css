@@ -4,7 +4,7 @@
 
 .chatLayout {
   display: flex;
-  height: calc(100vh - 48px);
+  height: 100vh;
   background: #070b14;
   color: #f5f5f5;
 }
@@ -777,15 +777,17 @@
   color: #f5f5f5;
 }
 
-/* ── Right info panel (desktop only) ── */
+/* ── Right info panel (desktop only, Romantic AI ~240px) ── */
 .infoPanel {
-  width: 300px;
+  width: 240px;
+  flex-shrink: 0;
   border-left: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 20px;
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   overflow-y: auto;
+  background: rgba(13, 17, 23, 0.6);
 }
 
 .infoPanelPortrait {
@@ -863,12 +865,8 @@
   margin-top: 3px;
 }
 
-/* ── Responsive: hide info panel on tablets ── */
-@media (max-width: 1023px) {
-  .chatLayout {
-    height: 100vh;
-  }
-
+/* ── Responsive: hide info panel below desktop breakpoint ── */
+@media (max-width: 1100px) {
   .infoPanel {
     display: none;
   }
