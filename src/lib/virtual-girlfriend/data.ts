@@ -417,6 +417,29 @@ export const getOrCreateVirtualGirlfriendConversation = async (
   return inserted[0]!;
 };
 
+export const getVirtualGirlfriendMessageById = async (
+  token: string,
+  messageId: string,
+  userId: string,
+): Promise<VirtualGirlfriendMessageRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendMessageRecord[]>('ai_messages', token, {
+    searchParams: new URLSearchParams({
+      select: 'id,conversation_id,user_id,role,content,model,token_count,moderation,content_type,attachments,created_at',
+      id: `eq.${messageId}`,
+      user_id: `eq.${userId}`,
+      limit: '1',
+    }),
+  });
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    ...row,
+    attachments: normalizeMessageAttachments(row.attachments),
+  };
+};
+
 export const getVirtualGirlfriendMessages = async (
   token: string,
   conversationId: string,

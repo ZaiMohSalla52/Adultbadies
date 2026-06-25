@@ -44,9 +44,21 @@ const META_ACTION_PATTERNS: RegExp[] = [
   /\*attaching(?:\s+photo)?\*/gi,
 ];
 
+const extractReplyFromStructuredLeak = (text: string) => {
+  if (!/"reply"\s*:/.test(text) || !/wantsPhoto|intimacyActive/.test(text)) return null;
+  const match = text.match(/"reply"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  if (!match?.[1]) return null;
+  try {
+    return JSON.parse(`"${match[1]}"`) as string;
+  } catch {
+    return match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+  }
+};
+
 /** Strip roleplay/meta noise and markdown so chat reads like plain texting. */
 export const polishChatDisplayText = (text: string) => {
-  let cleaned = text;
+  const structuredReply = extractReplyFromStructuredLeak(text);
+  let cleaned = structuredReply ?? text;
   for (const pattern of META_ACTION_PATTERNS) {
     cleaned = cleaned.replace(pattern, '');
   }

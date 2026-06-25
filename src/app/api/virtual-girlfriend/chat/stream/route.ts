@@ -321,14 +321,102 @@ export async function POST(request: NextRequest) {
           console.error('[virtual-girlfriend] post-turn finalize failed', finalizeError);
         });
 
+        let streamAttachments: VirtualGirlfriendMessageAttachment[] = [];
+        let streamContentType: 'text' | 'mixed' = 'text';
+        let streamGenerationMode: string | null = null;
+
+        if (imageTask) {
+          const heartbeat = setInterval(() => {
+            try {
+              enqueueEvent(controller, { type: 'ping', payload: { active: true } });
+            } catch {
+              clearInterval(heartbeat);
+            }
+          }, 7000);
+
+          try {
+            const resolvedImage = await imageTask;
+            let imageAttachment = resolvedImage.attachment;
+            imageOutcome = resolvedImage.outcome;
+            imageOutcomeReason = resolvedImage.reason;
+
+            if (
+              imageAttachment
+              && imageAttachment.source === 'fresh-generation'
+              && !entitlements.isPremium
+              && !explicitPhotoRequest
+            ) {
+              imageAttachment = { ...imageAttachment, locked: true };
+            }
+
+            if (imageAttachment) {
+              streamAttachments = [imageAttachment];
+              streamContentType = 'mixed';
+              streamGenerationMode = imageAttachment.source ?? null;
+
+              enqueueEvent(controller, {
+                type: 'image',
+                payload: {
+                  attachment: imageAttachment,
+                  contentType: 'mixed',
+                  generationMode: imageAttachment.source ?? null,
+                },
+              });
+
+              try {
+                await patchVirtualGirlfriendMessage(auth.accessToken, assistantMessage.id, {
+                  contentType: 'mixed',
+                  attachments: [imageAttachment],
+                });
+              } catch (patchError) {
+                console.warn('[virtual-girlfriend] failed to persist late chat image attachment', patchError);
+              }
+
+              if (
+                imageAttachment.imageId
+                && imageAttachment.source === 'fresh-generation'
+                && !imageAttachment.locked
+              ) {
+                try {
+                  await grantCompanionImageAccess(auth.accessToken, imageAttachment.imageId, auth.user.id);
+                } catch (grantError) {
+                  console.warn('[virtual-girlfriend] failed to auto-grant chat image gallery access', grantError);
+                }
+              }
+            } else if (
+              imageStarted
+              && photoRequestedThisTurn
+              && !imageMoment.teaseOnly
+            ) {
+              if (imageOutcome === 'not_requested') {
+                imageOutcome = 'skipped_prerequisites';
+              }
+              if (!imageOutcomeReason) {
+                imageOutcomeReason = 'image_not_attached';
+              }
+
+              enqueueEvent(controller, {
+                type: 'image_failed',
+                payload: {
+                  outcome: imageOutcome,
+                  reason: imageOutcomeReason,
+                },
+              });
+            }
+          } finally {
+            clearInterval(heartbeat);
+          }
+        }
+
         enqueueEvent(controller, {
           type: 'done',
           payload: {
             content: combinedContent,
             segments,
-            contentType: 'text',
-            attachments: [],
-            generationMode: null,
+            contentType: streamContentType,
+            attachments: streamAttachments,
+            assistantMessageId: assistantMessage.id,
+            generationMode: streamGenerationMode,
             imageGeneration: {
               requested: photoRequestedThisTurn,
               outcome: imageMoment.teaseOnly ? 'not_requested' : imageOutcome,
@@ -336,73 +424,6 @@ export async function POST(request: NextRequest) {
             },
           },
         });
-
-        if (imageTask) {
-          const resolvedImage = await imageTask;
-          let imageAttachment = resolvedImage.attachment;
-          imageOutcome = resolvedImage.outcome;
-          imageOutcomeReason = resolvedImage.reason;
-
-          if (
-            imageAttachment
-            && imageAttachment.source === 'fresh-generation'
-            && !entitlements.isPremium
-            && !explicitPhotoRequest
-          ) {
-            imageAttachment = { ...imageAttachment, locked: true };
-          }
-
-          if (imageAttachment) {
-            enqueueEvent(controller, {
-              type: 'image',
-              payload: {
-                attachment: imageAttachment,
-                contentType: 'mixed',
-                generationMode: imageAttachment.source ?? null,
-              },
-            });
-
-            try {
-              await patchVirtualGirlfriendMessage(auth.accessToken, assistantMessage.id, {
-                contentType: 'mixed',
-                attachments: [imageAttachment],
-              });
-            } catch (patchError) {
-              console.warn('[virtual-girlfriend] failed to persist late chat image attachment', patchError);
-            }
-
-            if (
-              imageAttachment.imageId
-              && imageAttachment.source === 'fresh-generation'
-              && !imageAttachment.locked
-            ) {
-              try {
-                await grantCompanionImageAccess(auth.accessToken, imageAttachment.imageId, auth.user.id);
-              } catch (grantError) {
-                console.warn('[virtual-girlfriend] failed to auto-grant chat image gallery access', grantError);
-              }
-            }
-          } else if (
-            imageStarted
-            && photoRequestedThisTurn
-            && !imageMoment.teaseOnly
-          ) {
-            if (imageOutcome === 'not_requested') {
-              imageOutcome = 'skipped_prerequisites';
-            }
-            if (!imageOutcomeReason) {
-              imageOutcomeReason = 'image_not_attached';
-            }
-
-            enqueueEvent(controller, {
-              type: 'image_failed',
-              payload: {
-                outcome: imageOutcome,
-                reason: imageOutcomeReason,
-              },
-            });
-          }
-        }
       } catch (error) {
         console.error('[virtual-girlfriend] stream failed', error);
         enqueueEvent(controller, {

@@ -289,6 +289,7 @@ export const VirtualGirlfriendChatClient = ({
       segments?: string[];
       contentType: 'text' | 'image' | 'mixed';
       attachments: VirtualGirlfriendMessageAttachment[];
+      assistantMessageId?: string;
       imageGeneration?: { requested: boolean; outcome: VirtualGirlfriendChatImageOutcome; reason: string | null };
     };
 
@@ -299,6 +300,7 @@ export const VirtualGirlfriendChatClient = ({
       | { type: 'image'; payload: { attachment: VirtualGirlfriendMessageAttachment; contentType: 'mixed'; generationMode: string | null } }
       | { type: 'done'; payload: DonePayload }
       | { type: 'image_failed'; payload: { outcome: VirtualGirlfriendChatImageOutcome; reason: string | null } }
+      | { type: 'ping'; payload: { active: boolean } }
       | { type: 'error'; payload: { error: string } };
 
     const reader = response.body.getReader();
@@ -311,6 +313,42 @@ export const VirtualGirlfriendChatClient = ({
     };
     let liveAttachments: VirtualGirlfriendMessageAttachment[] = [];
     let photoPending = false;
+
+    const registerChatImage = (attachment: VirtualGirlfriendMessageAttachment) => {
+      if (!attachment.imageId || !attachment.imageUrl) return;
+      setSidebarImages((prev) =>
+        prev.some((entry) => entry.id === attachment.imageId)
+          ? prev
+          : [{ id: attachment.imageId, url: attachment.imageUrl }, ...prev],
+      );
+      if (!attachment.locked) {
+        setSidebarUnlocked((prev) => (prev.includes(attachment.imageId) ? prev : [attachment.imageId, ...prev]));
+        setChatUnlockedIds((prev) => new Set(prev).add(attachment.imageId));
+      }
+    };
+
+    const pollForMessageAttachment = async (messageId: string) => {
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        try {
+          const response = await fetch(
+            `/api/virtual-girlfriend/chat/message-attachment?messageId=${encodeURIComponent(messageId)}`,
+            { cache: 'no-store' },
+          );
+          if (!response.ok) continue;
+          const data = (await response.json()) as { attachment?: VirtualGirlfriendMessageAttachment | null };
+          if (data.attachment?.imageUrl) {
+            attachImageToAssistant(data.attachment);
+            registerChatImage(data.attachment);
+            setCompanionActivity('idle');
+            return data.attachment;
+          }
+        } catch {
+          // keep polling through transient mobile network drops
+        }
+      }
+      return null;
+    };
 
     const ensureStreamingAssistant = (token: string) => {
       const streamId = streamState.assistantId ?? `temp-assistant-${Date.now()}`;
@@ -440,12 +478,18 @@ export const VirtualGirlfriendChatClient = ({
 
           if (event.type === 'image_generating') {
             photoPending = event.payload.active;
+            if (photoPending) setCompanionActivity('sending_photo');
+          }
+
+          if (event.type === 'ping') {
+            if (photoPending) setCompanionActivity('sending_photo');
           }
 
           if (event.type === 'image') {
             photoPending = false;
             setCompanionActivity('idle');
             attachImageToAssistant(event.payload.attachment);
+            registerChatImage(event.payload.attachment);
           }
 
           if (event.type === 'image_failed') {
@@ -481,12 +525,19 @@ export const VirtualGirlfriendChatClient = ({
     }
 
     const attachments = payload.attachments ?? [];
-    const imageAttachment =
+    let imageAttachment =
       liveAttachments.find((attachment) => attachment.kind === 'image')
       ?? attachments.find((attachment) => attachment.kind === 'image');
 
     if (imageAttachment && liveAttachments.length === 0) {
       attachImageToAssistant(imageAttachment);
+      registerChatImage(imageAttachment);
+    }
+
+    if (payload.imageGeneration?.requested && !imageAttachment && payload.assistantMessageId) {
+      setCompanionActivity('sending_photo');
+      const polled = await pollForMessageAttachment(payload.assistantMessageId);
+      if (polled) imageAttachment = polled;
     }
 
     const photoMissing =
@@ -505,16 +556,6 @@ export const VirtualGirlfriendChatClient = ({
           ? `Could not attach a photo (${detail}). Try again in a moment.`
           : 'Could not attach a photo this turn — she\'ll still reply in chat. Try again in a moment.',
       );
-    }
-
-    if (imageAttachment?.imageId && imageAttachment.imageUrl) {
-      const imageId = imageAttachment.imageId;
-      const imageUrl = imageAttachment.imageUrl;
-      setSidebarImages((prev) => (prev.some((entry) => entry.id === imageId) ? prev : [{ id: imageId, url: imageUrl }, ...prev]));
-      if (!imageAttachment.locked) {
-        setSidebarUnlocked((prev) => (prev.includes(imageId) ? prev : [imageId, ...prev]));
-        setChatUnlockedIds((prev) => new Set(prev).add(imageId));
-      }
     }
 
     setPending(false);
