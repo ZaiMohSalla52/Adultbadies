@@ -27,6 +27,8 @@ const MODELSLAB_FLUX_MODEL = env.MODELSLAB_FLUX_MODEL ?? 'flux';
 const MODELSLAB_KONTEXT_PRO_MODEL = env.MODELSLAB_KONTEXT_PRO_MODEL ?? 'flux-kontext-pro';
 const MODELSLAB_KONTEXT_DEV_MODEL = env.MODELSLAB_KONTEXT_DEV_MODEL ?? 'flux-kontext-dev';
 
+const PREVIEW_POLL = { maxAttempts: 22, intervalMs: 1_000 } as const;
+
 const DIMENSIONS_BY_ASPECT: Record<string, { width: number; height: number }> = {
   '1x1': { width: 1024, height: 1024 },
   '3x4': { width: 768, height: 1024 },
@@ -45,6 +47,18 @@ const KONTEXT_ASPECT_BY_SURFACE: Record<string, string> = {
 
 const resolveDimensions = (aspectRatio: string) =>
   DIMENSIONS_BY_ASPECT[aspectRatio] ?? DIMENSIONS_BY_ASPECT['3x4']!;
+
+/** Smaller preview size keeps setup portrait generation under serverless limits. */
+const PREVIEW_DIMENSIONS_BY_ASPECT: Record<string, { width: number; height: number }> = {
+  '1x1': { width: 768, height: 768 },
+  '3x4': { width: 576, height: 768 },
+  '4x3': { width: 768, height: 576 },
+  '9x16': { width: 432, height: 768 },
+  '16x9': { width: 768, height: 432 },
+};
+
+const resolvePreviewDimensions = (aspectRatio: string) =>
+  PREVIEW_DIMENSIONS_BY_ASPECT[aspectRatio] ?? PREVIEW_DIMENSIONS_BY_ASPECT['3x4']!;
 
 const resolveKontextAspect = (aspectRatio: string) => KONTEXT_ASPECT_BY_SURFACE[aspectRatio] ?? '3:4';
 
@@ -82,10 +96,27 @@ const extractGeneratedImage = async (
   payload: ModelsLabApiResponse,
   model: string,
   endpoint: string,
+  options?: { skipDownload?: boolean },
 ): Promise<GeneratedImage> => {
   const temporaryUrl = payload.output?.[0];
   if (!temporaryUrl) {
     throw new Error('ModelsLab image generation returned no image URL.');
+  }
+
+  if (options?.skipDownload) {
+    return {
+      bytes: Buffer.alloc(0),
+      mimeType: 'image/png',
+      width: typeof payload.meta?.width === 'number' ? payload.meta.width : null,
+      height: typeof payload.meta?.height === 'number' ? payload.meta.height : null,
+      revisedPrompt: null,
+      provider: 'modelslab',
+      model,
+      endpoint,
+      requestId: payload.id != null ? String(payload.id) : null,
+      jobId: payload.id != null ? String(payload.id) : null,
+      temporaryUrl,
+    };
   }
 
   const downloaded = await downloadModelsLabImage(temporaryUrl);
@@ -101,6 +132,7 @@ const extractGeneratedImage = async (
     endpoint,
     requestId: payload.id != null ? String(payload.id) : null,
     jobId: payload.id != null ? String(payload.id) : null,
+    temporaryUrl,
   };
 };
 
@@ -130,7 +162,7 @@ export const generatePortraitPreviewImageWithModelsLab = async (
   seed?: number,
 ): Promise<GeneratedImage> => {
   const previewParams = SURFACE_PARAMS.preview;
-  const { width, height } = resolveDimensions(previewParams.aspect_ratio);
+  const { width, height } = resolvePreviewDimensions(previewParams.aspect_ratio);
   const payload = await callModelsLabV6Images(
     'text2img',
     {
@@ -139,15 +171,16 @@ export const generatePortraitPreviewImageWithModelsLab = async (
       width,
       height,
       samples: previewParams.num_images,
-      num_inference_steps: 31,
-      guidance_scale: 7.5,
+      num_inference_steps: 22,
+      guidance_scale: 7,
       safety_checker: 'yes',
       ...(seed !== undefined ? { seed } : {}),
     },
     'ModelsLab portrait preview generation failed',
+    PREVIEW_POLL,
   );
 
-  return extractGeneratedImage(payload, MODELSLAB_FLUX_MODEL, '/v6/images/text2img');
+  return extractGeneratedImage(payload, MODELSLAB_FLUX_MODEL, '/v6/images/text2img', { skipDownload: true });
 };
 
 const generateKontextFromReference = async (input: {

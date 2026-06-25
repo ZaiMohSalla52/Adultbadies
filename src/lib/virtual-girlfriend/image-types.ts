@@ -23,4 +23,6 @@ export type GeneratedImage = {
   endpoint: string;
   requestId: string | null;
   jobId: string | null;
+  /** Provider-hosted URL when bytes were not downloaded (preview fast path). */
+  temporaryUrl?: string | null;
 };

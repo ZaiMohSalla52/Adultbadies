@@ -8,7 +8,7 @@ import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
 // Portrait preview generates several candidate images; raise the function
 // ceiling so it is not killed mid-generation (Pro/Enterprise can raise to 300).
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
@@ -56,10 +56,21 @@ export async function POST(request: NextRequest) {
     const result = await runPortraitPreviewImageMachine({
       kind: 'portrait_preview',
       ...resolvedTraits,
-      count: 4,
+      count: 3,
     });
 
-    const candidates = await deliverPortraitPreviewCandidates(result.candidates, auth.user.id);
+    const hostedCandidates = result.candidates.filter((candidate) =>
+      /^https?:\/\//i.test(candidate.imageDataUrl.trim()),
+    );
+    const candidates =
+      hostedCandidates.length >= 2
+        ? hostedCandidates
+        : await deliverPortraitPreviewCandidates(result.candidates, auth.user.id);
+
+    if (candidates.length < 2) {
+      return NextResponse.json({ error: 'Not enough portrait previews were generated. Please try again.' }, { status: 500 });
+    }
+
     const stillEmbedded = candidates.some((candidate) => candidate.imageDataUrl.startsWith('data:'));
     if (stillEmbedded) {
       return NextResponse.json(
@@ -74,6 +85,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, candidates });
   } catch (error) {
     console.error('[virtual-girlfriend] portrait candidate generation failed', error);
-    return NextResponse.json({ error: 'Unable to generate portrait candidates right now.' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unable to generate portrait candidates right now.';
+    const timedOut = /timeout|timed out|FUNCTION_INVOCATION_TIMEOUT/i.test(message);
+    return NextResponse.json(
+      {
+        error: timedOut
+          ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
+          : 'Unable to generate portrait candidates right now.',
+      },
+      { status: timedOut ? 504 : 500 },
+    );
   }
 }

@@ -91,9 +91,17 @@ export const uploadReferenceImageUrl = async (bytes: Buffer, mimeType: string) =
 const POLL_INTERVAL_MS = 1_500;
 const POLL_MAX_ATTEMPTS = 45;
 
+export type ModelsLabPollOptions = {
+  maxAttempts?: number;
+  intervalMs?: number;
+};
+
+export const resolveModelsLabOutputUrl = (payload: ModelsLabApiResponse) => resolveOutputUrl(payload);
+
 export const awaitModelsLabImageResult = async (
   initial: ModelsLabApiResponse,
   errorLabel: string,
+  pollOptions?: ModelsLabPollOptions,
 ): Promise<ModelsLabApiResponse> => {
   if (initial.status === 'success') return initial;
   if (initial.status !== 'processing' || initial.id == null) {
@@ -103,8 +111,11 @@ export const awaitModelsLabImageResult = async (
   const key = assertModelsLabApiKey();
   const requestId = String(initial.id);
 
-  for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt += 1) {
-    const waitMs = initial.eta && attempt === 0 ? Math.min(initial.eta * 1_000, 5_000) : POLL_INTERVAL_MS;
+  const maxAttempts = pollOptions?.maxAttempts ?? POLL_MAX_ATTEMPTS;
+  const intervalMs = pollOptions?.intervalMs ?? POLL_INTERVAL_MS;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const waitMs = initial.eta && attempt === 0 ? Math.min(initial.eta * 1_000, 4_000) : intervalMs;
     await sleep(waitMs);
 
     const polled = await postModelsLabJson(
@@ -139,10 +150,11 @@ export const callModelsLabV6Images = async (
   path: string,
   body: Record<string, unknown>,
   errorLabel: string,
+  pollOptions?: ModelsLabPollOptions,
 ) => {
   const key = assertModelsLabApiKey();
   const initial = await postModelsLabJson(`${MODELSLAB_V6_BASE}/images/${path}`, { key, ...body }, errorLabel);
-  return awaitModelsLabImageResult(initial, errorLabel);
+  return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
 };
 
 export const callModelsLabV7ImageToImage = async (body: Record<string, unknown>, errorLabel: string) => {
