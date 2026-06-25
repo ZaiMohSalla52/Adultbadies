@@ -3,7 +3,14 @@
  * The Flux provider returns this structure so the image machine never needs to
  * know which concrete provider produced an image.
  */
-export type ImageProviderName = 'flux';
+export type ImageProviderName = 'flux' | 'modelslab';
+
+export type KontextGenerationOptions = {
+  guidanceScale?: number;
+  numInferenceSteps?: number;
+  enableSafetyChecker?: boolean;
+  resolutionMode?: string;
+};
 
 export type GeneratedImage = {
   bytes: Buffer;

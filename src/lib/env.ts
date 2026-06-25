@@ -14,7 +14,13 @@ export const env = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   ADMIN_REVIEWER_EMAILS: process.env.ADMIN_REVIEWER_EMAILS,
   TOGETHER_API_KEY: process.env.TOGETHER_API_KEY,
-  // Image generation: Flux via fal.ai (sole provider).
+  MODELSLAB_API_KEY: process.env.MODELSLAB_API_KEY,
+  VG_LLM_PROVIDER: process.env.VG_LLM_PROVIDER,
+  VG_IMAGE_PROVIDER: process.env.VG_IMAGE_PROVIDER,
+  MODELSLAB_FLUX_MODEL: process.env.MODELSLAB_FLUX_MODEL,
+  MODELSLAB_KONTEXT_PRO_MODEL: process.env.MODELSLAB_KONTEXT_PRO_MODEL,
+  MODELSLAB_KONTEXT_DEV_MODEL: process.env.MODELSLAB_KONTEXT_DEV_MODEL,
+  // Image generation: Flux via fal.ai (fallback when MODELSLAB_API_KEY unset).
   FLUX_API_KEY: process.env.FLUX_API_KEY,
   FLUX_BASE_URL: process.env.FLUX_BASE_URL,
   FLUX_MODEL: process.env.FLUX_MODEL,

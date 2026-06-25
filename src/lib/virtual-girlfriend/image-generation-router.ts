@@ -1,7 +1,7 @@
 /*
  * Single routing policy for in-chat image generation.
  *
- * Today: Flux Kontext via fal.ai for all chat surfaces.
+ * Today: Flux Kontext via ModelsLab or fal.ai for all chat surfaces.
  * - SFW / identity-heavy: hosted Kontext pro (default safety on).
  * - Adult explicit chat: open-weights Kontext dev (safety checker off).
  *

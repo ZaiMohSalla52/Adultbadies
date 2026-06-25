@@ -1,8 +1,8 @@
-import { VG_TOGETHER_CHAT_MODEL } from '@/lib/virtual-girlfriend/llm-models';
+import { VG_CHAT_MODEL } from '@/lib/virtual-girlfriend/llm-models';
 import {
   extractResponsesText,
   streamTogetherChat,
-} from '@/lib/virtual-girlfriend/together';
+} from '@/lib/virtual-girlfriend/llm-provider';
 import { buildVirtualGirlfriendSystemPrompt } from '@/lib/virtual-girlfriend/orchestration';
 import { buildIntimacyResponseGuidance } from '@/lib/virtual-girlfriend/intimacy';
 import type { IntimateImageMoment } from '@/lib/virtual-girlfriend/intimacy';
@@ -37,7 +37,7 @@ const IMAGE_CATEGORIES: VirtualGirlfriendImageCategory[] = [
   'lifestyle',
 ];
 
-const CHAT_TURN_MODEL = VG_TOGETHER_CHAT_MODEL;
+const CHAT_TURN_MODEL = VG_CHAT_MODEL;
 
 const toModelInput = (messages: VirtualGirlfriendMessageRecord[]) =>
   messages.map((message) => ({

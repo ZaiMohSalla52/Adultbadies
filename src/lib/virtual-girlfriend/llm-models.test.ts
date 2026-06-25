@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildModelsLabModelCandidates,
   buildTogetherModelCandidates,
   normalizeVgTogetherModel,
   resolveVgTogetherModel,
+  VG_MODELSLAB_DEFAULT_CHAT_MODEL,
   VG_TOGETHER_DEFAULT_CHAT_MODEL,
   VG_TOGETHER_UNCENSORED_FALLBACK_MODEL,
 } from '@/lib/virtual-girlfriend/llm-models';
@@ -36,5 +38,13 @@ describe('buildTogetherModelCandidates', () => {
     expect(candidates[0]).toBe(VG_TOGETHER_DEFAULT_CHAT_MODEL);
     expect(candidates).toContain(VG_TOGETHER_UNCENSORED_FALLBACK_MODEL);
     expect(candidates.length).toBeGreaterThan(1);
+  });
+});
+
+describe('buildModelsLabModelCandidates', () => {
+  it('includes uncensored-chat fallback after primary', () => {
+    const candidates = buildModelsLabModelCandidates(VG_MODELSLAB_DEFAULT_CHAT_MODEL);
+    expect(candidates[0]).toBe(VG_MODELSLAB_DEFAULT_CHAT_MODEL);
+    expect(candidates).toContain('uncensored-chat');
   });
 });

@@ -2,7 +2,9 @@ import { env } from '@/lib/env';
 import { isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
 import { buildPreviewNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
-import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
+import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
+
+export type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
 /*
  * Flux provider (fal.ai) — sole image provider.
@@ -182,13 +184,6 @@ export const generatePortraitPreviewImageWithFlux = async (
   );
 
   return extractGeneratedImage(response, FLUX_MODEL);
-};
-
-export type KontextGenerationOptions = {
-  guidanceScale?: number;
-  numInferenceSteps?: number;
-  enableSafetyChecker?: boolean;
-  resolutionMode?: string;
 };
 
 const generateKontextFromReference = async (input: {
