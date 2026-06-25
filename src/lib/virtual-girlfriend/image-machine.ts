@@ -25,11 +25,14 @@ import {
 } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/chat';
 import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
-import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
+import { detectExplicitImageIntent, isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
 import {
   resolveCanonicalReferenceForChat,
   resolveChatVisualContext,
 } from '@/lib/virtual-girlfriend/chat-image-bootstrap';
+import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
+import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
+import { resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import { uploadToCloudinary } from '@/lib/storage/cloudinary';
@@ -385,25 +388,29 @@ const toChatPromptInput = (
   visualSceneHint?: string,
 ): ChatPromptInput => {
   const canonicalInput = toCanonicalPromptInput(companion, identityPack);
-  const explicitIntent =
-    (userMessage ? detectExplicitImageIntent(userMessage) : false)
-    || (visualSceneHint ? detectExplicitImageIntent(visualSceneHint) : false);
-  const sceneDirective = visualSceneHint?.trim() || (explicitIntent ? userMessage?.trim() : undefined);
-  // When the user asks for a specific look/scene, their directive drives the
-  // image. buildRandomScene injects a random wardrobe + location for variety,
-  // but that fights an explicit request — it put her in an evening dress in a
-  // garden when the user asked for a bikini — so only use it when there is no
-  // directive. We also drop the canonical wardrobe line (below) for the same
-  // reason, so the requested outfit isn't overridden by her default dress.
+  const wardrobeContext = wardrobeContextFromCompanion(companion);
+  const hasUserMessage = Boolean(userMessage?.trim());
+  const photoSpec = hasUserMessage
+    ? resolvePhotoGenerationSpec(userMessage!, wardrobeContext)
+    : null;
+
+  const explicitIntent = photoSpec?.explicit
+    ?? (userMessage ? detectExplicitImageIntent(userMessage) : false)
+    ?? (visualSceneHint ? detectExplicitImageIntent(visualSceneHint) : false);
+
+  const sceneDirective = photoSpec?.sceneDirective
+    ?? visualSceneHint?.trim()
+    ?? (explicitIntent ? userMessage?.trim() : undefined);
+
   const contextHint = sceneDirective
-    ? `Restyle this exact person for a brand new shot: ${sceneDirective}. Change her wardrobe, pose, and setting to match that request even if the reference photo shows different clothing or location. Keep the same face and identity lock.`
-    : `${buildRandomScene()}. Same person, same face, preserve identity lock.`;
+    ? `Restyle this exact person for a brand new shot: ${sceneDirective}. Change wardrobe, pose, and setting to match that request even if the reference photo shows different clothing or location. Keep the same face and identity lock.`
+    : `${buildRandomScene(wardrobeContext)}. Same person, same face, preserve identity lock.`;
 
   return {
     ...canonicalInput,
     wardrobeDirection: sceneDirective ? undefined : canonicalInput.wardrobeDirection,
     identityAnchors: identityPack.continuityAnchors,
-    category: chatCategory || undefined,
+    category: photoSpec?.imageCategory ?? (chatCategory || undefined),
     contextHint,
     explicitIntent,
     requestedLook: Boolean(sceneDirective),
@@ -453,6 +460,12 @@ const runProviderGeneration = async (input: {
   referenceImageBytes?: Buffer;
   referenceMimeType?: string;
   imageWeight?: number;
+  kontextOptions?: {
+    guidanceScale?: number;
+    numInferenceSteps?: number;
+    enableSafetyChecker?: boolean;
+  };
+  preferDevModel?: boolean;
 }) => {
   logImageMachine(input.scope, 'provider_call_start', { mode: input.mode });
   const run = async () => {
@@ -484,6 +497,12 @@ const runProviderGeneration = async (input: {
       prompt: input.prompt,
       referenceImageBytes,
       referenceMimeType,
+      ...(input.mode === 'chat_from_reference'
+        ? {
+            ...(input.kontextOptions ? { kontextOptions: input.kontextOptions } : {}),
+            ...(input.preferDevModel ? { preferDevModel: input.preferDevModel } : {}),
+          }
+        : {}),
     }));
   };
 
@@ -975,7 +994,11 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     preferFreshGeneration: input.preferFreshGeneration,
   });
 
-  if (!input.preferFreshGeneration && !explicitRequest) {
+  const isDirectUserPhotoRequest = Boolean(input.userMessage?.trim());
+
+  // User-initiated photo requests must always generate a fresh image that matches
+  // their directive — gallery reuse returned unrelated wardrobe/scenes.
+  if (!isDirectUserPhotoRequest && !input.preferFreshGeneration && !explicitRequest) {
     const reusableSelection = pickReusableImage(input.category, input.existingImages, {
       allowCanonicalReuse: !explicitRequest,
     });
@@ -1068,12 +1091,30 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       input.visualSceneHint,
     );
     const prompt = buildChatPrompt(chatPromptInput);
+    const route = resolveChatGenerationRoute({
+      explicit: chatPromptInput.explicitIntent ?? false,
+      requestedLook: chatPromptInput.requestedLook ?? false,
+      adultContentEnabled: isVirtualGirlfriendAdultContentEnabled(),
+    });
+    logImageMachine(scope, 'generation_route', {
+      provider: route.provider,
+      modelKind: route.modelKind,
+      guidanceScale: route.guidanceScale,
+      explicit: chatPromptInput.explicitIntent,
+      requestedLook: chatPromptInput.requestedLook,
+    });
     const generated = await runProviderGeneration({
       scope,
       mode: 'chat_from_reference',
       prompt,
       referenceImageBytes: reference.bytes,
       referenceMimeType: reference.mimeType,
+      kontextOptions: {
+        guidanceScale: route.guidanceScale,
+        numInferenceSteps: route.numInferenceSteps,
+        enableSafetyChecker: route.enableSafetyChecker,
+      },
+      preferDevModel: route.modelKind === 'kontext_dev',
     });
 
     const chatImage = await buildImageRecord({

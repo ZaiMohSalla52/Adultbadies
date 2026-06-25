@@ -114,7 +114,6 @@ export const VirtualGirlfriendProfileView = ({
         </div>
 
         <div className={styles.identityColumn}>
-          <p className={styles.disclosure}>{visualProfile ? 'AI-generated photos' : companion.disclosure_label}</p>
           <h1 className={styles.name}>{companion.name}</h1>
           <p className={styles.vibe}>{vibeDescriptor}</p>
 

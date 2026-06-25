@@ -1,5 +1,6 @@
 import { VG_TOGETHER_FAST_MODEL } from '@/lib/virtual-girlfriend/llm-models';
 import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend/together';
+import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import type {
   VirtualGirlfriendCompanionRecord,
@@ -158,7 +159,7 @@ export const classifyChatTurnIntent = async (input: {
     return sanitizeIntent(parsed, input.userMessage);
   } catch {
     if (looksLikePhotoRequest(input.userMessage)) {
-      return buildHeuristicPhotoIntent(input.userMessage);
+      return buildHeuristicPhotoIntent(input.userMessage, wardrobeContextFromCompanion(input.companion));
     }
     return defaultIntent(input.userMessage);
   }

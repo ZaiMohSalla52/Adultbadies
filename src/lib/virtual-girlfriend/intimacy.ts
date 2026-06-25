@@ -1,5 +1,6 @@
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import { classifyChatTurnIntent, type ChatTurnIntent, type PhotoDeliveryIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
+import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import type {
   VirtualGirlfriendCompanionRecord,
@@ -109,7 +110,7 @@ export const decideIntimateImageMoment = async (input: {
   const intent =
     input.intent
     ?? (looksLikePhotoRequest(input.userMessage)
-      ? buildHeuristicPhotoIntent(input.userMessage)
+      ? buildHeuristicPhotoIntent(input.userMessage, wardrobeContextFromCompanion(input.companion))
       : await classifyChatTurnIntent(input));
   return resolveImageMomentFromIntent({
     intent,

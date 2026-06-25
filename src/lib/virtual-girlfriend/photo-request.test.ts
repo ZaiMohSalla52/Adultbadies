@@ -21,6 +21,12 @@ describe('photo request heuristic', () => {
     expect(intent.companionGuidance.toLowerCase().includes('never')).toBe(true);
   });
 
+  it('maps bikini keyword requests to structured scene hints', () => {
+    const intent = buildHeuristicPhotoIntent('send me a bikini pic', { sex: 'female', styleVibe: 'seductive' });
+    expect(intent.visualSceneHint?.toLowerCase()).toContain('bikini');
+    expect(intent.imageCategory).toBe('selfie');
+  });
+
   it('routes explicit requests to fresh generation even for free users', () => {
     const intent = buildHeuristicPhotoIntent('send me photo of your tits');
     const moment = resolveImageMomentFromIntent({

@@ -195,7 +195,7 @@ export const upsertVirtualGirlfriend = async (
         profile_tags: input.profileTags ?? input.personaProfile.vibeTags,
         setup_completed: true,
         generation_status: 'generating',
-        disclosure_label: 'AI-generated profile',
+        disclosure_label: '',
       },
       prefer: 'return=representation',
     });
@@ -232,7 +232,7 @@ export const upsertVirtualGirlfriend = async (
       profile_tags: input.profileTags ?? input.personaProfile.vibeTags,
       setup_completed: true,
       generation_status: 'generating',
-      disclosure_label: 'AI-generated profile',
+      disclosure_label: '',
       is_active: false,
     },
     prefer: 'return=representation',

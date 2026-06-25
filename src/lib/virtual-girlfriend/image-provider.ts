@@ -6,6 +6,7 @@ import {
   generateCanonicalImageFromReferenceWithFlux,
   generateGalleryImageFromReferenceWithFlux,
   generateChatImageFromReferenceWithFlux,
+  type KontextGenerationOptions,
 } from '@/lib/virtual-girlfriend/image-flux';
 
 export type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
@@ -50,4 +51,6 @@ export const generateChatImageFromReference = (input: {
   prompt: string;
   referenceImageBytes: Buffer;
   referenceMimeType: string;
+  kontextOptions?: KontextGenerationOptions;
+  preferDevModel?: boolean;
 }): Promise<GeneratedImage> => generateChatImageFromReferenceWithFlux(input);

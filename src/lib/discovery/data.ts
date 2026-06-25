@@ -112,7 +112,7 @@ export const getDiscoverableVirtualGirlfriends = async (token: string, userId: s
     photoUrl: imageByCompanionId.get(companion.id) ?? null,
     kind: 'virtual_girlfriend',
     companionId: companion.id,
-    disclosureLabel: companion.disclosure_label ?? 'AI-generated profile',
+    disclosureLabel: companion.disclosure_label ?? '',
   }));
 };
 

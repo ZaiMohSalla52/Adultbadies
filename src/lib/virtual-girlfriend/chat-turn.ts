@@ -14,6 +14,7 @@ import {
   JsonReplyStreamExtractor,
   tryParsePartialChatTurnIntent,
 } from '@/lib/virtual-girlfriend/json-reply-stream';
+import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import { containsForbiddenReplyLanguage, sanitizeAssistantReply } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { moderateVirtualGirlfriendContent } from '@/lib/virtual-girlfriend/safety';
@@ -116,7 +117,7 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
   }
 
   const heuristicIntent = looksLikePhotoRequest(input.userMessage)
-    ? buildHeuristicPhotoIntent(input.userMessage)
+    ? buildHeuristicPhotoIntent(input.userMessage, wardrobeContextFromCompanion(input.companion))
     : null;
 
   const intimacyGuidance = buildIntimacyResponseGuidance({

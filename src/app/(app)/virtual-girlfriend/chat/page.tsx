@@ -6,6 +6,7 @@ import {
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
   getVirtualGirlfriendCompanionById,
+  getLatestVisualProfileForCompanion,
   getVirtualGirlfriendCompanionImages,
   getVirtualGirlfriendMessages,
   getVirtualGirlfriendUserMessageCountForToday,
@@ -45,16 +46,19 @@ export default async function VirtualGirlfriendChatPage({
     companion,
   });
 
-  const [conversation, entitlements, usedToday, styleProfile, companionImages] = await Promise.all([
+  const [conversation, entitlements, usedToday, styleProfile, companionImages, visualProfile] = await Promise.all([
     getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id),
     getUserEntitlements(auth.accessToken, auth.user.id),
     getVirtualGirlfriendUserMessageCountForToday(auth.accessToken, auth.user.id),
     getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
     getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
+    getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id),
   ]);
 
   const messages = await getVirtualGirlfriendMessages(auth.accessToken, conversation.id);
-  const curated = curateVirtualGirlfriendImages(companionImages);
+  const curated = curateVirtualGirlfriendImages(companionImages, {
+    lockedCanonicalImageId: visualProfile?.canonical_reference_image_id ?? null,
+  });
 
   if (entitlements.isPremium) {
     await claimPointStipend(auth.accessToken);
@@ -69,7 +73,7 @@ export default async function VirtualGirlfriendChatPage({
       companionId={companion.id}
       companionName={companion.name}
       companionAvatarUrl={curated.canonical?.delivery_url ?? null}
-      disclosureLabel={companion.disclosure_label}
+      portraitBackdropUrl={curated.canonical?.delivery_url ?? null}
       initialMessages={messages}
       entitlements={entitlements}
       usedToday={usedToday}

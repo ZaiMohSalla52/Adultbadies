@@ -22,7 +22,7 @@ type ChatClientProps = {
   companionId: string;
   companionName: string;
   companionAvatarUrl?: string | null;
-  disclosureLabel: string;
+  portraitBackdropUrl?: string | null;
   initialMessages: VirtualGirlfriendMessageRecord[];
   entitlements: Entitlements;
   usedToday: number;
@@ -56,7 +56,7 @@ export const VirtualGirlfriendChatClient = ({
   companionId,
   companionName,
   companionAvatarUrl,
-  disclosureLabel,
+  portraitBackdropUrl,
   initialMessages,
   entitlements,
   usedToday,
@@ -936,6 +936,7 @@ export const VirtualGirlfriendChatClient = ({
   }, [limit, usedToday]);
 
   const avatarUrl = companionAvatarUrl ?? '';
+  const backdropUrl = portraitBackdropUrl ?? companionAvatarUrl ?? '';
 
   return (
     <div className={styles.chatLayout}>
@@ -1030,7 +1031,21 @@ export const VirtualGirlfriendChatClient = ({
           </details>
         </header>
 
-        <div className={styles.messagesArea} ref={scrollRef}>
+        <div className={styles.messagesShell}>
+          {backdropUrl ? (
+            <div className={styles.portraitBackdrop} aria-hidden>
+              <Image
+                src={backdropUrl}
+                alt=""
+                fill
+                sizes="100vw"
+                className={styles.portraitBackdropImage}
+                priority
+              />
+              <div className={styles.portraitScrim} />
+            </div>
+          ) : null}
+          <div className={styles.messagesArea} ref={scrollRef}>
           {messages.map((message) => {
             const isUser = message.role === 'user';
 
@@ -1107,6 +1122,7 @@ export const VirtualGirlfriendChatClient = ({
               </div>
             </div>
           ) : null}
+          </div>
         </div>
 
         <div className={styles.quickChipRow}>
@@ -1197,7 +1213,7 @@ export const VirtualGirlfriendChatClient = ({
           {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={320} height={420} sizes="320px" /> : null}
         </div>
         <h2 className={styles.infoPanelName}>{companionName}</h2>
-        <p className={styles.infoPanelSub}>{disclosureLabel}</p>
+        {personality ? <p className={styles.infoPanelSub}>{personality}</p> : null}
 
         <div className={styles.infoPanelActions}>
           <button type="button" className={styles.shareBtn}>↑ Share</button>

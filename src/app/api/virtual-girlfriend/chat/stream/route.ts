@@ -27,6 +27,7 @@ import { resolveImageMomentFromIntent } from '@/lib/virtual-girlfriend/intimacy'
 import { sanitizeIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import { isOutfitPhotoRequest } from '@/lib/virtual-girlfriend/outfit-presets';
+import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
@@ -125,7 +126,9 @@ export async function POST(request: NextRequest) {
   ]);
 
   const photoRequested = looksLikePhotoRequest(message) || isOutfitPhotoRequest(message);
-  const heuristicIntent = photoRequested ? buildHeuristicPhotoIntent(message) : null;
+  const heuristicIntent = photoRequested
+    ? buildHeuristicPhotoIntent(message, wardrobeContextFromCompanion(companion))
+    : null;
   const explicitPhotoRequest = detectExplicitImageIntent(message);
 
   let imageMoment: IntimateImageMoment = resolveImageMomentFromIntent({

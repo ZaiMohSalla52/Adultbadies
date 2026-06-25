@@ -278,12 +278,11 @@ export const DiscoveryDeck = ({ initialCandidates, entitlements, swipesToday, re
                 </div>
               )}
 
-              {/* VG disclosure badge */}
-              {currentCandidate.kind === 'virtual_girlfriend' && (
+              {currentCandidate.kind === 'virtual_girlfriend' ? (
                 <div className="encounters-vg-badge">
-                  ✨ AI · {currentCandidate.disclosureLabel ?? 'Virtual'}
+                  ✨ Virtual
                 </div>
-              )}
+              ) : null}
 
               <div className="encounters-overlay">
                 <h2 style={{ margin: 0, fontSize: '1.75rem' }}>

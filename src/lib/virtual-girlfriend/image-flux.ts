@@ -135,8 +135,15 @@ const withNegatives = (prompt: string, negatives: string) =>
 const isAdultChatSurface = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') =>
   surface === 'chat' && isVirtualGirlfriendAdultContentEnabled();
 
-const kontextModelForSurface = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') =>
-  isAdultChatSurface(surface) ? FLUX_KONTEXT_DEV_MODEL : FLUX_KONTEXT_MODEL;
+const kontextModelForSurface = (
+  surface: 'preview' | 'canonical' | 'gallery' | 'chat',
+  options?: { preferDevModel?: boolean },
+) => {
+  if (surface === 'chat' && (isAdultChatSurface(surface) || options?.preferDevModel)) {
+    return FLUX_KONTEXT_DEV_MODEL;
+  }
+  return FLUX_KONTEXT_MODEL;
+};
 
 const falProviderOptions = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') =>
   isAdultChatSurface(surface) ? { enable_safety_checker: false } : {};
@@ -177,6 +184,13 @@ export const generatePortraitPreviewImageWithFlux = async (
   return extractGeneratedImage(response, FLUX_MODEL);
 };
 
+export type KontextGenerationOptions = {
+  guidanceScale?: number;
+  numInferenceSteps?: number;
+  enableSafetyChecker?: boolean;
+  resolutionMode?: string;
+};
+
 const generateKontextFromReference = async (input: {
   prompt: string;
   referenceImageBytes: Buffer;
@@ -185,12 +199,17 @@ const generateKontextFromReference = async (input: {
   withPreviewNegatives?: boolean;
   seed?: number;
   errorLabel: string;
+  kontextOptions?: KontextGenerationOptions;
+  preferDevModel?: boolean;
 }): Promise<GeneratedImage> => {
   const surfaceParams = SURFACE_PARAMS[input.surface];
-  const model = kontextModelForSurface(input.surface);
+  const model = kontextModelForSurface(input.surface, { preferDevModel: input.preferDevModel });
   const prompt = input.withPreviewNegatives
     ? withNegatives(input.prompt, buildPreviewNegativePrompt())
     : input.prompt;
+
+  const defaultSafety = falProviderOptions(input.surface).enable_safety_checker;
+  const safetyChecker = input.kontextOptions?.enableSafetyChecker ?? defaultSafety ?? true;
 
   const response = await callFal(
     model,
@@ -200,7 +219,10 @@ const generateKontextFromReference = async (input: {
       aspect_ratio: resolveKontextAspect(surfaceParams.aspect_ratio),
       num_images: surfaceParams.num_images,
       output_format: 'png',
-      ...falProviderOptions(input.surface),
+      enable_safety_checker: safetyChecker,
+      ...(input.kontextOptions?.guidanceScale !== undefined ? { guidance_scale: input.kontextOptions.guidanceScale } : {}),
+      ...(input.kontextOptions?.numInferenceSteps !== undefined ? { num_inference_steps: input.kontextOptions.numInferenceSteps } : {}),
+      ...(input.kontextOptions?.resolutionMode ? { resolution_mode: input.kontextOptions.resolutionMode } : {}),
       ...(input.seed !== undefined ? { seed: input.seed } : {}),
     },
     input.errorLabel,
@@ -256,11 +278,15 @@ export const generateChatImageFromReferenceWithFlux = async (input: {
   prompt: string;
   referenceImageBytes: Buffer;
   referenceMimeType: string;
+  kontextOptions?: KontextGenerationOptions;
+  preferDevModel?: boolean;
 }): Promise<GeneratedImage> =>
   generateKontextFromReference({
     prompt: input.prompt,
     referenceImageBytes: input.referenceImageBytes,
     referenceMimeType: input.referenceMimeType,
     surface: 'chat',
+    kontextOptions: input.kontextOptions,
+    preferDevModel: input.preferDevModel,
     errorLabel: 'Flux reference chat generation failed',
   });

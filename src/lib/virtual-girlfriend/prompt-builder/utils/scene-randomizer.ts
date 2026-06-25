@@ -1,8 +1,13 @@
 /*
- * SCENE RANDOMIZER — builds varied scene/situation descriptors for gallery and chat surfaces.
- * Modelled on the competitor's get_random_prompt() pattern: pick random action, location,
- * wardrobe, and lighting to give every image a unique situational context.
+ * SCENE RANDOMIZER — builds varied scene/situation descriptors for gallery and chat.
+ * Uses companion style/personality when available so wardrobes stay on-brand.
  */
+
+import {
+  pickSurpriseWardrobeForCompanion,
+  pickWardrobeForCompanion,
+  type WardrobeContext,
+} from '@/lib/virtual-girlfriend/companion-wardrobe';
 
 function choose<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -43,21 +48,6 @@ const LOCATIONS = [
   'in a dressing room',
 ];
 
-const WARDROBE = [
-  'in casual loungewear',
-  'in an elegant evening dress',
-  'in a fitted top and jeans',
-  'in a silk robe',
-  'in athleisure wear',
-  'in a sundress',
-  'in a stylish blazer',
-  'in lingerie',
-  'in a crop top',
-  'in a summer dress',
-  'in a tight bodycon dress',
-  'in a sheer blouse',
-];
-
 const LIGHTING = [
   'warm golden hour light',
   'soft window light',
@@ -71,10 +61,18 @@ const LIGHTING = [
   'dappled sunlight',
 ];
 
-export function buildRandomScene(): string {
+export function buildRandomScene(context: WardrobeContext = {}): string {
   const action = choose(ACTIONS);
   const where = choose(LOCATIONS);
-  const clothes = choose(WARDROBE);
+  const clothes = pickWardrobeForCompanion(context);
   const light = choose(LIGHTING);
-  return `${action} ${where}, ${clothes}, ${light}`;
+  return `${action} ${where}, wearing ${clothes}, ${light}`;
+}
+
+export function buildSurpriseScene(context: WardrobeContext = {}): string {
+  const action = choose(ACTIONS);
+  const where = choose(LOCATIONS);
+  const clothes = pickSurpriseWardrobeForCompanion(context);
+  const light = choose(LIGHTING);
+  return `${action} ${where}, wearing ${clothes}, ${light}`;
 }

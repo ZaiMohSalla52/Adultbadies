@@ -69,7 +69,7 @@ export const AgeGateForm = () => {
         />
         <span>
           I confirm that I am at least 18 years old and I consent to viewing adult content. I understand
-          all companions are fictional, AI-generated adults.
+          all companions are fictional adults.
         </span>
       </label>
 

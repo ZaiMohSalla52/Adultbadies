@@ -6,6 +6,7 @@ import {
   listVirtualGirlfriendCompanions,
   setCanonicalReferenceImageForVisualProfile,
 } from '@/lib/virtual-girlfriend/data';
+import { wardrobeDirectionForStyle } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import {
   runRegenerateCanonicalOnlyImageMachine,
@@ -136,8 +137,11 @@ const resolveVisualIdentitySemanticInput = (input: {
 const WARDROBE_BY_STYLE: Record<string, string> = {
   casual: 'effortlessly chic casual outfit — a flattering fitted top or soft cropped knit with well-cut jeans or a mini skirt, trendy and put-together',
   elegant: 'elegant figure-flattering dress with a refined silhouette, tasteful premium fabrics and styling',
+  seductive: 'sultry body-hugging look — deep neckline mini dress, open silk robe, or lace-trim set with confident thirst-trap energy',
+  lingerie: 'lace lingerie set or satin bodysuit with intimate boudoir styling and flattering adult editorial realism',
   edgy: 'trend-forward edgy look — fitted leather or a bold statement piece styled with confidence',
   bohemian: 'flowy bohemian outfit with a flattering silhouette, sun-kissed layered textures and delicate jewelry',
+  athletic: 'tight athletic set — sports bra and leggings or compression gear with gym-mirror thirst-trap energy',
   sporty: 'sleek flattering activewear — a fitted matching set that looks athletic and toned',
   professional: 'sharp tailored look — a fitted blazer or chic figure-flattering dress, polished and confident',
   glamorous: 'glamorous evening look — a silk slip dress or statement gown in luxurious fabric, red-carpet styling',
@@ -190,7 +194,9 @@ const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisua
   const resolvedPersonality = input.personality?.trim().toLowerCase() || '';
   const resolvedOccupation = input.occupation?.trim() || '';
 
-  const wardrobeDirection = WARDROBE_BY_STYLE[resolvedStyle] ?? 'stylish casual clothing';
+  const wardrobeDirection = WARDROBE_BY_STYLE[resolvedStyle]
+    ?? wardrobeDirectionForStyle(resolvedStyle, input.sex)
+    ?? 'stylish figure-flattering outfit with confident sensual energy';
   const lightingMood = LIGHTING_BY_PERSONALITY[resolvedPersonality] ?? 'warm cinematic natural lighting with shallow depth of field';
   const faceShape = FACE_SHAPE_BY_ARCHETYPE[resolvedArchetype] ?? 'symmetrical face with expressive eyes and defined features';
   const accessory = ACCESSORY_BY_STYLE[resolvedStyle] ?? 'minimal tasteful accessories';
