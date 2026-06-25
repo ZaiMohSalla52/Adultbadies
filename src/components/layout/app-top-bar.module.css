@@ -1,0 +1,85 @@
+.topBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 0 16px;
+  background: rgba(10, 12, 16, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 110;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #f5f5f5;
+}
+
+.brandIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffba2c, #ff8a00);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1200;
+}
+
+.brandText {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.brandAccent {
+  color: #ffba2c;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.premiumBtn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffba2c, #ff8a00);
+  color: #1a1200;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.accountBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.accountBtn:hover {
+  color: #fff;
+  border-color: rgba(255, 186, 44, 0.4);
+}
+
+@media (max-width: 1100px) {
+  .premiumBtn {
+    display: none;
+  }
+}

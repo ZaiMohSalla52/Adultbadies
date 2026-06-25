@@ -33,6 +33,7 @@ type ChatClientProps = {
   initialStyleProfile: VirtualGirlfriendUserStyleProfileRecord;
   isPremium: boolean;
   companionGenerationStatus: VirtualGirlfriendGenerationStatus;
+  companionBio?: string | null;
   occupation?: string | null;
   personality?: string | null;
   sexuality?: string | null;
@@ -56,6 +57,20 @@ const formatTime = (timestamp: string) => {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
+const formatDateLabel = (timestamp: string) => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((startOfToday.getTime() - startOfDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+};
+
 export const VirtualGirlfriendChatClient = ({
   companionId,
   companionName,
@@ -68,6 +83,7 @@ export const VirtualGirlfriendChatClient = ({
   initialStyleProfile,
   isPremium,
   companionGenerationStatus,
+  companionBio,
   occupation,
   personality,
   sexuality,
@@ -82,7 +98,7 @@ export const VirtualGirlfriendChatClient = ({
   const [liveAvatarUrl, setLiveAvatarUrl] = useState(companionAvatarUrl ?? portraitPreviewUrl ?? '');
   const [liveBackdropUrl, setLiveBackdropUrl] = useState(portraitBackdropUrl ?? companionAvatarUrl ?? portraitPreviewUrl ?? '');
   const [styleProfile, setStyleProfile] = useState(initialStyleProfile);
-  const [infoTab, setInfoTab] = useState<'photos' | 'wardrobe' | 'profile'>('photos');
+  const [infoTab, setInfoTab] = useState<'photos' | 'profile'>('photos');
   const [outfitMenuOpen, setOutfitMenuOpen] = useState(false);
   const [pointBalance, setPointBalance] = useState(initialPointBalance);
   const [chatUnlockedIds, setChatUnlockedIds] = useState<Set<string>>(() => new Set(unlockedImageIds));
@@ -1030,9 +1046,19 @@ export const VirtualGirlfriendChatClient = ({
   const avatarUrl = liveAvatarUrl;
   const backdropUrl = liveBackdropUrl;
 
+  const panelBio = companionBio?.trim() || personality?.trim() || occupation?.trim() || `${companionName} is ready to chat.`;
+
+  let lastRenderedDate = '';
+
   return (
     <div className={styles.chatLayout}>
       <main className={styles.chatMain}>
+        <div className={styles.chatToolbar}>
+          <Link href="/chats" className={styles.allChatsBtn}>
+            ‹ All Chats
+          </Link>
+        </div>
+
         <header className={styles.chatHeader}>
           <Link href="/chats" className={styles.backButton} aria-label="Back to chats">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1151,14 +1177,21 @@ export const VirtualGirlfriendChatClient = ({
           ) : null}
           <div className={styles.messagesArea} ref={scrollRef}>
           {messages.map((message) => {
+            const dateLabel = formatDateLabel(message.created_at);
+            const showDate = dateLabel !== lastRenderedDate;
+            if (showDate) lastRenderedDate = dateLabel;
+
             const isUser = message.role === 'user';
 
             if (isUser) {
               return (
-                <div key={message.id} className={styles.messageUser}>
-                  <div className={styles.bubbleUser}>
-                    <p>{message.content}</p>
-                    <span className={styles.timestamp}>{formatTime(message.created_at)}</span>
+                <div key={message.id}>
+                  {showDate ? <div className={styles.datePill}>{dateLabel}</div> : null}
+                  <div className={styles.messageUser}>
+                    <div className={styles.bubbleUser}>
+                      <p>{message.content}</p>
+                      <span className={styles.timestamp}>{formatTime(message.created_at)}</span>
+                    </div>
                   </div>
                 </div>
               );
@@ -1168,7 +1201,9 @@ export const VirtualGirlfriendChatClient = ({
             const renderBubbles = bubbles.length > 0 ? bubbles : [''];
 
             return (
-              <div key={message.id} className={styles.messageCompanion}>
+              <div key={message.id}>
+                {showDate ? <div className={styles.datePill}>{dateLabel}</div> : null}
+                <div className={styles.messageCompanion}>
                 <div className={styles.companionAvatar}>
                   {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
                 </div>
@@ -1210,6 +1245,7 @@ export const VirtualGirlfriendChatClient = ({
                     </div>
                   ))}
                 </div>
+              </div>
               </div>
             );
           })}
@@ -1289,7 +1325,7 @@ export const VirtualGirlfriendChatClient = ({
               </button>
               <textarea
                 className={styles.composerInput}
-                placeholder={`Message ${companionName}…`}
+                placeholder={`Send a message to ${companionName}`}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event) => {
@@ -1318,7 +1354,7 @@ export const VirtualGirlfriendChatClient = ({
           {backdropUrl ? <ChatAvatarImage src={backdropUrl} alt={companionName} width={320} height={420} sizes="320px" /> : null}
         </div>
         <h2 className={styles.infoPanelName}>{companionName}</h2>
-        {personality ? <p className={styles.infoPanelSub}>{personality}</p> : null}
+        <p className={styles.infoPanelSub}>{panelBio}</p>
 
         <div className={styles.infoPanelActions}>
           <button type="button" className={styles.shareBtn}>↑ Share</button>
@@ -1335,13 +1371,6 @@ export const VirtualGirlfriendChatClient = ({
           </button>
           <button
             type="button"
-            className={`${styles.infoTab} ${infoTab === 'wardrobe' ? styles.infoTabActive : ''}`}
-            onClick={() => setInfoTab('wardrobe')}
-          >
-            Wardrobe
-          </button>
-          <button
-            type="button"
             className={`${styles.infoTab} ${infoTab === 'profile' ? styles.infoTabActive : ''}`}
             onClick={() => setInfoTab('profile')}
           >
@@ -1349,25 +1378,7 @@ export const VirtualGirlfriendChatClient = ({
           </button>
         </div>
 
-        {infoTab === 'wardrobe' ? (
-          <div className={styles.wardrobeList}>
-            {outfitPresets.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className={styles.wardrobeItem}
-                disabled={pending}
-                onClick={() => void send(preset.message)}
-              >
-                <span aria-hidden>{preset.icon}</span>
-                <span>{preset.label}</span>
-              </button>
-            ))}
-            <Link href={`/virtual-girlfriend/generate?companionId=${companionId}`} className={styles.studioLink}>
-              Open full photo studio →
-            </Link>
-          </div>
-        ) : infoTab === 'photos' ? (
+        {infoTab === 'photos' ? (
           sidebarImages.length > 0 ? (
             <div className={styles.photosWrap}>
               <UnlockableGallery
@@ -1385,6 +1396,23 @@ export const VirtualGirlfriendChatClient = ({
           )
         ) : (
           <div className={styles.infoPanelTraits}>
+            <div className={styles.wardrobeList}>
+              {outfitPresets.slice(0, 4).map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={styles.wardrobeItem}
+                  disabled={pending}
+                  onClick={() => void send(preset.message)}
+                >
+                  <span aria-hidden>{preset.icon}</span>
+                  <span>{preset.label}</span>
+                </button>
+              ))}
+              <Link href={`/virtual-girlfriend/generate?companionId=${companionId}`} className={styles.studioLink}>
+                Generate photo →
+              </Link>
+            </div>
             {occupation ? (
               <div className={styles.traitCard}>
                 <span className={styles.traitLabel}>Occupation</span>

@@ -1,162 +1,136 @@
 .sidebar {
   position: fixed;
   left: 0;
-  top: 0;
+  top: 56px;
   bottom: 0;
   width: 225px;
-  background: linear-gradient(180deg, #0d1117 0%, #0a0e14 100%);
-  border-right: 1px solid rgba(255,255,255,0.06);
-  box-shadow: inset -1px 0 0 rgba(255,255,255,0.04);
+  background: #0a0c10;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
-  padding: 20px 14px;
+  padding: 16px 12px 20px;
   z-index: 100;
-  font-family: Inter, 'SF Pro Display', system-ui, sans-serif;
+  font-family: Inter, 'SF Pro Rounded', 'SF Pro Display', system-ui, sans-serif;
   overflow-y: auto;
-}
-
-.brand {
-  padding: 8px 12px 24px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  margin-bottom: 16px;
-}
-
-.brandLink {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  color: #f5f5f5;
-}
-
-.brandMark {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #ff2e63, #c084fc);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 0.85rem;
-  color: white;
-}
-
-.brandName {
-  font-weight: 800;
-  font-size: 1.1rem;
-  letter-spacing: -0.01em;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
 }
 
 .navItem {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 10px 12px;
   border-radius: 12px;
-  color: #888;
+  color: rgba(255, 255, 255, 0.55);
   text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  transition: background 120ms, color 120ms;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: background 140ms, color 140ms;
+  position: relative;
 }
 
 .navItem:hover {
-  background: rgba(255,255,255,0.08);
-  color: #f5f5f5;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .navItemActive {
   composes: navItem;
-  background: rgba(255,46,99,0.15);
-  color: #ff2e63;
-  font-weight: 600;
+  background: rgba(255, 186, 44, 0.12);
+  color: #ffba2c;
 }
 
 .navIcon {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  opacity: 0.85;
 }
 
-.navIcon svg {
-  width: 20px;
-  height: 20px;
+.navItemActive .navIcon {
+  opacity: 1;
+  color: #ffba2c;
 }
 
 .navLabel {
   white-space: nowrap;
+  flex: 1;
+}
+
+.navActiveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff8a00;
+  flex-shrink: 0;
 }
 
 .sidebarPromo {
-  margin-top: 12px;
-  padding: 14px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.createPromoBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
   border-radius: 12px;
-  background: linear-gradient(145deg, rgba(255, 46, 99, 0.12), rgba(192, 132, 252, 0.08));
-  border: 1px solid rgba(255, 46, 99, 0.2);
-}
-
-.sidebarPromoText {
-  margin: 0 0 10px;
-  font-size: 0.78rem;
-  line-height: 1.4;
-  color: #cbd5e1;
-}
-
-.sidebarPromoBtn {
-  display: block;
-  text-align: center;
-  padding: 9px 12px;
-  border-radius: 10px;
-  background: #ff2e63;
+  border: 2px solid #ffba2c;
+  background: rgba(255, 186, 44, 0.05);
   color: #fff;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
   text-decoration: none;
 }
 
-.sidebarBottom {
-  padding-top: 16px;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  margin-top: 12px;
+.createPromoIcon {
+  font-size: 1rem;
 }
 
-.signOutBtn {
-  width: 100%;
-  padding: 10px 16px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 10px;
-  color: #888;
+.premiumPromoBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffba2c, #ff8a00);
+  color: #1a1200;
   font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 120ms, background 120ms;
+  font-weight: 900;
+  text-decoration: none;
 }
 
-.signOutBtn:hover {
-  background: rgba(255,255,255,0.06);
-  color: #f5f5f5;
+.premiumPromoIcon {
+  font-size: 0.95rem;
+}
+
+.premiumPromoSub {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .navSpacer {
   height: 1px;
-  background: rgba(255,255,255,0.06);
-  margin: 8px 0;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 8px 4px;
 }
 
-/* Hide sidebar on mobile — Romantic AI uses 1100px breakpoint */
 @media (max-width: 1100px) {
   .sidebar { display: none; }
 }
@@ -169,16 +143,13 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: rgba(13, 17, 23, 0.92);
+  background: rgba(10, 12, 16, 0.94);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding: 6px 0;
   padding-bottom: env(safe-area-inset-bottom, 6px);
   z-index: 9999;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  will-change: transform;
 }
 
 .tab {
@@ -196,7 +167,7 @@
 
 .tabActive {
   composes: tab;
-  color: #ff2e63;
+  color: #ffba2c;
 }
 
 .tabIcon {
@@ -207,37 +178,28 @@
   justify-content: center;
 }
 
-.tabIcon svg {
-  width: 22px;
-  height: 22px;
-}
-
 .tabLabel {
   white-space: nowrap;
 }
 
-/* Hide on desktop */
 @media (min-width: 1101px) {
   .mobileNav { display: none; }
 }
-
-/* --- Nav pending / loading state --- */
 
 .navSpinner {
   display: block;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 46, 99, 0.25);
-  border-top-color: #ff2e63;
+  border: 2px solid rgba(255, 186, 44, 0.25);
+  border-top-color: #ffba2c;
   border-radius: 50%;
   animation: spin 600ms linear infinite;
 }
 
 .navItemPending {
   composes: navItem;
-  background: rgba(255, 46, 99, 0.08);
-  color: rgba(255, 46, 99, 0.7);
-  box-shadow: 0 0 0 1px rgba(255, 46, 99, 0.18);
+  background: rgba(255, 186, 44, 0.08);
+  color: rgba(255, 186, 44, 0.75);
 }
 
 .tabIconPending {

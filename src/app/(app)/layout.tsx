@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from 'react';
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { AppShellNav } from '@/components/layout/app-shell-nav';
+import { AppTopBar } from '@/components/layout/app-top-bar';
 import { AgeCacheWarmer } from '@/components/safety/age-cache-warmer';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import {
@@ -9,11 +11,21 @@ import {
   isAgeVerified,
 } from '@/lib/safety/age';
 
-const appNavItems = [
+const desktopNavItems = [
   { label: 'Explore', href: '/discovery' },
   { label: 'Chats', href: '/chats' },
-  { label: 'Create', href: '/virtual-girlfriend/setup?new=1' },
+  { label: 'AI Boyfriend', href: '/discovery?tab=boyfriends' },
+  { label: 'AI Girlfriend', href: '/discovery?tab=girlfriends' },
+  { label: 'Generate Photo', href: '/virtual-girlfriend/generate' },
+  { label: 'Gallery', href: '/virtual-girlfriend/generate' },
   { label: 'Account', href: '/account' },
+] as const;
+
+const mobileNavItems = [
+  { label: 'Explore', href: '/discovery', mobile: true },
+  { label: 'Chats', href: '/chats', mobile: true },
+  { label: 'Create', href: '/virtual-girlfriend/setup?new=1', mobile: true },
+  { label: 'Account', href: '/account', mobile: true },
 ] as const;
 
 export default async function AppLayout({ children }: PropsWithChildren) {
@@ -34,11 +46,16 @@ export default async function AppLayout({ children }: PropsWithChildren) {
   return (
     <div className="app-shell">
       <AgeCacheWarmer />
-      <AppShellNav items={appNavItems} />
+      <AppTopBar />
+      <Suspense fallback={null}>
+        <AppShellNav items={desktopNavItems} />
+      </Suspense>
 
       <main className="app-shell-main">{children}</main>
 
-      <AppShellNav items={appNavItems} mobile />
+      <Suspense fallback={null}>
+        <AppShellNav items={mobileNavItems} mobile />
+      </Suspense>
     </div>
   );
 }

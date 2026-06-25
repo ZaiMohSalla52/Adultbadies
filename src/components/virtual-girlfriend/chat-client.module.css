@@ -4,9 +4,9 @@
 
 .chatLayout {
   display: flex;
-  height: calc(100vh - 96px);
+  height: calc(100vh - 120px);
   min-height: 520px;
-  background: #070b14;
+  background: #0a0c10;
   color: #f5f5f5;
 }
 
@@ -17,9 +17,35 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  background: #0d1016;
 }
 
-/* ── Header ── */
+.chatToolbar {
+  display: none;
+  padding: 12px 16px 8px;
+  flex-shrink: 0;
+}
+
+.allChatsBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 120ms, color 120ms;
+}
+
+.allChatsBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* ── Header (mobile) ── */
 .chatHeader {
   display: flex;
   align-items: center;
@@ -263,6 +289,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin: 0 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .portraitBackdrop {
@@ -295,12 +325,23 @@
   z-index: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   background: transparent;
   -webkit-overflow-scrolling: touch;
+}
+
+.datePill {
+  align-self: center;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 4px 0 6px;
 }
 
 .messageUser {
@@ -331,16 +372,16 @@
 }
 
 .bubbleCompanion {
-  max-width: 72%;
+  max-width: 78%;
   padding: 10px 14px;
-  background: rgba(13, 17, 23, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px 20px 20px 4px;
-  font-size: 0.92rem;
-  line-height: 1.45;
-  color: #f0f0f0;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(22, 26, 34, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px 16px 16px 4px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .chatImage {
@@ -648,10 +689,10 @@
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 10px 16px;
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: #0d1117;
+  background: #0a0c10;
   flex-shrink: 0;
   position: relative;
   z-index: 10;
@@ -685,15 +726,15 @@
 
 .composerInput {
   flex: 1;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 22px;
-  padding: 10px 16px;
+  border-radius: 14px;
+  padding: 12px 16px;
   color: #f5f5f5;
-  font-size: 16px;
+  font-size: 0.92rem;
   line-height: 1.4;
   resize: none;
-  min-height: 40px;
+  min-height: 44px;
   max-height: 120px;
   font-family: inherit;
 }
@@ -711,16 +752,22 @@
 .sendButton {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  background: #ff2e63;
-  color: white;
-  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: filter 120ms, transform 80ms;
+  transition: background 120ms, color 120ms, transform 80ms;
   flex-shrink: 0;
+}
+
+.sendButton:not(:disabled) {
+  background: linear-gradient(135deg, #ffba2c, #ff8a00);
+  color: #1a1200;
+  border-color: transparent;
 }
 
 .sendButton:hover {
@@ -778,27 +825,30 @@
   color: #f5f5f5;
 }
 
-/* ── Right info panel (desktop only, Romantic AI ~240px) ── */
+/* ── Right character panel (Romantic AI ~280px) ── */
 .infoPanel {
-  width: 240px;
+  width: 280px;
   flex-shrink: 0;
   border-left: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 20px 16px;
+  padding: 16px 14px 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   overflow-y: auto;
-  background: rgba(13, 17, 23, 0.6);
+  background: #0a0c10;
 }
 
 .infoPanelPortrait {
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
+  aspect-ratio: 3 / 4;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .infoPanelPortrait img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
@@ -810,8 +860,9 @@
 
 .infoPanelSub {
   margin: 0;
-  color: #888;
-  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .infoPanelActions {
@@ -866,11 +917,27 @@
   margin-top: 3px;
 }
 
-/* ── Responsive: hide info panel below desktop breakpoint ── */
+/* ── Desktop: Romantic three-column chat ── */
 @media (min-width: 1101px) {
+  .chatToolbar {
+    display: block;
+  }
+
+  .chatHeader {
+    display: none;
+  }
+
+  .quickChipRow {
+    display: none;
+  }
+
   .chatLayout {
-    height: calc(100vh - 96px);
+    height: calc(100vh - 120px);
     max-height: 860px;
+  }
+
+  .messagesShell {
+    margin: 0 16px;
   }
 }
 
@@ -881,6 +948,15 @@
 }
 
 /* ── Responsive: full-screen mobile chat ── */
+@media (max-width: 1100px) {
+  .messagesShell {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+}
+
 @media (max-width: 767px) {
   /* Take over the full screen on mobile like the competitor */
   .chatLayout {
@@ -970,27 +1046,29 @@
 
 .infoTabs {
   display: flex;
-  gap: 8px;
-  margin: 14px 0 12px;
+  gap: 0;
+  margin: 8px 0 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .infoTab {
   flex: 1;
-  padding: 9px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #aaa;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 8px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+  background: transparent;
   cursor: pointer;
-  transition: background 120ms, color 120ms, border-color 120ms;
+  transition: color 120ms, border-color 120ms;
+  margin-bottom: -1px;
 }
 
 .infoTabActive {
   color: #fff;
-  background: rgba(244, 63, 142, 0.16);
-  border-color: rgba(244, 63, 142, 0.5);
+  border-bottom-color: #6ea8fe;
 }
 
 .photosWrap {
