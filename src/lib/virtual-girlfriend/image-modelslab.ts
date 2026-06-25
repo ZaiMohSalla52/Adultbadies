@@ -8,23 +8,29 @@ import {
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
+import {
+  applyModelsLabPortraitPrompt,
+  resolveModelsLabPortraitModel,
+} from '@/lib/virtual-girlfriend/modelslab-image-config';
+import { buildModelsLabNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
 export type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
 /*
- * ModelsLab image provider — Flux text2img + Flux Kontext pro/dev.
+ * ModelsLab image provider — photorealistic Flux portraits + Flux Kontext pro/dev.
  *
- * Canonical identity lock uses flux-kontext-pro (v7 image-to-image) with the
- * selected portrait as init_image — same "same person, new scene/outfit" model
- * family as fal Kontext pro, used for preview, canonical, and gallery surfaces.
+ * Portrait text2img defaults to flux-realistic-portrait-v2-0 (not generic `flux`,
+ * which skews anime/stylized). Canonical identity lock uses flux-kontext-pro (v7
+ * image-to-image) with the selected portrait as init_image.
  *
  * Adult chat routes to flux-kontext-dev (v6 img2img) with safety_checker off.
  */
 
-const MODELSLAB_FLUX_MODEL = env.MODELSLAB_FLUX_MODEL ?? 'flux';
+const MODELSLAB_PORTRAIT_MODEL = resolveModelsLabPortraitModel();
 const MODELSLAB_KONTEXT_PRO_MODEL = env.MODELSLAB_KONTEXT_PRO_MODEL ?? 'flux-kontext-pro';
 const MODELSLAB_KONTEXT_DEV_MODEL = env.MODELSLAB_KONTEXT_DEV_MODEL ?? 'flux-kontext-dev';
+const MODELSLAB_NEGATIVE_PROMPT = buildModelsLabNegativePrompt();
 
 const PREVIEW_POLL = { maxAttempts: 28, intervalMs: 1_000 } as const;
 const PREVIEW_KONTEXT_POLL = { maxAttempts: 24, intervalMs: 1_000 } as const;
@@ -67,6 +73,30 @@ const kontextModelForSurface = (
 };
 
 const isKontextDevModel = (model: string) => /kontext-dev/i.test(model);
+
+const buildModelsLabText2ImgRequest = (input: {
+  modelId: string;
+  prompt: string;
+  width: number;
+  height: number;
+  samples: number;
+  numInferenceSteps: number;
+  guidanceScale: number;
+  seed?: number;
+}) => ({
+  model_id: input.modelId,
+  prompt: applyModelsLabPortraitPrompt(input.prompt, input.modelId),
+  negative_prompt: MODELSLAB_NEGATIVE_PROMPT,
+  enhance_prompt: false,
+  width: input.width,
+  height: input.height,
+  samples: input.samples,
+  num_inference_steps: input.numInferenceSteps,
+  guidance_scale: input.guidanceScale,
+  safety_checker: 'yes',
+  scheduler: 'DPMSolverMultistepScheduler',
+  ...(input.seed !== undefined ? { seed: input.seed } : {}),
+});
 
 const strengthForKontext = (input: {
   surface: 'preview' | 'canonical' | 'gallery' | 'chat';
@@ -129,20 +159,19 @@ export const generateCanonicalImageWithModelsLab = async (prompt: string): Promi
   const { width, height } = resolveDimensions(canonicalParams.aspect_ratio);
   const payload = await callModelsLabV6Images(
     'text2img',
-    {
-      model_id: MODELSLAB_FLUX_MODEL,
+    buildModelsLabText2ImgRequest({
+      modelId: MODELSLAB_PORTRAIT_MODEL,
       prompt,
       width,
       height,
       samples: canonicalParams.num_images,
-      num_inference_steps: 31,
-      guidance_scale: 7.5,
-      safety_checker: 'yes',
-    },
+      numInferenceSteps: 31,
+      guidanceScale: 7.5,
+    }),
     'ModelsLab canonical image generation failed',
   );
 
-  return extractGeneratedImage(payload, MODELSLAB_FLUX_MODEL, '/v6/images/text2img');
+  return extractGeneratedImage(payload, MODELSLAB_PORTRAIT_MODEL, '/v6/images/text2img');
 };
 
 export const generatePortraitPreviewImageWithModelsLab = async (
@@ -153,22 +182,21 @@ export const generatePortraitPreviewImageWithModelsLab = async (
   const { width, height } = resolvePreviewDimensions(previewParams.aspect_ratio);
   const payload = await callModelsLabV6Images(
     'text2img',
-    {
-      model_id: MODELSLAB_FLUX_MODEL,
+    buildModelsLabText2ImgRequest({
+      modelId: MODELSLAB_PORTRAIT_MODEL,
       prompt,
       width,
       height,
       samples: previewParams.num_images,
-      num_inference_steps: 28,
-      guidance_scale: 7.5,
-      safety_checker: 'yes',
-      ...(seed !== undefined ? { seed } : {}),
-    },
+      numInferenceSteps: 28,
+      guidanceScale: 7.5,
+      seed,
+    }),
     'ModelsLab portrait preview generation failed',
     PREVIEW_POLL,
   );
 
-  return extractGeneratedImage(payload, MODELSLAB_FLUX_MODEL, '/v6/images/text2img', { skipDownload: true });
+  return extractGeneratedImage(payload, MODELSLAB_PORTRAIT_MODEL, '/v6/images/text2img', { skipDownload: true });
 };
 
 const resolveReferenceInitImage = async (input: {
@@ -237,7 +265,9 @@ const generateKontextFromReference = async (input: {
   const payload = await callModelsLabV7ImageToImage(
     {
       model_id: model,
-      prompt,
+      prompt: applyModelsLabPortraitPrompt(prompt, model),
+      negative_prompt: MODELSLAB_NEGATIVE_PROMPT,
+      enhance_prompt: false,
       init_image: initImage,
       aspect_ratio: resolveKontextAspect(surfaceParams.aspect_ratio),
     },

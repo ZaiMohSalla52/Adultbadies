@@ -85,6 +85,15 @@ export function buildPreviewNegativePrompt(): string {
   return buildAllNegatives();
 }
 
+/** ModelsLab `negative_prompt` field — comma-separated, no inline "no" prefix. */
+export function buildModelsLabNegativePrompt(): string {
+  const styleBlock =
+    'anime, cartoon, illustration, manga, cel shading, CGI, 3d render, digital art, painted, stylized art, doll, plastic skin, video game character, animated, airbrushed fantasy portrait';
+  const qualityBlock =
+    'worst quality, low quality, blurry, distorted, bad anatomy, deformed, disfigured, extra limbs, bad hands, bad face, watermark, text, logo';
+  return [styleBlock, qualityBlock, buildAllNegatives().replace(/\bno /g, '')].join(', ');
+}
+
 export function buildChatNegativePrompt(input: { allowAdultContent?: boolean } = {}): string {
   const categories: Array<keyof typeof HARD_NEGATIVES> = input.allowAdultContent
     ? ['composition', 'exposure']
