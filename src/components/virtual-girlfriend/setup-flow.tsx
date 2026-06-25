@@ -34,6 +34,11 @@ type BuilderStep =
 
 type PortraitCandidate = { id: string; imageDataUrl: string; prompt: string; label: string };
 
+const isHostedPortraitUrl = (value: string | null | undefined) => /^https?:\/\//i.test(String(value ?? '').trim());
+
+const filterPortraitCandidates = (candidates: PortraitCandidate[]) =>
+  candidates.filter((candidate) => isHostedPortraitUrl(candidate.imageDataUrl));
+
 type SetupConflict = {
   companionName?: string;
   guidance?: string[];
@@ -437,6 +442,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const [recoverableCompanionId, setRecoverableCompanionId] = useState<string | null>(null);
   const [activeDotIndex, setActiveDotIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement | null>(null);
+  const portraitGenInFlight = useRef(false);
 
   const step = STEPS[stepIndex];
   const progress = useMemo(() => ((stepIndex + 1) / STEPS.length) * 100, [stepIndex]);
@@ -459,6 +465,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
       void maybeGeneratePortraits(true);
     }
   }, [portraitTraitsKey, portraitsForTraitsKey, portraitsLoading, step]);
+
+  useEffect(() => {
+    if (step !== 'portrait' || portraitsLoading) return;
+    const validCount = filterPortraitCandidates(portraitCandidates).length;
+    if (validCount > 0 && portraitsForTraitsKey === portraitTraitsKey) return;
+    void maybeGeneratePortraits(validCount > 0);
+  }, [step]);
 
   useEffect(() => {
     if (step !== 'portrait' || !carouselRef.current) return;
@@ -506,10 +519,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const maybeGeneratePortraits = async (force = false, stateSnapshot?: CreatorState) => {
+    if (portraitGenInFlight.current) return;
+
     const workingState = stateSnapshot ?? state;
     const traitsKey = portraitTraitsKeyFromState(workingState);
+    const validExisting = filterPortraitCandidates(portraitCandidates);
 
-    if (!force && portraitCandidates.length > 0 && portraitsForTraitsKey === traitsKey) return;
+    if (!force && validExisting.length > 0 && portraitsForTraitsKey === traitsKey) return;
 
     if (!workingState.name.trim()) {
       setError('Enter a name before generating portraits.');
@@ -517,6 +533,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     }
 
     const derived = buildDerivedFromState(workingState);
+    portraitGenInFlight.current = true;
     setPortraitsLoading(true);
     setError(null);
     setConflictHelp(null);
@@ -584,15 +601,27 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
       const body = await readJsonResponse<{ candidates?: PortraitCandidate[]; error?: string }>(response);
       if (!response.ok || !body.candidates?.length) throw new Error(body.error ?? 'Unable to generate portraits now.');
-      setPortraitCandidates(body.candidates);
+
+      const validCandidates = filterPortraitCandidates(body.candidates);
+      if (validCandidates.length < 2) {
+        throw new Error('Portrait previews could not be published. Check image storage settings and try again.');
+      }
+
+      setPortraitCandidates(validCandidates);
       setPortraitsForTraitsKey(traitsKey);
-      if (force) {
-        setField('selectedPortraitImage', '');
-        setField('selectedPortraitPrompt', '');
+
+      const firstCandidate = validCandidates[0];
+      if (firstCandidate && (!workingState.selectedPortraitImage || force)) {
+        setState((current) => ({
+          ...current,
+          selectedPortraitImage: firstCandidate.imageDataUrl,
+          selectedPortraitPrompt: firstCandidate.prompt,
+        }));
       }
     } catch (candidateError) {
       setError(candidateError instanceof Error ? candidateError.message : 'Portrait generation failed.');
     } finally {
+      portraitGenInFlight.current = false;
       setPortraitsLoading(false);
     }
   };
@@ -615,7 +644,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     setStepIndex(next);
 
     if (STEPS[next] === 'portrait') {
-      await maybeGeneratePortraits();
+      await maybeGeneratePortraits(false, state);
     }
   };
 
@@ -773,6 +802,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const isSubmitting = generationStarted || pending;
   const showContinue = step === 'name' || step === 'portrait';
   const showCreate = step === 'freeformDetails';
+  const visiblePortraitCandidates = useMemo(
+    () => filterPortraitCandidates(portraitCandidates),
+    [portraitCandidates],
+  );
   const nameOr = (withName: string, withoutName: string) =>
     state.name.trim() ? withName.replace('{name}', state.name.trim()) : withoutName;
 
@@ -971,7 +1004,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             )}
 
             {step === 'portrait' && (
-              <div className={styles.stepContent}>
+              <div className={styles.portraitStep}>
                 {portraitsLoading ? (
                   <div className={styles.loadingState}>
                     <div className={styles.loadingOrb} />
@@ -1001,7 +1034,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                       ) : null}
                     </div>
                   </div>
-                ) : portraitCandidates.length === 0 ? (
+                ) : visiblePortraitCandidates.length === 0 ? (
                   <div className={styles.portraitEmptyState}>
                     <h2 className={styles.stepTitle}>{nameOr(`Pick {name}'s portrait`, labels.pickPortrait)}</h2>
                     <p className={styles.loadingSubtext}>
@@ -1014,12 +1047,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                 ) : (
                   <>
                     <h2 className={styles.stepTitle}>{nameOr(`Pick {name}'s portrait`, labels.pickPortrait)}</h2>
-                    <p className={styles.loadingSubtext}>Pick the face that matches their style and personality.</p>
+                    <p className={styles.loadingSubtext}>Tap a look below — the first option is pre-selected for you.</p>
+                    {error ? <p className={styles.portraitInlineError}>{error}</p> : null}
                     {(() => {
                       const previewUrl =
                         state.selectedPortraitImage
-                        || portraitCandidates[activeDotIndex]?.imageDataUrl
-                        || portraitCandidates[0]?.imageDataUrl
+                        || visiblePortraitCandidates[activeDotIndex]?.imageDataUrl
+                        || visiblePortraitCandidates[0]?.imageDataUrl
                         || null;
                       return previewUrl ? (
                         <div className={styles.portraitPreviewWrap}>
@@ -1027,12 +1061,12 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                             src={previewUrl}
                             alt="Portrait preview"
                             className={styles.portraitPreviewImage}
+                            loading="eager"
+                            decoding="async"
                           />
-                          {state.selectedPortraitImage ? (
-                            <span className={styles.portraitPreviewBadge}>Selected</span>
-                          ) : (
-                            <span className={styles.portraitPreviewBadge}>Preview</span>
-                          )}
+                          <span className={styles.portraitPreviewBadge}>
+                            {state.selectedPortraitImage ? 'Selected' : 'Preview'}
+                          </span>
                         </div>
                       ) : null;
                     })()}
@@ -1040,7 +1074,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                       Regenerate looks
                     </button>
                     <div className={styles.portraitPickerGrid}>
-                      {portraitCandidates.map((candidate) => (
+                      {visiblePortraitCandidates.map((candidate) => (
                         <button
                           key={candidate.id}
                           type="button"
@@ -1052,14 +1086,20 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                             setField('selectedPortraitImage', candidate.imageDataUrl);
                           }}
                         >
-                          <img src={candidate.imageDataUrl} alt={candidate.label} className={styles.portraitPickerImage} />
+                          <img
+                            src={candidate.imageDataUrl}
+                            alt={candidate.label}
+                            className={styles.portraitPickerImage}
+                            loading="eager"
+                            decoding="async"
+                          />
                           <span className={styles.portraitPickerLabel}>{candidate.label}</span>
                         </button>
                       ))}
                     </div>
                     <div className={styles.carouselContainer}>
                       <div className={styles.carouselTrack} ref={carouselRef}>
-                        {portraitCandidates.map((candidate) => (
+                        {visiblePortraitCandidates.map((candidate) => (
                           <button
                             key={`carousel-${candidate.id}`}
                             type="button"
@@ -1076,7 +1116,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                         ))}
                       </div>
                       <div className={styles.carouselDots}>
-                        {portraitCandidates.map((_, i) => (
+                        {visiblePortraitCandidates.map((_, i) => (
                           <span key={i} className={`${styles.dot} ${i === activeDotIndex ? styles.dotActive : ''}`} />
                         ))}
                       </div>

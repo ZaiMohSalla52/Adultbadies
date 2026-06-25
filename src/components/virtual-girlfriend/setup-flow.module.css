@@ -433,8 +433,25 @@
   cursor: not-allowed;
 }
 
+.portraitStep {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: none;
+}
+
+.portraitInlineError {
+  margin: 0;
+  text-align: center;
+  color: #ff8ab0;
+  font-size: 0.9rem;
+}
+
 .portraitPickerGrid {
-  display: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
 }
 
 .portraitPickerCard {
@@ -456,8 +473,10 @@
 .portraitPickerImage {
   width: 100%;
   aspect-ratio: 3 / 4;
+  min-height: 120px;
   object-fit: cover;
   display: block;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .portraitPickerLabel {
@@ -469,23 +488,40 @@
 }
 
 @media (max-width: 767px) {
+  .creatorContainer {
+    max-height: calc(100dvh - 108px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .portraitStep {
+    gap: 14px;
+  }
+
   .portraitPreviewWrap {
-    width: min(300px, 94vw);
-    margin-bottom: 8px;
+    width: 100%;
+    max-width: none;
+    margin-bottom: 4px;
+  }
+
+  .portraitPreviewImage {
+    min-height: 320px;
   }
 
   .portraitPickerGrid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .carouselContainer {
-    display: none;
+  .portraitPickerImage {
+    min-height: 280px;
   }
 
   .portraitPickerLabel {
+    display: block;
+  }
+
+  .carouselContainer {
     display: none;
   }
 
@@ -496,7 +532,7 @@
 
 @media (min-width: 768px) {
   .portraitPickerGrid {
-    display: none;
+    display: grid;
   }
 }
 

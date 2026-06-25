@@ -132,23 +132,69 @@ const isMissingMessageSpendRpc = (error: unknown) => {
   return message.includes('PGRST202') || message.includes('spend_chat_message_point');
 };
 
+const spendChatMessagePointViaServiceRole = async (userId: string): Promise<MessagePointSpendResult> => {
+  const cost = POINTS.messageCost;
+
+  await serviceRoleFetch('point_balances', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify({ user_id: userId, balance: 0 }),
+  });
+
+  const rows = (await serviceRoleFetch(
+    `point_balances?select=balance&user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+  )) as Array<{ balance: number }> | null;
+
+  const current = rows?.[0]?.balance ?? 0;
+  if (current < cost) {
+    return { ok: false, balance: current, cost, reason: 'insufficient_points' };
+  }
+
+  const nextBalance = current - cost;
+  await serviceRoleFetch(`point_balances?user_id=eq.${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ balance: nextBalance, updated_at: new Date().toISOString() }),
+  });
+
+  await serviceRoleFetch('point_transactions', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      user_id: userId,
+      delta: -cost,
+      reason: 'chat_message',
+      metadata: { cost },
+    }),
+  });
+
+  return { ok: true, balance: nextBalance, cost };
+};
+
 /** Spend points for one chat message. DB enforces cost (1 pt) and balance. */
 export const spendChatMessagePoint = async (token: string, userId: string): Promise<MessagePointSpendResult> => {
   try {
-    const result = await supabaseRest<MessagePointSpendResult>('rpc/spend_chat_message_point', token, {
-      method: 'POST',
-      body: {},
-    });
-    return {
-      ok: Boolean(result.ok),
-      balance: result.balance ?? 0,
-      cost: result.cost ?? POINTS.messageCost,
-      reason: result.reason,
-    };
+    const result = await supabaseRest<MessagePointSpendResult | MessagePointSpendResult[]>(
+      'rpc/spend_chat_message_point',
+      token,
+      {
+        method: 'POST',
+        body: {},
+      },
+    );
+    const payload = Array.isArray(result) ? result[0] : result;
+    if (payload && typeof payload === 'object') {
+      return {
+        ok: Boolean(payload.ok),
+        balance: payload.balance ?? 0,
+        cost: payload.cost ?? POINTS.messageCost,
+        reason: payload.reason,
+      };
+    }
   } catch (error) {
     if (!isMissingMessageSpendRpc(error)) throw error;
     console.warn(
-      '[points] spend_chat_message_point RPC missing — using balance check fallback. Run supabase/migrations/021_chat_message_point_cost.sql.',
+      '[points] spend_chat_message_point RPC missing — using service-role fallback. Run supabase/migrations/021_chat_message_point_cost.sql.',
     );
   }
 
@@ -157,29 +203,17 @@ export const spendChatMessagePoint = async (token: string, userId: string): Prom
     return { ok: false, balance, cost: POINTS.messageCost, reason: 'insufficient_points' };
   }
 
-  const rows = await supabaseRest<{ balance: number }[]>('point_balances', token, {
-    searchParams: new URLSearchParams({
-      select: 'balance',
-      user_id: `eq.${userId}`,
-      limit: '1',
-    }),
-  });
-  const current = rows[0]?.balance ?? 0;
-  if (current < POINTS.messageCost) {
-    return { ok: false, balance: current, cost: POINTS.messageCost, reason: 'insufficient_points' };
+  try {
+    return await spendChatMessagePointViaServiceRole(userId);
+  } catch (serviceError) {
+    console.error('[points] service-role chat message spend failed', serviceError);
+    return {
+      ok: false,
+      balance,
+      cost: POINTS.messageCost,
+      reason: 'spend_failed',
+    };
   }
-
-  const updated = await supabaseRest<{ balance: number }[]>('point_balances', token, {
-    method: 'PATCH',
-    searchParams: new URLSearchParams({ user_id: `eq.${userId}` }),
-    body: { balance: current - POINTS.messageCost },
-  });
-
-  return {
-    ok: true,
-    balance: updated[0]?.balance ?? current - POINTS.messageCost,
-    cost: POINTS.messageCost,
-  };
 };
 
 /** Spend points to unlock a gallery image. The DB enforces cost and balance. */
