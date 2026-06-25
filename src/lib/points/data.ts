@@ -82,7 +82,11 @@ export const getUnlockedImageIds = async (
   userId: string,
   companionId?: string,
 ): Promise<string[]> => {
-  const params = new URLSearchParams({ select: 'image_id', user_id: `eq.${userId}` });
+  const params = new URLSearchParams({
+    select: 'image_id',
+    user_id: `eq.${userId}`,
+    points_spent: 'gt.0',
+  });
   if (companionId) params.set('companion_id', `eq.${companionId}`);
   const rows = await supabaseRest<{ image_id: string }[]>('image_unlocks', token, { searchParams: params });
   return rows.map((row) => row.image_id);

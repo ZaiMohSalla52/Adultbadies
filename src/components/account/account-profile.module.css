@@ -1,0 +1,255 @@
+.page {
+  width: min(100%, 520px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0 32px;
+}
+
+.mobileHeader {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 8px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(10, 12, 16, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.backButton {
+  border: none;
+  background: transparent;
+  color: #c084fc;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.headerTitle {
+  flex: 1;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f5f5f5;
+}
+
+.pointsBadge {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #e9d5ff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(192, 132, 252, 0.14);
+  border: 1px solid rgba(192, 132, 252, 0.28);
+}
+
+.premiumCard,
+.premiumCardActive {
+  border-radius: 16px;
+  padding: 18px 18px 16px;
+  border: 1px solid rgba(255, 46, 99, 0.28);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 46, 99, 0.18), transparent 42%),
+    radial-gradient(circle at 88% 100%, rgba(192, 132, 252, 0.14), transparent 40%),
+    linear-gradient(155deg, rgba(15, 23, 42, 0.95), rgba(11, 18, 38, 0.88));
+}
+
+.premiumCardActive {
+  border-color: rgba(192, 132, 252, 0.35);
+}
+
+.premiumTitle {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.premiumList {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.premiumMeta {
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.84rem;
+  text-transform: capitalize;
+}
+
+.subscribeBtn,
+.manageBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.subscribeBtn {
+  background: linear-gradient(130deg, #ff2e63, #8b5cf6);
+  color: #fff;
+}
+
+.manageBtn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f5f5f5;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.userCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+}
+
+.userCard:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.userAvatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff2e63, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.userName {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f5f5f5;
+}
+
+.userEmail {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userChevron {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 1.2rem;
+}
+
+.settingsCard,
+.linksCard {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 16px;
+}
+
+.settingsTitle {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.settingsList {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.settingsList > div {
+  display: grid;
+  gap: 4px;
+}
+
+.settingsList dt {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.settingsList dd {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #f5f5f5;
+}
+
+.settingsHint {
+  margin: 14px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.linkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  color: #f5f5f5;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.linkRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.linkRow:first-child {
+  padding-top: 0;
+}
+
+@media (max-width: 767px) {
+  .page {
+    width: 100%;
+    min-height: 100dvh;
+    padding: calc(8px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+    gap: 14px;
+  }
+
+  .mobileHeader {
+    display: flex;
+  }
+}

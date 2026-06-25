@@ -7,9 +7,11 @@ import styles from './app-top-bar.module.css';
 export const AppTopBar = () => {
   const pathname = usePathname();
   const isChat = pathname.startsWith('/virtual-girlfriend/chat');
+  const isAccount = pathname.startsWith('/account');
+  const hideOnMobile = isChat || isAccount;
 
   return (
-    <header className={`${styles.topBar}${isChat ? ` ${styles.topBarHiddenOnMobileChat}` : ''}`}>
+    <header className={`${styles.topBar}${hideOnMobile ? ` ${styles.topBarHiddenOnMobileChat}` : ''}`}>
       <Link href="/discovery" className={styles.brand} aria-label="Adult Badies home">
         <span className={styles.brandIcon} aria-hidden>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
@@ -22,7 +24,7 @@ export const AppTopBar = () => {
       </Link>
 
       <div className={styles.actions}>
-        {!isChat ? (
+        {!isChat && !isAccount ? (
           <Link href="/premium" className={styles.premiumBtn}>
             Join Premium
           </Link>

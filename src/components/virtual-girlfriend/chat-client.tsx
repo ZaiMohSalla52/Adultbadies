@@ -344,10 +344,7 @@ export const VirtualGirlfriendChatClient = ({
           ? prev
           : [{ id: attachment.imageId, url: attachment.imageUrl }, ...prev],
       );
-      if (attachment.locked !== true) {
-        setSidebarUnlocked((prev) => (prev.includes(attachment.imageId) ? prev : [attachment.imageId, ...prev]));
-        setChatUnlockedIds((prev) => new Set(prev).add(attachment.imageId));
-      }
+
     };
 
     const pollForMessageAttachment = async (messageId: string) => {
@@ -1409,9 +1406,7 @@ export const VirtualGirlfriendChatClient = ({
                                 key={attachment.imageId}
                                 attachment={attachment}
                                 companionName={companionName}
-                                initialUnlocked={
-                                  chatUnlockedIds.has(attachment.imageId) || attachment.locked === false
-                                }
+                                initialUnlocked={chatUnlockedIds.has(attachment.imageId)}
                                 balance={pointBalance}
                                 unblurCost={unblurCost}
                                 isPremium={isPremium}
@@ -1567,16 +1562,13 @@ export const VirtualGirlfriendChatClient = ({
 
       {companionSheetOpen ? (
         <div className={styles.mobileCompanionOverlay} role="dialog" aria-modal="true" aria-label={`${companionName} profile`}>
-          <button
-            type="button"
-            className={styles.mobileCompanionBackdrop}
-            aria-label="Close profile"
-            onClick={() => setCompanionSheetOpen(false)}
-          />
           <div className={styles.mobileCompanionSheet}>
-            <button type="button" className={styles.mobileCompanionBack} onClick={() => setCompanionSheetOpen(false)}>
-              ‹
-            </button>
+            <header className={styles.mobileCompanionHeader}>
+              <button type="button" className={styles.mobileCompanionBack} onClick={() => setCompanionSheetOpen(false)} aria-label="Back to chat">
+                ‹
+              </button>
+              <span className={styles.mobileCompanionTitle}>{companionName}</span>
+            </header>
             {companionPanel}
           </div>
         </div>

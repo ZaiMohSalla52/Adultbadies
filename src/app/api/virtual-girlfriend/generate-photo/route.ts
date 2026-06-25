@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
-import { getUserEntitlements } from '@/lib/subscriptions/data';
-import { grantCompanionImageAccess } from '@/lib/points/data';
+
+import { getUnlockedImageIds } from '@/lib/points/data';
+import { applyChatImageLock } from '@/lib/virtual-girlfriend/chat-image-lock';
 import {
   getActiveVirtualGirlfriend,
   getLatestVisualProfileForCompanion,
@@ -10,7 +11,6 @@ import {
   getVirtualGirlfriendCompanionImages,
 } from '@/lib/virtual-girlfriend/data';
 import { resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
-import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import type { VirtualGirlfriendImageCategory } from '@/lib/virtual-girlfriend/types';
 
@@ -51,12 +51,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Complete companion setup first.' }, { status: 400 });
   }
 
-  const entitlements = await getUserEntitlements(auth.accessToken, auth.user.id);
-  const explicitRequest = detectExplicitImageIntent(prompt);
-
-  const [companionImages, visualProfile] = await Promise.all([
+  const [companionImages, visualProfile, unlockedImageIds] = await Promise.all([
     getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
     getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id),
+    getUnlockedImageIds(auth.accessToken, auth.user.id, companion.id),
   ]);
 
   const result = await resolveVirtualGirlfriendChatImage({
@@ -79,17 +77,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let attachment = result.attachment;
-  const locked = attachment.source === 'fresh-generation' && !entitlements.isPremium && !explicitRequest;
-  if (locked) {
-    attachment = { ...attachment, locked: true };
-  } else if (attachment.source === 'fresh-generation') {
-    try {
-      await grantCompanionImageAccess(auth.accessToken, attachment.imageId, auth.user.id);
-    } catch (grantError) {
-      console.warn('[virtual-girlfriend] generate-photo grant failed', grantError);
-    }
-  }
+  const attachment = applyChatImageLock(result.attachment, unlockedImageIds);
 
   return NextResponse.json({
     ok: true,

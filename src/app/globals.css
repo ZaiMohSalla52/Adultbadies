@@ -1973,15 +1973,22 @@ img {
 }
 
 @media (max-width: 767px) {
-  .chat-page-fullscreen {
+  .chat-page-fullscreen,
+  .account-page-fullscreen {
     min-height: 100dvh;
   }
 
-  .app-shell-body:has(.chat-page-fullscreen) {
+  .app-shell-body:has(.chat-page-fullscreen),
+  .app-shell-body:has(.account-page-fullscreen) {
     margin-top: 0;
     padding: 0;
     padding-bottom: 0;
   }
+}
+
+.account-page-frame {
+  width: min(100%, 640px);
+  margin: 0 auto;
 }
 
 .chats-premium-banner {

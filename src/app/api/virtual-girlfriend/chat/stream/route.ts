@@ -19,7 +19,7 @@ import {
 } from '@/lib/virtual-girlfriend/data';
 import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
-import { getUnlockedImageIds, grantCompanionImageAccess, spendChatMessagePoint } from '@/lib/points/data';
+import { getUnlockedImageIds, spendChatMessagePoint } from '@/lib/points/data';
 import { applyChatImageLock } from '@/lib/virtual-girlfriend/chat-image-lock';
 import { POINTS } from '@/lib/points/constants';
 import { resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
@@ -360,10 +360,7 @@ export async function POST(request: NextRequest) {
             imageOutcomeReason = resolvedImage.reason;
 
             if (imageAttachment) {
-              imageAttachment = applyChatImageLock(imageAttachment, {
-                isPremium: entitlements.isPremium,
-                unlockedImageIds,
-              });
+              imageAttachment = applyChatImageLock(imageAttachment, unlockedImageIds);
             }
 
             if (imageAttachment) {
@@ -389,17 +386,6 @@ export async function POST(request: NextRequest) {
                 console.warn('[virtual-girlfriend] failed to persist late chat image attachment', patchError);
               }
 
-              if (
-                imageAttachment.imageId
-                && imageAttachment.source === 'fresh-generation'
-                && !imageAttachment.locked
-              ) {
-                try {
-                  await grantCompanionImageAccess(auth.accessToken, imageAttachment.imageId, auth.user.id);
-                } catch (grantError) {
-                  console.warn('[virtual-girlfriend] failed to auto-grant chat image gallery access', grantError);
-                }
-              }
             } else if (
               imageStarted
               && photoRequestedThisTurn

@@ -14,18 +14,18 @@ const sampleAttachment = (overrides?: Partial<VirtualGirlfriendMessageAttachment
 });
 
 describe('chat image lock', () => {
-  it('locks fresh chat photos for free users', () => {
-    const locked = applyChatImageLock(sampleAttachment(), { isPremium: false, unlockedImageIds: [] });
+  it('locks fresh chat photos until points are spent', () => {
+    const locked = applyChatImageLock(sampleAttachment(), []);
     expect(locked.locked).toBe(true);
   });
 
-  it('keeps premium chat photos unlocked', () => {
-    const locked = applyChatImageLock(sampleAttachment(), { isPremium: true, unlockedImageIds: [] });
-    expect(locked.locked).toBe(false);
+  it('locks premium chat photos until points are spent', () => {
+    const locked = applyChatImageLock(sampleAttachment(), []);
+    expect(locked.locked).toBe(true);
   });
 
   it('respects previously unlocked image ids', () => {
-    const locked = applyChatImageLock(sampleAttachment(), { isPremium: false, unlockedImageIds: ['img-1'] });
+    const locked = applyChatImageLock(sampleAttachment(), ['img-1']);
     expect(locked.locked).toBe(false);
     expect(isChatImageUnlocked(locked, ['img-1'])).toBe(true);
   });

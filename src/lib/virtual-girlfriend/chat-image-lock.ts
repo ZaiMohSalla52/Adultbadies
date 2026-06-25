@@ -1,15 +1,11 @@
 import type { VirtualGirlfriendMessageAttachment } from '@/lib/virtual-girlfriend/types';
 
-/** Free users see blurred chat photos until they spend points to unblur. */
+/** Chat photos stay blurred until the user spends points to unblur — premium included. */
 export const applyChatImageLock = (
   attachment: VirtualGirlfriendMessageAttachment,
-  options: { isPremium: boolean; unlockedImageIds: string[] },
+  unlockedImageIds: string[],
 ): VirtualGirlfriendMessageAttachment => {
-  if (options.isPremium) {
-    return { ...attachment, locked: false };
-  }
-
-  if (options.unlockedImageIds.includes(attachment.imageId)) {
+  if (unlockedImageIds.includes(attachment.imageId)) {
     return { ...attachment, locked: false };
   }
 
@@ -21,5 +17,5 @@ export const isChatImageUnlocked = (
   unlockedImageIds: Set<string> | string[],
 ) => {
   const ids = unlockedImageIds instanceof Set ? unlockedImageIds : new Set(unlockedImageIds);
-  return attachment.locked === false || ids.has(attachment.imageId);
+  return ids.has(attachment.imageId);
 };

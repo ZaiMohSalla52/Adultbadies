@@ -121,11 +121,9 @@ export const ChatImageAttachment = ({
         {error ? (
           <p className={styles.chatImageError}>
             {error}{' '}
-            {!isPremium ? (
-              <Link href="/premium" className={styles.chatImageUpgrade}>
-                Get Premium
-              </Link>
-            ) : null}
+            <Link href="/premium" className={styles.chatImageUpgrade}>
+              {isPremium ? 'Get more points' : 'Get points'}
+            </Link>
           </p>
         ) : null}
       </div>

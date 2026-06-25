@@ -117,7 +117,7 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
   };
 
   if (mobile) {
-    if (pathname.startsWith('/virtual-girlfriend/chat')) {
+    if (pathname.startsWith('/virtual-girlfriend/chat') || pathname.startsWith('/account')) {
       return null;
     }
 

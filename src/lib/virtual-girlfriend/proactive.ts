@@ -212,7 +212,7 @@ const deliverSingleProactiveEvent = async (input: {
           height: pick.height,
           source: 'gallery-reuse',
           promptHash: pick.prompt_hash ?? undefined,
-          locked: !entitlements.isPremium,
+          locked: true,
         }];
       }
     }

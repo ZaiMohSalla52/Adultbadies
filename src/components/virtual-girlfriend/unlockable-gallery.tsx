@@ -66,7 +66,7 @@ export const UnlockableGallery = ({
 
       if (response.status === 402 || data.code === 'INSUFFICIENT_POINTS') {
         setBalance(data.balance ?? balance);
-        setError('Not enough points. Premium members get a monthly points stipend.');
+        setError('Not enough points to unblur.');
         return;
       }
       if (!response.ok || !data.ok) {
@@ -133,11 +133,9 @@ export const UnlockableGallery = ({
       {error ? (
         <p className={styles.galleryError}>
           {error}{' '}
-          {!isPremium ? (
-            <Link href="/premium" className={styles.upgradeLink}>
-              Get Premium
-            </Link>
-          ) : null}
+          <Link href="/premium" className={styles.upgradeLink}>
+            {isPremium ? 'Get more points' : 'Get points'}
+          </Link>
         </p>
       ) : null}
     </div>
