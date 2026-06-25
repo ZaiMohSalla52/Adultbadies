@@ -31,6 +31,7 @@ export interface ChatPromptInput {
   category?: string;
   allowAdultContent?: boolean;
   explicitIntent?: boolean;
+  explicitExposureLevel?: 'topless' | 'full_nude' | 'underwear' | 'revealing' | 'general';
   // The user asked for a specific look/scene this turn (e.g. "in a bikini").
   // Permits revealing-but-not-explicit wardrobe so the request is honored
   // instead of the model defaulting to conservative clothing.
@@ -53,9 +54,13 @@ export const buildChatPrompt = (input: ChatPromptInput): string => {
     input.lightingMood ? `Lighting: ${input.lightingMood}.` : null,
     input.category ? `Scene type: ${input.category}.` : null,
     input.contextHint ? `${input.contextHint}.` : null,
-    allowAdultContent && input.explicitIntent
-      ? 'Adult-only fictional companion. Fully explicit, sensual, uncensored adult photography is allowed. Preserve exact same face and identity lock.'
-      : allowAdultContent && input.requestedLook
+    allowAdultContent && input.explicitIntent && input.explicitExposureLevel === 'topless'
+      ? 'Adult-only fictional companion. Topless with bare breasts and visible nipples — no bra, no top, no lingerie covering chest. Uncensored adult photography. Do not downgrade to lingerie or bikini. Preserve exact same face and identity lock.'
+      : allowAdultContent && input.explicitIntent && input.explicitExposureLevel === 'full_nude'
+        ? 'Adult-only fictional companion. Fully nude uncensored adult photography. No clothing. Preserve exact same face and identity lock.'
+        : allowAdultContent && input.explicitIntent
+          ? 'Adult-only fictional companion. Fully explicit, sensual, uncensored adult photography is allowed. Match the user request literally — do not substitute a tamer outfit. Preserve exact same face and identity lock.'
+          : allowAdultContent && input.requestedLook
         ? 'Adult-only fictional companion. Render the exact outfit, pose, and setting the user requested — including swimwear, bikinis, lingerie, or other revealing wardrobe — even if the reference photo shows modest clothing. Do not substitute a more conservative outfit. Preserve exact same face and identity lock.'
         : null,
     getCompositionAnchor('chat'),

@@ -1,5 +1,9 @@
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import {
+  parseExplicitExposure,
+  type ExplicitExposureLevel,
+} from '@/lib/virtual-girlfriend/explicit-exposure';
+import {
   pickSurpriseWardrobeForCompanion,
   pickWardrobeForCompanion,
   type WardrobeContext,
@@ -15,6 +19,7 @@ export type PhotoGenerationSpec = {
   lighting: string;
   framing: string;
   explicit: boolean;
+  exposureLevel: ExplicitExposureLevel | null;
   requestedLook: boolean;
   imageCategory: VirtualGirlfriendImageCategory;
   matchedPresetId: string | null;
@@ -99,16 +104,18 @@ const inferCategory = (message: string, explicit: boolean, presetId: string | nu
   return 'selfie';
 };
 
-const buildExplicitDirective = (message: string, context: WardrobeContext) => {
-  const wardrobe = pickWardrobeForCompanion(context);
+const buildExplicitDirective = (message: string) => {
+  const exposure = parseExplicitExposure(message);
   return [
-    `Explicit adult photo exactly matching the user request: "${message.trim()}".`,
-    `Wardrobe: ${wardrobe}.`,
+    exposure.kontextEditInstruction,
+    `User request: "${message.trim()}".`,
+    exposure.wardrobeInstruction,
+    `Framing: ${exposure.framing}.`,
     `Pose: ${choose(POSES)}.`,
     `Setting: ${choose(LOCATIONS)}.`,
     `Lighting: ${choose(LIGHTING)}.`,
-    'Deliver the exact body, framing, and reveal level requested.',
-    'Same face and identity — brand new shot, not a recycled profile portrait.',
+    'Do not substitute lingerie, bikini, or modest clothing when the user asked for nudity or topless.',
+    'Same face and identity — brand new explicit shot, not a recycled profile portrait.',
   ].join(' ');
 };
 
@@ -155,8 +162,10 @@ export const resolvePhotoGenerationSpec = (
       ? pickSurpriseWardrobeForCompanion(context)
       : pickWardrobeForCompanion(context);
 
+  const exposureLevel = explicit ? parseExplicitExposure(trimmed).level : null;
+
   const sceneDirective = explicit
-    ? buildExplicitDirective(trimmed, context)
+    ? buildExplicitDirective(trimmed)
     : preset
       ? buildPresetDirective(preset.sceneHint, wardrobeLine)
       : buildFreeformDirective(trimmed, context);
@@ -169,6 +178,7 @@ export const resolvePhotoGenerationSpec = (
     lighting: choose(LIGHTING),
     framing: choose(FRAMING),
     explicit,
+    exposureLevel,
     requestedLook: true,
     imageCategory: inferCategory(trimmed, explicit, preset?.id ?? null),
     matchedPresetId: preset?.id ?? null,

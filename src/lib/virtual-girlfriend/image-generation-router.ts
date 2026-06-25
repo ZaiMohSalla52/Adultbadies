@@ -23,6 +23,7 @@ export const resolveChatGenerationRoute = (input: {
   explicit: boolean;
   requestedLook: boolean;
   adultContentEnabled: boolean;
+  highExposure?: boolean;
 }): ChatGenerationRoute => {
   const adultChat = input.adultContentEnabled && input.explicit;
 
@@ -30,8 +31,8 @@ export const resolveChatGenerationRoute = (input: {
     return {
       provider: 'flux_kontext',
       modelKind: 'kontext_dev',
-      guidanceScale: input.requestedLook ? 6.5 : 5,
-      numInferenceSteps: 32,
+      guidanceScale: input.highExposure ? 7.5 : input.requestedLook ? 6.5 : 5,
+      numInferenceSteps: input.highExposure ? 36 : 32,
       enableSafetyChecker: false,
     };
   }

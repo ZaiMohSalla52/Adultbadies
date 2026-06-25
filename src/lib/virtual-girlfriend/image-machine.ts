@@ -32,6 +32,7 @@ import {
 } from '@/lib/virtual-girlfriend/chat-image-bootstrap';
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
+import { isHighExposureExplicit } from '@/lib/virtual-girlfriend/explicit-exposure';
 import { resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
@@ -403,7 +404,9 @@ const toChatPromptInput = (
     ?? (explicitIntent ? userMessage?.trim() : undefined);
 
   const contextHint = sceneDirective
-    ? `Restyle this exact person for a brand new shot: ${sceneDirective}. Change wardrobe, pose, and setting to match that request even if the reference photo shows different clothing or location. Keep the same face and identity lock.`
+    ? explicitIntent
+      ? `${sceneDirective} Ignore all clothing in the reference image.`
+      : `Restyle this exact person for a brand new shot: ${sceneDirective}. Change wardrobe, pose, and setting to match that request even if the reference photo shows different clothing or location. Keep the same face and identity lock.`
     : `${buildRandomScene(wardrobeContext)}. Same person, same face, preserve identity lock.`;
 
   return {
@@ -413,6 +416,7 @@ const toChatPromptInput = (
     category: photoSpec?.imageCategory ?? (chatCategory || undefined),
     contextHint,
     explicitIntent,
+    explicitExposureLevel: photoSpec?.exposureLevel ?? undefined,
     requestedLook: Boolean(sceneDirective),
   };
 };
@@ -1095,6 +1099,9 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       explicit: chatPromptInput.explicitIntent ?? false,
       requestedLook: chatPromptInput.requestedLook ?? false,
       adultContentEnabled: isVirtualGirlfriendAdultContentEnabled(),
+      highExposure: chatPromptInput.explicitExposureLevel
+        ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
+        : false,
     });
     logImageMachine(scope, 'generation_route', {
       provider: route.provider,

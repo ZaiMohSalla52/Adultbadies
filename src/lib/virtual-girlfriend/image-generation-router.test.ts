@@ -22,4 +22,15 @@ describe('resolveChatGenerationRoute', () => {
     expect(route.enableSafetyChecker).toBe(false);
     expect(route.guidanceScale).toBeGreaterThan(5);
   });
+
+  it('raises guidance further for high-exposure explicit requests', () => {
+    const route = resolveChatGenerationRoute({
+      explicit: true,
+      requestedLook: true,
+      adultContentEnabled: true,
+      highExposure: true,
+    });
+    expect(route.guidanceScale).toBe(7.5);
+    expect(route.numInferenceSteps).toBe(36);
+  });
 });
