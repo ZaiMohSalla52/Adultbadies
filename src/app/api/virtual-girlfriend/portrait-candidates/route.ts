@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
     personality?: string;
     breastSize?: string;
     occupation?: string;
+    sexuality?: string;
     freeformDetails?: string;
   };
 
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
       personality: body.personality,
       breastSize: body.breastSize,
       occupation: body.occupation,
+      sexuality: body.sexuality,
       freeformDetails: body.freeformDetails,
     });
 

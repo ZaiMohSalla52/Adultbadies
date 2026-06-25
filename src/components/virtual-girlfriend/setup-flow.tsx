@@ -81,10 +81,10 @@ const STEPS: BuilderStep[] = [
   'bodyType',
   'age',
   'breastSize',
-  'portrait',
   'styleVibe',
   'personality',
   'occupation',
+  'portrait',
   'sexuality',
   'freeformDetails',
 ];
@@ -392,6 +392,31 @@ const deriveSkinTone = (origin: string): string => {
   return map[origin] || 'medium';
 };
 
+const buildDerivedFromState = (current: CreatorState) => {
+  const tone = deriveTone(current.personality);
+  const affectionStyle = deriveAffectionStyle(current.personality);
+  const archetype = deriveArchetype(current.personality, tone);
+  const visualAesthetic = deriveVisualAesthetic(current.styleVibe, current.personality);
+  const skinTone = deriveSkinTone(current.origin);
+  return { tone, affectionStyle, archetype, visualAesthetic, skinTone };
+};
+
+const portraitTraitsKeyFromState = (current: CreatorState) =>
+  [
+    current.sex,
+    current.origin,
+    current.hairColor,
+    current.hairLength,
+    current.eyeColor,
+    current.bodyType,
+    current.breastSize,
+    current.age,
+    current.styleVibe,
+    current.personality,
+    current.occupation,
+    current.freeformDetails,
+  ].join('|');
+
 const makeRandomName = () => {
   const first = ['Luna', 'Ava', 'Mia', 'Sofia', 'Nora', 'Kai', 'Noah', 'Liam', 'Ethan', 'Leo'];
   const last = ['Rose', 'Blake', 'River', 'Skye', 'Stone', 'Vale', 'Fox', 'Quinn'];
@@ -408,6 +433,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const [generationStarted, setGenerationStarted] = useState(false);
   const [portraitsLoading, setPortraitsLoading] = useState(false);
   const [portraitCandidates, setPortraitCandidates] = useState<PortraitCandidate[]>([]);
+  const [portraitsForTraitsKey, setPortraitsForTraitsKey] = useState<string | null>(null);
   const [recoverableCompanionId, setRecoverableCompanionId] = useState<string | null>(null);
   const [activeDotIndex, setActiveDotIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement | null>(null);
@@ -415,6 +441,18 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const step = STEPS[stepIndex];
   const progress = useMemo(() => ((stepIndex + 1) / STEPS.length) * 100, [stepIndex]);
   const labels = useMemo(() => getCompanionLabels(state.sex), [state.sex]);
+  const portraitTraitsKey = useMemo(() => portraitTraitsKeyFromState(state), [state]);
+
+  useEffect(() => {
+    if (!portraitsForTraitsKey || portraitsForTraitsKey === portraitTraitsKey) return;
+    setPortraitCandidates([]);
+    setPortraitsForTraitsKey(null);
+    setState((current) => ({
+      ...current,
+      selectedPortraitImage: '',
+      selectedPortraitPrompt: '',
+    }));
+  }, [portraitTraitsKey, portraitsForTraitsKey]);
 
   useEffect(() => {
     if (step !== 'portrait' || !carouselRef.current) return;
@@ -462,13 +500,59 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const maybeGeneratePortraits = async (force = false) => {
-    if (!force && portraitCandidates.length > 0) return;
+    if (!force && portraitCandidates.length > 0 && portraitsForTraitsKey === portraitTraitsKey) return;
+
+    if (!state.name.trim()) {
+      setError('Enter a name before generating portraits.');
+      return;
+    }
+
+    const derived = buildDerivedFromState(state);
     setPortraitsLoading(true);
     setError(null);
     setConflictHelp(null);
     setRecoverableCompanionId(null);
 
     try {
+      const distinctnessResponse = await fetch('/api/virtual-girlfriend/distinctness-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          createNew,
+          name: state.name.trim(),
+          sex: state.sex,
+          age: state.age,
+          origin: state.origin,
+          hairColor: state.hairColor,
+          hairLength: state.hairLength,
+          eyeColor: state.eyeColor,
+          skinTone: derived.skinTone,
+          bodyType: state.bodyType,
+          styleVibe: state.styleVibe,
+          occupation: state.occupation,
+          personality: state.personality,
+          breastSize: state.breastSize,
+          sexuality: state.sexuality,
+          affectionStyle: derived.affectionStyle,
+          tone: derived.tone,
+          archetype: derived.archetype,
+          visualAesthetic: derived.visualAesthetic,
+          freeformDetails: state.freeformDetails,
+        }),
+      });
+
+      const distinctnessBody = await readJsonResponse<{
+        ok?: boolean;
+        message?: string;
+        conflict?: SetupConflict;
+      }>(distinctnessResponse);
+
+      if (!distinctnessResponse.ok || !distinctnessBody.ok) {
+        setError(distinctnessBody.message ?? 'This profile is too similar to an existing companion.');
+        setConflictHelp(distinctnessBody.conflict ?? null);
+        return;
+      }
+
       const response = await fetch('/api/virtual-girlfriend/portrait-candidates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -478,12 +562,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           hairColor: state.hairColor,
           hairLength: state.hairLength,
           eyeColor: state.eyeColor,
-          skinTone: deriveSkinTone(state.origin),
+          skinTone: derived.skinTone,
           bodyType: state.bodyType,
           breastSize: state.breastSize,
           age: state.age,
           styleVibe: state.styleVibe,
           personality: state.personality,
+          occupation: state.occupation,
           freeformDetails: state.freeformDetails,
         }),
       });
@@ -491,6 +576,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
       const body = await readJsonResponse<{ candidates?: PortraitCandidate[]; error?: string }>(response);
       if (!response.ok || !body.candidates?.length) throw new Error(body.error ?? 'Unable to generate portraits now.');
       setPortraitCandidates(body.candidates);
+      setPortraitsForTraitsKey(portraitTraitsKey);
       if (force) {
         setField('selectedPortraitImage', '');
         setField('selectedPortraitPrompt', '');
@@ -574,11 +660,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
       return;
     }
 
-    const tone = deriveTone(state.personality);
-    const affectionStyle = deriveAffectionStyle(state.personality);
-    const archetype = deriveArchetype(state.personality, tone);
-    const visualAesthetic = deriveVisualAesthetic(state.styleVibe, state.personality);
-    const skinTone = deriveSkinTone(state.origin);
+    const { tone, affectionStyle, archetype, visualAesthetic, skinTone } = buildDerivedFromState(state);
 
     setGenerationStarted(true);
     setError(null);
@@ -667,6 +749,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
   const regeneratePortraits = () => {
     setPortraitCandidates([]);
+    setPortraitsForTraitsKey(null);
     setField('selectedPortraitImage', '');
     setField('selectedPortraitPrompt', '');
     void maybeGeneratePortraits(true);
@@ -886,12 +969,27 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                       {state.eyeColor ? <span className={styles.traitChip}>{state.eyeColor} eyes</span> : null}
                       {state.bodyType ? <span className={styles.traitChip}>{state.bodyType}</span> : null}
                       {state.age ? <span className={styles.traitChip}>Age {state.age}</span> : null}
+                      {state.styleVibe ? (
+                        <span className={styles.traitChip}>
+                          {STYLE_VIBE_OPTIONS.find((o) => o.value === state.styleVibe)?.label ?? state.styleVibe}
+                        </span>
+                      ) : null}
+                      {state.personality ? (
+                        <span className={styles.traitChip}>
+                          {personalityOptions.find((o) => o.value === state.personality)?.label ?? state.personality}
+                        </span>
+                      ) : null}
+                      {state.occupation ? (
+                        <span className={styles.traitChip}>
+                          {occupationOptions.find((o) => o.value === state.occupation)?.label ?? state.occupation}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 ) : (
                   <>
                     <h2 className={styles.stepTitle}>{nameOr(`Pick {name}'s portrait`, labels.pickPortrait)}</h2>
-                    <p className={styles.loadingSubtext}>Pick the face you want to keep — style and personality come next.</p>
+                    <p className={styles.loadingSubtext}>Pick the face that matches their style and personality.</p>
                     <button type="button" className={styles.skipButton} onClick={regeneratePortraits} disabled={portraitsLoading}>
                       Regenerate looks
                     </button>

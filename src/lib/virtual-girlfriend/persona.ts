@@ -4,11 +4,61 @@ import type { PersonaProfile, VirtualGirlfriendSetupPayload, VirtualGirlfriendSt
 
 const hasSemanticValue = (value: string | null | undefined) => Boolean(value && value.trim());
 
+const PERSONALITY_LABELS: Record<string, string> = {
+  warm_romantic: 'Warm & romantic',
+  playful_tease: 'Playful & teasing',
+  sultry_seductive: 'Sultry & seductive',
+  dominant_tease: 'Dominant & teasing',
+  submissive_eager: 'Submissive & eager',
+  wild_uninhibited: 'Wild & uninhibited',
+  confident_bold: 'Confident & bold',
+  intellectual: 'Intellectual',
+  sweet_caring: 'Sweet & caring',
+  sarcastic_witty: 'Sarcastic & witty',
+  mysterious: 'Mysterious',
+  bubbly_energetic: 'Bubbly & energetic',
+};
+
+export const formatPersonalityLabel = (personality?: string | null): string | undefined => {
+  const key = (personality ?? '').trim().toLowerCase();
+  if (!key) return undefined;
+  return PERSONALITY_LABELS[key] ?? key.replace(/_/g, ' ');
+};
+
+export const sexualityBehaviorGuide = (sexuality?: string | null): string => {
+  const key = (sexuality ?? '').trim().toLowerCase();
+  const guides: Record<string, string> = {
+    straight:
+      'Primarily attracted to the opposite gender. Flirt and intimacy assume heterosexual chemistry with the user unless they steer otherwise.',
+    gay: 'Attracted to the same gender. Flirt, desire, and intimacy framing assume gay chemistry — never default to opposite-gender assumptions.',
+    bisexual:
+      'Attracted to multiple genders. Keep flirt open and fluid; do not assume the user is a specific gender. Playful inclusivity in desire.',
+    pansexual:
+      'Attraction regardless of gender. Inclusive, fluid flirt energy — chemistry first, gender labels second.',
+  };
+  return guides[key] ?? 'Follow the user’s lead on attraction and intimacy framing without assuming their gender.';
+};
+
 export const resolvePersonaSemanticInput = (input: {
   structuredProfile?: VirtualGirlfriendStructuredProfile | null;
   fallback: VirtualGirlfriendSetupPayload;
 }): VirtualGirlfriendSetupPayload => {
   const { structuredProfile, fallback } = input;
+
+  const mergeProfileFields = (base: VirtualGirlfriendSetupPayload): VirtualGirlfriendSetupPayload => ({
+    ...base,
+    personality: structuredProfile?.personality?.trim() || fallback.personality,
+    occupation: structuredProfile?.occupation?.trim() || fallback.occupation,
+    sexuality: structuredProfile?.sexuality?.trim() || fallback.sexuality,
+    freeformDetails: structuredProfile?.freeformDetails?.trim() || fallback.freeformDetails,
+    preferenceHints:
+      structuredProfile?.preferenceHints?.trim()
+      || structuredProfile?.freeformDetails?.trim()
+      || fallback.preferenceHints
+      || fallback.freeformDetails,
+    styleVibe: structuredProfile?.styleVibe?.trim() || fallback.styleVibe,
+    sex: structuredProfile?.sex?.trim() || fallback.sex,
+  });
 
   if (
     structuredProfile
@@ -18,7 +68,7 @@ export const resolvePersonaSemanticInput = (input: {
     && hasSemanticValue(structuredProfile.affectionStyle)
     && hasSemanticValue(structuredProfile.visualAesthetic)
   ) {
-    return {
+    return mergeProfileFields({
       name: structuredProfile.name.trim(),
       sex: structuredProfile.sex ?? fallback.sex,
       archetype: structuredProfile.archetype.trim(),
@@ -27,10 +77,10 @@ export const resolvePersonaSemanticInput = (input: {
       visualAesthetic: structuredProfile.visualAesthetic.trim(),
       preferenceHints: structuredProfile.preferenceHints?.trim() || undefined,
       createNew: fallback.createNew,
-    };
+    });
   }
 
-  return {
+  return mergeProfileFields({
     ...fallback,
     name: fallback.name.trim(),
     archetype: fallback.archetype.trim(),
@@ -38,7 +88,7 @@ export const resolvePersonaSemanticInput = (input: {
     affectionStyle: fallback.affectionStyle.trim(),
     visualAesthetic: fallback.visualAesthetic.trim(),
     preferenceHints: fallback.preferenceHints?.trim() || undefined,
-  };
+  });
 };
 
 type PreferenceStyleGuide = {
@@ -53,9 +103,9 @@ type PreferenceStyleGuide = {
 };
 
 const preferenceStyleGuide = (input: VirtualGirlfriendSetupPayload): PreferenceStyleGuide => {
-  const normalized = `${input.archetype} ${input.tone} ${input.visualAesthetic} ${input.affectionStyle}`.toLowerCase();
+  const normalized = `${input.archetype} ${input.tone} ${input.visualAesthetic} ${input.affectionStyle} ${input.personality ?? ''}`.toLowerCase();
 
-  if (/bombshell|glam|nightlife|bold|spicy/.test(normalized)) {
+  if (/bombshell|glam|nightlife|bold|spicy|dominant|wild_uninhibited|sultry/.test(normalized)) {
     return {
       visualAnchors: ['nightlife glow', 'confident expression', 'sleek styling', 'playful date-night chemistry'],
       topicHints: ['date-night banter', 'style and plans', 'high-energy flirting'],
@@ -68,7 +118,7 @@ const preferenceStyleGuide = (input: VirtualGirlfriendSetupPayload): PreferenceS
     };
   }
 
-  if (/intellectual|bookish|cozy|calm|romantic muse|soft/.test(normalized)) {
+  if (/intellectual|bookish|cozy|calm|romantic muse|soft|sweet_caring/.test(normalized)) {
     return {
       visualAnchors: ['warm indoor texture', 'book or coffee context', 'gentle smile', 'understated romantic styling'],
       topicHints: ['books and ideas', 'slow-burn romance', 'daily emotional check-ins'],
@@ -81,7 +131,7 @@ const preferenceStyleGuide = (input: VirtualGirlfriendSetupPayload): PreferenceS
     };
   }
 
-  if (/playful|sporty|casual/.test(normalized)) {
+  if (/playful|sporty|casual|bubbly/.test(normalized)) {
     return {
       visualAnchors: ['daylight candid energy', 'fresh casual outfit', 'movement-friendly pose', 'bright outdoor vibe'],
       topicHints: ['active day plans', 'playful teasing', 'lifestyle and momentum'],
@@ -109,11 +159,18 @@ const preferenceStyleGuide = (input: VirtualGirlfriendSetupPayload): PreferenceS
 const fallbackPersona = (input: VirtualGirlfriendSetupPayload): PersonaProfile => {
   const displayName = input.name.trim();
   const guide = preferenceStyleGuide(input);
+  const personalityLabel = formatPersonalityLabel(input.personality);
 
   return {
     displayName,
     shortBio: `${displayName} is ${input.tone.toLowerCase()}, ${input.affectionStyle.toLowerCase()}, and tuned to your vibe with real chemistry.`,
-    hiddenPersonalityTraits: ['emotionally attentive', 'situational charm', 'tasteful flirt confidence', 'natural conversational rhythm'],
+    hiddenPersonalityTraits: [
+      'emotionally attentive',
+      'situational charm',
+      'tasteful flirt confidence',
+      'natural conversational rhythm',
+      ...(personalityLabel ? [personalityLabel.toLowerCase()] : []),
+    ].slice(0, 6),
     textingStyle: `${input.tone}. Cadence: ${guide.textingCadence}.`,
     flirtStyle: `${input.affectionStyle}; texture: ${guide.flirtTexture}.`,
     comfortStyle: guide.comfortTexture,
@@ -126,12 +183,14 @@ const fallbackPersona = (input: VirtualGirlfriendSetupPayload): PersonaProfile =
       colorPalette: guide.palette,
       cameraMood: guide.cameraMood,
     },
-    vibeTags: [input.archetype, input.tone, input.affectionStyle, input.visualAesthetic],
+    vibeTags: [input.archetype, input.tone, input.affectionStyle, input.visualAesthetic, ...(personalityLabel ? [personalityLabel] : [])].slice(0, 7),
   };
 };
 
 export const generateVirtualGirlfriendPersona = async (input: VirtualGirlfriendSetupPayload): Promise<PersonaProfile> => {
   const guide = preferenceStyleGuide(input);
+  const personalityLabel = formatPersonalityLabel(input.personality);
+  const sexualityGuide = sexualityBehaviorGuide(input.sexuality);
 
   const sexLabel = (input.sex ?? 'female').toLowerCase() === 'male' ? 'AI boyfriend' : 'AI girlfriend';
 
@@ -143,7 +202,12 @@ Use these setup directives:
 - Tone: ${input.tone}
 - Affection/flirt direction: ${input.affectionStyle}
 - Visual aesthetic: ${input.visualAesthetic}
+- Personality preset (primary voice — must distinguish from other presets): ${personalityLabel ?? input.personality ?? 'unspecified'}
+- Occupation / life context: ${input.occupation?.trim() || 'unspecified'}
+- Sexual orientation: ${input.sexuality?.trim() || 'unspecified'}
+- Sexuality behavior guide: ${sexualityGuide}
 - Preference hints: ${input.preferenceHints?.trim() || 'none'}
+- User special details: ${input.freeformDetails?.trim() || 'none'}
 
 Preference style targets:
 - Visual anchors to reflect: ${guide.visualAnchors.join(', ')}
@@ -173,6 +237,10 @@ Output JSON with exact keys:
 }
 
 Requirements:
+- The personality preset is the primary differentiator — dominant_tease must feel commanding, wild_uninhibited must feel reckless and bold, intellectual must feel cerebral, etc. Never collapse distinct presets into the same voice.
+- Occupation should shape topic tendencies and lifestyle texture (e.g. nurse vs lawyer vs artist).
+- Sexual orientation must shape flirt assumptions per the behavior guide.
+- User special details must appear in hidden traits or topic tendencies when relevant.
 - Strongly separate styles by archetype/tone/aesthetic; avoid one-size-fits-all cozy portrait language.
 - Do not claim to be human.
 - Keep shortBio under 180 characters.

@@ -16,6 +16,13 @@ describe('resolvePhotoGenerationSpec', () => {
     expect(spec.sceneDirective.toLowerCase()).toContain('explicit');
   });
 
+  it('treats ass requests as explicit with butt exposure level', () => {
+    const spec = resolvePhotoGenerationSpec('show me your ass', { sex: 'female' });
+    expect(spec.explicit).toBe(true);
+    expect(spec.exposureLevel).toBe('butt_focus');
+    expect(spec.sceneDirective.toLowerCase()).toContain('buttocks');
+  });
+
   it('uses style-aware wardrobe for surprise requests', () => {
     const spec = resolvePhotoGenerationSpec('Surprise me with a new look — send me a photo', {
       sex: 'female',

@@ -124,13 +124,38 @@ const buildExplicitDirective = (message: string) => {
 /** Compact prompt for ModelsLab Face Gen — matches playground style, not Kontext essay prompts. */
 export const buildFaceGenExplicitPrompt = (message: string) => {
   const exposure = parseExplicitExposure(message);
+  const forcedPose = resolveExplicitPoseFromMessage(message);
   const parts = [
     exposure.kontextEditInstruction,
     exposure.wardrobeInstruction,
     `Framing: ${exposure.framing}.`,
+    forcedPose ? `Pose: ${forcedPose}.` : null,
+    `User request: "${message.trim()}".`,
     'Photorealistic adult photography, uncensored, same woman as reference face.',
   ];
-  return parts.join(' ');
+  return parts.filter(Boolean).join(' ');
+};
+
+/** Face Gen prompt for any in-chat photo (explicit or outfit/scene). */
+export const buildFaceGenChatPrompt = (message: string, context: WardrobeContext = {}) => {
+  const spec = resolvePhotoGenerationSpec(message, context);
+  if (spec.explicit) {
+    return buildFaceGenExplicitPrompt(message);
+  }
+
+  const trimmed = message.trim();
+  return [
+    `Photorealistic adult photo of the same woman as the reference face.`,
+    `User request: "${trimmed}".`,
+    spec.wardrobe ? `Wardrobe: ${spec.wardrobe}.` : null,
+    `Scene: ${spec.location}.`,
+    `Pose: ${spec.pose}.`,
+    `Lighting: ${spec.lighting}.`,
+    `Framing: ${spec.framing}.`,
+    'Change outfit, pose, and setting to match the request. Same face identity lock.',
+  ]
+    .filter(Boolean)
+    .join(' ');
 };
 
 const buildPresetDirective = (sceneHint: string, wardrobe: string) =>

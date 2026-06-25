@@ -30,6 +30,8 @@ describe('detectExplicitImageIntent', () => {
     expect(detectExplicitImageIntent('show me topless')).toBe(true);
     expect(detectExplicitImageIntent('send me photo of your tits')).toBe(true);
     expect(detectExplicitImageIntent('i want to see your tits')).toBe(true);
+    expect(detectExplicitImageIntent('show me your ass')).toBe(true);
+    expect(detectExplicitImageIntent('bend over for me')).toBe(true);
     if (previous === undefined) delete process.env.VG_ALLOW_ADULT_CONTENT;
     else process.env.VG_ALLOW_ADULT_CONTENT = previous;
   });

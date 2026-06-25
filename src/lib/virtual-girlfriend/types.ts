@@ -97,6 +97,8 @@ export type VirtualGirlfriendResolvedProfile = {
   preferenceHints: string | null;
   personality: string | null;
   freeformDetails: string | null;
+  occupation: string | null;
+  sexuality: string | null;
   likes: string[] | null;
   habits: string[] | null;
 };

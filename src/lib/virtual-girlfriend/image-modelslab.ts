@@ -8,7 +8,8 @@ import {
   type ModelsLabApiResponse,
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';
-import { buildFaceGenExplicitPrompt } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import { buildFaceGenChatPrompt } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import type { WardrobeContext } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import {
   applyModelsLabPortraitPrompt,
@@ -34,7 +35,7 @@ const MODELSLAB_KONTEXT_PRO_MODEL = env.MODELSLAB_KONTEXT_PRO_MODEL ?? 'flux-kon
 const MODELSLAB_KONTEXT_DEV_MODEL = env.MODELSLAB_KONTEXT_DEV_MODEL ?? 'flux-kontext-dev';
 const MODELSLAB_FACE_GEN_MODEL = env.MODELSLAB_FACE_GEN_MODEL ?? 'ai-avatar-generatorface-gen';
 const FACE_GEN_NEGATIVE_PROMPT =
-  'drawing, cartoon, anime, big nose, long nose, fat, ugly, bad anatomy, worst quality, low quality, blurry, censored, black bar, mosaic, watermark, text, logo, bra, shirt covering chest when topless requested';
+  'drawing, cartoon, anime, big nose, long nose, fat, ugly, bad anatomy, worst quality, low quality, blurry, censored, black bar, mosaic, watermark, text, logo, bra, shirt covering chest when topless requested, jeans covering ass when bare ass requested, panties covering when explicit rear requested';
 const MODELSLAB_NEGATIVE_PROMPT = buildModelsLabNegativePrompt();
 
 const PREVIEW_POLL = { maxAttempts: 28, intervalMs: 1_000 } as const;
@@ -338,13 +339,14 @@ const resolveFaceImageUrl = async (reference: { bytes: Buffer; mimeType: string 
   throw new Error('Face Gen requires a hosted face URL or reference image bytes.');
 };
 
-export const generateExplicitChatImageWithModelsLabFaceGen = async (input: {
+export const generateChatImageWithModelsLabFaceGen = async (input: {
   userMessage: string;
   reference: { bytes: Buffer; mimeType: string } | { url: string };
+  wardrobeContext?: WardrobeContext;
   numInferenceSteps?: number;
 }): Promise<GeneratedImage> => {
   const faceImage = await resolveFaceImageUrl(input.reference);
-  const prompt = buildFaceGenExplicitPrompt(input.userMessage);
+  const prompt = buildFaceGenChatPrompt(input.userMessage, input.wardrobeContext);
   const payload = await callModelsLabFaceGen(
     {
       model_id: MODELSLAB_FACE_GEN_MODEL,
@@ -360,6 +362,9 @@ export const generateExplicitChatImageWithModelsLabFaceGen = async (input: {
 
   return extractGeneratedImage(payload, MODELSLAB_FACE_GEN_MODEL, '/v6/image_editing/face_gen');
 };
+
+/** @deprecated Use generateChatImageWithModelsLabFaceGen */
+export const generateExplicitChatImageWithModelsLabFaceGen = generateChatImageWithModelsLabFaceGen;
 
 export const generateChatImageFromReferenceWithModelsLab = async (input: {
   prompt: string;

@@ -22,6 +22,19 @@ describe('parseExplicitExposure', () => {
     expect(spec.framing.toLowerCase()).toContain('selfie');
   });
 
+  it('detects ass requests as butt_focus exposure', () => {
+    const spec = parseExplicitExposure('show me your ass');
+    expect(spec.level).toBe('butt_focus');
+    expect(spec.wardrobeInstruction.toLowerCase()).toContain('bare ass');
+    expect(spec.kontextEditInstruction.toLowerCase()).toContain('buttocks');
+  });
+
+  it('detects bent over ass pose', () => {
+    const spec = parseExplicitExposure('bend over and show me your ass');
+    expect(spec.level).toBe('butt_focus');
+    expect(spec.kontextEditInstruction.toLowerCase()).toContain('bent');
+  });
+
   it('does not inject lingerie wardrobe into explicit photo spec', () => {
     const photoSpec = resolvePhotoGenerationSpec('i want to see your tits with no bra on', {
       sex: 'female',

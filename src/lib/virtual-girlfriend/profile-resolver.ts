@@ -3,6 +3,7 @@ import type {
   VirtualGirlfriendResolvedProfile,
   VirtualGirlfriendStructuredProfile,
 } from '@/lib/virtual-girlfriend/types';
+import { formatPersonalityLabel } from '@/lib/virtual-girlfriend/persona';
 
 const toNonEmptyString = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
@@ -38,6 +39,23 @@ const normalizeStructuredProfile = (value: unknown): VirtualGirlfriendStructured
     affectionStyle,
     visualAesthetic,
     preferenceHints: toNonEmptyString(raw.preferenceHints),
+    sex: toNonEmptyString(raw.sex),
+    age: typeof raw.age === 'number' || typeof raw.age === 'string' ? raw.age : null,
+    origin: toNonEmptyString(raw.origin),
+    hairColor: toNonEmptyString(raw.hairColor),
+    hairLength: toNonEmptyString(raw.hairLength),
+    eyeColor: toNonEmptyString(raw.eyeColor),
+    skinTone: toNonEmptyString(raw.skinTone),
+    styleVibe: toNonEmptyString(raw.styleVibe),
+    figure: toNonEmptyString(raw.figure),
+    bodyType: toNonEmptyString(raw.bodyType),
+    breastSize: toNonEmptyString(raw.breastSize),
+    occupation: toNonEmptyString(raw.occupation),
+    personality: toNonEmptyString(raw.personality),
+    sexuality: toNonEmptyString(raw.sexuality),
+    freeformDetails: toNonEmptyString(raw.freeformDetails),
+    selectedPortraitPrompt: toNonEmptyString(raw.selectedPortraitPrompt),
+    selectedPortraitImage: toNonEmptyString(raw.selectedPortraitImage),
   };
 };
 
@@ -86,6 +104,8 @@ const deriveLegacyProfile = (companion: VirtualGirlfriendCompanionRecord): Virtu
     preferenceHints: toNonEmptyString(companion.preference_hints),
     personality: toNonEmptyString(personality.join(', ')),
     freeformDetails: toNonEmptyString(freeformDetails),
+    occupation: null,
+    sexuality: null,
     likes: likes.length ? likes : null,
     habits: habits.length ? habits : null,
   };
@@ -96,6 +116,15 @@ export const resolveVirtualGirlfriendProfile = (
 ): VirtualGirlfriendResolvedProfile => {
   const structuredProfile = normalizeStructuredProfile(companion.structured_profile);
   if (structuredProfile) {
+    const personalityLabel = formatPersonalityLabel(structuredProfile.personality);
+    const freeformDetails = [
+      structuredProfile.freeformDetails,
+      structuredProfile.preferenceHints,
+      toNonEmptyString(companion.display_bio),
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(' ');
+
     return {
       source: 'structured_profile',
       name: structuredProfile.name,
@@ -104,8 +133,10 @@ export const resolveVirtualGirlfriendProfile = (
       affectionStyle: structuredProfile.affectionStyle,
       visualAesthetic: structuredProfile.visualAesthetic,
       preferenceHints: structuredProfile.preferenceHints,
-      personality: null,
-      freeformDetails: toNonEmptyString(companion.display_bio) ?? toNonEmptyString(companion.persona_profile.shortBio),
+      personality: personalityLabel ?? structuredProfile.personality ?? null,
+      freeformDetails: toNonEmptyString(freeformDetails),
+      occupation: structuredProfile.occupation ?? null,
+      sexuality: structuredProfile.sexuality ?? null,
       likes: toStringArray(companion.profile_tags),
       habits: null,
     };

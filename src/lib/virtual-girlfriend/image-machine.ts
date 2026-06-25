@@ -5,7 +5,7 @@ import {
   generatePortraitPreviewImage,
   generateGalleryImageFromReference,
   generateChatImageFromReference,
-  generateExplicitChatImageFromReference,
+  generateChatImageFromReferenceFaceGen,
   type GeneratedImage,
   type PortraitReferenceImage,
 } from '@/lib/virtual-girlfriend/image-provider';
@@ -1153,9 +1153,10 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     const generated =
       route.provider === 'face_gen' && input.userMessage?.trim()
         ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
-            generateExplicitChatImageFromReference({
+            generateChatImageFromReferenceFaceGen({
               userMessage: input.userMessage!.trim(),
               reference: faceReference,
+              wardrobeContext: wardrobeContextFromCompanion(input.companion),
               numInferenceSteps: route.numInferenceSteps,
             }),
           )

@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
 
 describe('resolveChatGenerationRoute', () => {
-  it('raises guidance for requested-look wardrobe changes', () => {
+  it('routes adult requested-look chat to Face Gen when ModelsLab preferred', () => {
     const route = resolveChatGenerationRoute({
       explicit: false,
       requestedLook: true,
       adultContentEnabled: true,
+      preferFaceGen: true,
     });
-    expect(route.guidanceScale).toBeGreaterThan(4);
-    expect(route.provider).toBe('flux_kontext');
+    expect(route.provider).toBe('face_gen');
+    expect(route.modelKind).toBe('face_gen');
+    expect(route.enableSafetyChecker).toBe(false);
   });
 
   it('routes high-exposure explicit adult chat to Face Gen when enabled', () => {
@@ -52,7 +54,7 @@ describe('resolveChatGenerationRoute', () => {
     expect(route.enableSafetyChecker).toBe(false);
   });
 
-  it('routes softer explicit adult chat to kontext dev when Face Gen disabled', () => {
+  it('falls back to kontext dev for softer explicit when Face Gen disabled', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
@@ -76,5 +78,16 @@ describe('resolveChatGenerationRoute', () => {
     });
     expect(route.guidanceScale).toBe(7.5);
     expect(route.numInferenceSteps).toBe(36);
+  });
+
+  it('uses kontext pro with safety for non-adult passive chat', () => {
+    const route = resolveChatGenerationRoute({
+      explicit: false,
+      requestedLook: false,
+      adultContentEnabled: false,
+    });
+    expect(route.provider).toBe('flux_kontext');
+    expect(route.modelKind).toBe('kontext_pro');
+    expect(route.enableSafetyChecker).toBe(true);
   });
 });

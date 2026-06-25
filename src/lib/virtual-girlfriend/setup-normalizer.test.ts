@@ -99,4 +99,20 @@ describe('resolveSetupTraits', () => {
     const skinTone = resolveSetupTraits({ sex: 'Female', skinTone: 'Random' }).skinTone;
     expect(['fair', 'light', 'medium', 'tan', 'dark', 'deep']).toContain(skinTone);
   });
+
+  it('Random breastSize resolves to allowed value', () => {
+    const breastSize = resolveSetupTraits({ sex: 'female', breastSize: 'random' }).breastSize;
+    expect(['small', 'medium', 'large']).toContain(breastSize);
+  });
+
+  it('Random occupation resolves to allowed value', () => {
+    const occupation = resolveSetupTraits({ sex: 'female', occupation: 'random' }).occupation;
+    expect(occupation).toBeTruthy();
+    expect(occupation).not.toBe('random');
+  });
+
+  it('Random sexuality resolves to allowed value', () => {
+    const sexuality = resolveSetupTraits({ sex: 'female', sexuality: 'random' }).sexuality;
+    expect(['straight', 'gay', 'bisexual', 'pansexual']).toContain(sexuality);
+  });
 });

@@ -4,6 +4,7 @@ import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend
 import { sanitizeAssistantReply } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { moderateVirtualGirlfriendContent } from '@/lib/virtual-girlfriend/safety';
 import { resolveVirtualGirlfriendProfile } from '@/lib/virtual-girlfriend/profile-resolver';
+import { sexualityBehaviorGuide } from '@/lib/virtual-girlfriend/persona';
 import type {
   VirtualGirlfriendCompanionRecord,
   VirtualGirlfriendMemoryRecord,
@@ -106,6 +107,11 @@ export const buildVirtualGirlfriendSystemPrompt = (
     isVirtualGirlfriendAdultContentEnabled() ? ADULT_CONTENT_POLICY : '',
     `Name: ${resolvedProfile.name ?? persona.displayName}`,
     `Public bio: ${resolvedProfile.freeformDetails ?? persona.shortBio}`,
+    resolvedProfile.personality ? `Personality preset: ${resolvedProfile.personality}` : '',
+    resolvedProfile.occupation ? `Occupation / life context: ${resolvedProfile.occupation}` : '',
+    resolvedProfile.sexuality
+      ? `Sexual orientation: ${resolvedProfile.sexuality}. Behavior: ${sexualityBehaviorGuide(resolvedProfile.sexuality)}`
+      : '',
     `Texting style: ${persona.textingStyle}`,
     `Flirt style: ${persona.flirtStyle}`,
     `Comfort style: ${persona.comfortStyle}`,

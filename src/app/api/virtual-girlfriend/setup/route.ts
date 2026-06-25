@@ -74,10 +74,10 @@ const normalizeSetupInput = (
   styleVibe: normalizedTraits.styleVibe ?? toOptionalString(body.styleVibe),
   figure: normalizedTraits.bodyType,
   bodyType: normalizedTraits.bodyType,
-  breastSize: toOptionalString(body.breastSize),
-  occupation: toOptionalString(body.occupation),
+  breastSize: normalizedTraits.breastSize ?? toOptionalString(body.breastSize),
+  occupation: normalizedTraits.occupation ?? toOptionalString(body.occupation),
   personality: normalizedTraits.personality ?? toOptionalString(body.personality),
-  sexuality: toOptionalString(body.sexuality),
+  sexuality: normalizedTraits.sexuality ?? toOptionalString(body.sexuality),
   freeformDetails: toOptionalString(body.freeformDetails),
   archetype: String(body.archetype ?? '').trim(),
   tone: String(body.tone ?? '').trim(),
@@ -195,6 +195,7 @@ export async function POST(request: NextRequest) {
       personality: typeof body.personality === 'string' ? body.personality : undefined,
       breastSize: typeof body.breastSize === 'string' ? body.breastSize : undefined,
       occupation: typeof body.occupation === 'string' ? body.occupation : undefined,
+      sexuality: typeof body.sexuality === 'string' ? body.sexuality : undefined,
       freeformDetails: typeof body.freeformDetails === 'string' ? body.freeformDetails : undefined,
     });
   } catch {

@@ -15,6 +15,7 @@ export interface RawFormTraits {
   personality?: string;
   breastSize?: string;
   occupation?: string;
+  sexuality?: string;
   freeformDetails?: string;
 }
 
@@ -48,6 +49,21 @@ const PERSONALITIES = [
   'mysterious',
   'bubbly_energetic',
 ] as const;
+const BREAST_SIZES = ['small', 'medium', 'large'] as const;
+const OCCUPATIONS = [
+  'student',
+  'teacher',
+  'nurse',
+  'fitness trainer',
+  'chef',
+  'lawyer',
+  'artist',
+  'pilot',
+  'doctor',
+  'model',
+  'musician',
+] as const;
+const SEXUALITIES = ['straight', 'gay', 'bisexual', 'pansexual'] as const;
 
 const pickRandom = <T>(pool: readonly T[]): T => pool[Math.floor(Math.random() * pool.length)] as T;
 
@@ -148,12 +164,34 @@ const normalizePersonality = (personality?: string): string | undefined => {
   return normalized;
 };
 
+const normalizeBreastSize = (breastSize?: string): string | undefined => {
+  const normalized = (breastSize ?? '').trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized === 'random') return pickRandom(BREAST_SIZES);
+  return normalized;
+};
+
+const normalizeOccupation = (occupation?: string): string | undefined => {
+  const normalized = (occupation ?? '').trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized === 'random') return pickRandom(OCCUPATIONS);
+  return normalized;
+};
+
+const normalizeSexuality = (sexuality?: string): string | undefined => {
+  const normalized = (sexuality ?? '').trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized === 'random') return pickRandom(SEXUALITIES);
+  return normalized;
+};
+
 export function resolveSetupTraits(raw: RawFormTraits): PreviewTraits & {
   skinTone?: string;
   styleVibe?: string;
   personality?: string;
   breastSize?: string;
   occupation?: string;
+  sexuality?: string;
   freeformDetails?: string;
 } {
   return {
@@ -167,8 +205,9 @@ export function resolveSetupTraits(raw: RawFormTraits): PreviewTraits & {
     skinTone: normalizeSkinTone(raw.skinTone),
     styleVibe: normalizeStyleVibe(raw.styleVibe),
     personality: normalizePersonality(raw.personality),
-    breastSize: raw.breastSize?.trim() || undefined,
-    occupation: raw.occupation?.trim() || undefined,
+    breastSize: normalizeBreastSize(raw.breastSize),
+    occupation: normalizeOccupation(raw.occupation),
+    sexuality: normalizeSexuality(raw.sexuality),
     freeformDetails: raw.freeformDetails?.trim() || undefined,
   };
 }
