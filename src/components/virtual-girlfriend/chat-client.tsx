@@ -1235,6 +1235,14 @@ export const VirtualGirlfriendChatClient = ({
                                   setPointBalance(nextBalance);
                                   setChatUnlockedIds((prev) => new Set(prev).add(imageId));
                                   setSidebarUnlocked((prev) => (prev.includes(imageId) ? prev : [imageId, ...prev]));
+                                  setMessages((prev) =>
+                                    prev.map((entry) => ({
+                                      ...entry,
+                                      attachments: entry.attachments?.map((item) =>
+                                        item.imageId === imageId ? { ...item, locked: false } : item,
+                                      ),
+                                    })),
+                                  );
                                 }}
                               />
                             ) : null,

@@ -1,4 +1,9 @@
+import { env } from '@/lib/env';
 import { supabaseRest } from '@/lib/supabase/rest';
+import {
+  normalizeMessageAttachments,
+  unlockAttachmentInList,
+} from '@/lib/virtual-girlfriend/message-attachments';
 import type {
   PersonaProfile,
   VirtualGirlfriendStructuredProfile,
@@ -416,7 +421,7 @@ export const getVirtualGirlfriendMessages = async (
   token: string,
   conversationId: string,
 ): Promise<VirtualGirlfriendMessageRecord[]> => {
-  return supabaseRest<VirtualGirlfriendMessageRecord[]>('ai_messages', token, {
+  const rows = await supabaseRest<VirtualGirlfriendMessageRecord[]>('ai_messages', token, {
     searchParams: new URLSearchParams({
       select: 'id,conversation_id,user_id,role,content,model,token_count,moderation,content_type,attachments,created_at',
       conversation_id: `eq.${conversationId}`,
@@ -424,6 +429,52 @@ export const getVirtualGirlfriendMessages = async (
       limit: '250',
     }),
   });
+
+  return rows.map((row) => ({
+    ...row,
+    attachments: normalizeMessageAttachments(row.attachments),
+  }));
+};
+
+const isMessagePatchDeniedError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('(401)') || message.includes('(403)') || message.includes('42501');
+};
+
+const patchVirtualGirlfriendMessageViaServiceRole = async (
+  messageId: string,
+  patch: {
+    contentType?: 'text' | 'image' | 'mixed';
+    attachments?: VirtualGirlfriendMessageAttachment[];
+  },
+) => {
+  const key = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!key) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
+  }
+
+  const response = await fetch(
+    `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/ai_messages?id=eq.${encodeURIComponent(messageId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        ...(patch.contentType ? { content_type: patch.contentType } : {}),
+        ...(patch.attachments ? { attachments: patch.attachments } : {}),
+      }),
+      cache: 'no-store',
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(`Supabase service message patch failed (${response.status}): ${message}`);
+  }
 };
 
 export const getLatestVirtualGirlfriendMessage = async (
@@ -1068,15 +1119,55 @@ export const patchVirtualGirlfriendMessage = async (
     attachments?: VirtualGirlfriendMessageAttachment[];
   },
 ) => {
-  await supabaseRest('ai_messages', token, {
-    method: 'PATCH',
-    searchParams: new URLSearchParams({ id: `eq.${messageId}` }),
-    body: {
-      ...(patch.contentType ? { content_type: patch.contentType } : {}),
-      ...(patch.attachments ? { attachments: patch.attachments } : {}),
-    },
-    prefer: 'return=minimal',
+  try {
+    await supabaseRest('ai_messages', token, {
+      method: 'PATCH',
+      searchParams: new URLSearchParams({ id: `eq.${messageId}` }),
+      body: {
+        ...(patch.contentType ? { content_type: patch.contentType } : {}),
+        ...(patch.attachments ? { attachments: patch.attachments } : {}),
+      },
+      prefer: 'return=minimal',
+    });
+  } catch (error) {
+    if (!isMessagePatchDeniedError(error)) throw error;
+    console.warn(
+      '[virtual-girlfriend] ai_messages update denied — using service-role fallback. Run supabase/migrations/023_ai_messages_update_own.sql.',
+    );
+    await patchVirtualGirlfriendMessageViaServiceRole(messageId, patch);
+  }
+};
+
+/** After a paid unblur, persist unlocked state on any chat messages that reference the image. */
+export const markChatImageUnlockedInMessages = async (
+  token: string,
+  userId: string,
+  imageId: string,
+) => {
+  const rows = await supabaseRest<Array<{ id: string; attachments: unknown }>>('ai_messages', token, {
+    searchParams: new URLSearchParams({
+      select: 'id,attachments',
+      user_id: `eq.${userId}`,
+      content_type: 'eq.mixed',
+      order: 'created_at.desc',
+      limit: '200',
+    }),
   });
+
+  const targets = rows
+    .map((row) => ({
+      id: row.id,
+      attachments: normalizeMessageAttachments(row.attachments),
+    }))
+    .filter((row) => row.attachments.some((attachment) => attachment.imageId === imageId));
+
+  await Promise.all(
+    targets.map((row) =>
+      patchVirtualGirlfriendMessage(token, row.id, {
+        attachments: unlockAttachmentInList(row.attachments, imageId),
+      }),
+    ),
+  );
 };
 
 export const insertVirtualGirlfriendMessageReturningId = async (

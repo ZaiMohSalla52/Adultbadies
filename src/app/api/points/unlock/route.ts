@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import { unlockCompanionImage } from '@/lib/points/data';
+import { markChatImageUnlockedInMessages } from '@/lib/virtual-girlfriend/data';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +33,14 @@ export async function POST(request: NextRequest) {
         },
         { status: 402 },
       );
+    }
+
+    if (result.unlocked) {
+      try {
+        await markChatImageUnlockedInMessages(auth.accessToken, auth.user.id, imageId);
+      } catch (persistError) {
+        console.warn('[points] unlocked image but failed to persist chat message attachment state', persistError);
+      }
     }
 
     return NextResponse.json({ ok: true, unlocked: result.unlocked, balance: result.balance });
