@@ -66,8 +66,8 @@ const sha = (value: string) => crypto.createHash('sha256').update(value).digest(
 const MACHINE_TIMEOUT_MS = {
   /** Portrait / canonical / gallery — typically finishes under 60s. */
   providerRequest: 60_000,
-  /** In-chat Face Gen: ModelsLab poll + reference upload + storage often exceeds 60s. */
-  chatProviderRequest: 180_000,
+  /** In-chat photos (Face Gen / Kontext) — aligned with Vercel Pro maxDuration 300. */
+  chatProviderRequest: 300_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;
@@ -525,7 +525,12 @@ const runProviderGeneration = async (input: {
       ? generateGalleryImageFromReference
       : generateChatImageFromReference;
 
-    return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateFromReference({
+    const providerTimeoutMs =
+      input.mode === 'chat_from_reference'
+        ? MACHINE_TIMEOUT_MS.chatProviderRequest
+        : MACHINE_TIMEOUT_MS.providerRequest;
+
+    return withTimeout('provider_generation', providerTimeoutMs, () => generateFromReference({
       prompt: input.prompt,
       referenceImageBytes,
       referenceMimeType,

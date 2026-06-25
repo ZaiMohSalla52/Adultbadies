@@ -357,7 +357,7 @@ export const generateChatImageWithModelsLabFaceGen = async (input: {
       num_inference_steps: input.numInferenceSteps ?? 41,
     },
     'ModelsLab Face Gen explicit chat generation failed',
-    { maxAttempts: 90, intervalMs: 1_500 },
+    { maxAttempts: 120, intervalMs: 1_500 },
   );
 
   return extractGeneratedImage(payload, MODELSLAB_FACE_GEN_MODEL, '/v6/image_editing/face_gen');
