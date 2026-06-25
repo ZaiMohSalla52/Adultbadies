@@ -67,12 +67,12 @@ const STEPS: BuilderStep[] = [
   'bodyType',
   'age',
   'breastSize',
+  'portrait',
   'styleVibe',
   'personality',
   'occupation',
   'sexuality',
   'freeformDetails',
-  'portrait',
 ];
 
 const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -666,8 +666,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const isSubmitting = generationStarted || pending;
-  const showContinue = step === 'name' || step === 'freeformDetails';
-  const showCreate = step === 'portrait';
+  const showContinue = step === 'name' || step === 'portrait' || step === 'freeformDetails';
+  const showCreate = step === 'freeformDetails';
   const nameOr = (withName: string, withoutName: string) =>
     state.name.trim() ? withName.replace('{name}', state.name.trim()) : withoutName;
 
@@ -885,7 +885,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                 ) : (
                   <>
                     <h2 className={styles.stepTitle}>{nameOr(`Pick {name}'s portrait`, labels.pickPortrait)}</h2>
-                    <p className={styles.loadingSubtext}>All traits are locked in — pick the face you want to keep forever.</p>
+                    <p className={styles.loadingSubtext}>Pick the face you want to keep — style and personality come next.</p>
                     <button type="button" className={styles.skipButton} onClick={regeneratePortraits} disabled={portraitsLoading}>
                       Regenerate looks
                     </button>
