@@ -39,6 +39,34 @@ const isHostedPortraitUrl = (value: string | null | undefined) => /^https?:\/\//
 const filterPortraitCandidates = (candidates: PortraitCandidate[]) =>
   candidates.filter((candidate) => isHostedPortraitUrl(candidate.imageDataUrl));
 
+const PortraitPhoto = ({
+  src,
+  alt,
+  wrapClassName,
+  imageClassName,
+}: {
+  src: string;
+  alt: string;
+  wrapClassName: string;
+  imageClassName: string;
+}) => (
+  <div
+    className={wrapClassName}
+    style={{ backgroundImage: `url("${src.replace(/"/g, '')}")` }}
+    role="img"
+    aria-label={alt}
+  >
+    <img
+      src={src}
+      alt={alt}
+      className={imageClassName}
+      loading="eager"
+      decoding="sync"
+      referrerPolicy="no-referrer"
+    />
+  </div>
+);
+
 type SetupConflict = {
   companionName?: string;
   guidance?: string[];
@@ -419,7 +447,6 @@ const portraitTraitsKeyFromState = (current: CreatorState) =>
     current.styleVibe,
     current.personality,
     current.occupation,
-    current.freeformDetails,
   ].join('|');
 
 const makeRandomName = () => {
@@ -440,14 +467,17 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const [portraitCandidates, setPortraitCandidates] = useState<PortraitCandidate[]>([]);
   const [portraitsForTraitsKey, setPortraitsForTraitsKey] = useState<string | null>(null);
   const [recoverableCompanionId, setRecoverableCompanionId] = useState<string | null>(null);
-  const [activeDotIndex, setActiveDotIndex] = useState(0);
-  const carouselRef = useRef<HTMLDivElement | null>(null);
   const portraitGenInFlight = useRef(false);
+  const lockedPortraitSelection = useRef({ image: '', prompt: '' });
 
   const step = STEPS[stepIndex];
   const progress = useMemo(() => ((stepIndex + 1) / STEPS.length) * 100, [stepIndex]);
   const labels = useMemo(() => getCompanionLabels(state.sex), [state.sex]);
   const portraitTraitsKey = useMemo(() => portraitTraitsKeyFromState(state), [state]);
+  const visiblePortraitCandidates = useMemo(
+    () => filterPortraitCandidates(portraitCandidates),
+    [portraitCandidates],
+  );
 
   useEffect(() => {
     if (!portraitsForTraitsKey || portraitsForTraitsKey === portraitTraitsKey) return;
@@ -455,13 +485,14 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
     setPortraitCandidates([]);
     setPortraitsForTraitsKey(null);
-    setState((current) => ({
-      ...current,
-      selectedPortraitImage: '',
-      selectedPortraitPrompt: '',
-    }));
 
     if (step === 'portrait') {
+      lockedPortraitSelection.current = { image: '', prompt: '' };
+      setState((current) => ({
+        ...current,
+        selectedPortraitImage: '',
+        selectedPortraitPrompt: '',
+      }));
       void maybeGeneratePortraits(true);
     }
   }, [portraitTraitsKey, portraitsForTraitsKey, portraitsLoading, step]);
@@ -472,30 +503,6 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     if (validCount > 0 && portraitsForTraitsKey === portraitTraitsKey) return;
     void maybeGeneratePortraits(validCount > 0);
   }, [step]);
-
-  useEffect(() => {
-    if (step !== 'portrait' || !carouselRef.current) return;
-    const element = carouselRef.current;
-    const onScroll = () => {
-      const children = Array.from(element.children) as HTMLElement[];
-      if (!children.length) return;
-      const center = element.scrollLeft + element.clientWidth / 2;
-      let bestIndex = 0;
-      let bestDistance = Number.POSITIVE_INFINITY;
-      children.forEach((child, index) => {
-        const childCenter = child.offsetLeft + child.offsetWidth / 2;
-        const distance = Math.abs(center - childCenter);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestIndex = index;
-        }
-      });
-      setActiveDotIndex(bestIndex);
-    };
-    onScroll();
-    element.addEventListener('scroll', onScroll, { passive: true });
-    return () => element.removeEventListener('scroll', onScroll);
-  }, [step, portraitCandidates.length]);
 
   const setField = <K extends keyof CreatorState>(key: K, value: CreatorState[K]) => {
     setState((current) => ({ ...current, [key]: value }));
@@ -511,7 +518,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     if (step === 'age' && !state.age) return 'Choose age.';
     if (step === 'breastSize' && state.sex === 'female' && !state.breastSize) return 'Choose chest size.';
     if (step === 'styleVibe' && !state.styleVibe) return `Choose ${labels.stylePrompt}.`;
-    if (step === 'portrait' && !state.selectedPortraitImage) return 'Pick one portrait to continue.';
+    if (step === 'portrait') {
+      const hasPortrait =
+        Boolean(state.selectedPortraitImage)
+        || Boolean(lockedPortraitSelection.current.image)
+        || visiblePortraitCandidates.length > 0;
+      if (!hasPortrait) return 'Pick one portrait to continue.';
+    }
     if (step === 'occupation' && !state.occupation) return 'Choose occupation.';
     if (step === 'personality' && !state.personality) return 'Choose personality.';
     if (step === 'sexuality' && !state.sexuality) return 'Choose sexual preference.';
@@ -612,6 +625,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
       const firstCandidate = validCandidates[0];
       if (firstCandidate && (!workingState.selectedPortraitImage || force)) {
+        lockedPortraitSelection.current = {
+          image: firstCandidate.imageDataUrl,
+          prompt: firstCandidate.prompt,
+        };
         setState((current) => ({
           ...current,
           selectedPortraitImage: firstCandidate.imageDataUrl,
@@ -698,8 +715,33 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     });
   };
 
+  const resolvePortraitSelection = () => {
+    const fallbackCandidate = visiblePortraitCandidates[0] ?? null;
+    const image =
+      state.selectedPortraitImage
+      || lockedPortraitSelection.current.image
+      || fallbackCandidate?.imageDataUrl
+      || '';
+    const prompt =
+      state.selectedPortraitPrompt
+      || lockedPortraitSelection.current.prompt
+      || visiblePortraitCandidates.find((candidate) => candidate.imageDataUrl === image)?.prompt
+      || fallbackCandidate?.prompt
+      || '';
+
+    return { image, prompt };
+  };
+
+  const selectPortrait = (imageUrl: string, prompt: string) => {
+    lockedPortraitSelection.current = { image: imageUrl, prompt };
+    setField('selectedPortraitPrompt', prompt);
+    setField('selectedPortraitImage', imageUrl);
+  };
+
   const submit = () => {
-    if (!state.name.trim() || !state.selectedPortraitImage || !state.selectedPortraitPrompt) {
+    const { image: selectedPortraitImage, prompt: selectedPortraitPrompt } = resolvePortraitSelection();
+
+    if (!state.name.trim() || !selectedPortraitImage || !selectedPortraitPrompt) {
       setError('Complete required steps before generating.');
       return;
     }
@@ -737,8 +779,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             archetype,
             visualAesthetic,
             freeformDetails: state.freeformDetails,
-            selectedPortraitPrompt: state.selectedPortraitPrompt,
-            selectedPortraitImage: state.selectedPortraitImage,
+            selectedPortraitPrompt,
+            selectedPortraitImage,
           }),
         });
 
@@ -794,6 +836,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const regeneratePortraits = () => {
     setPortraitCandidates([]);
     setPortraitsForTraitsKey(null);
+    lockedPortraitSelection.current = { image: '', prompt: '' };
     setField('selectedPortraitImage', '');
     setField('selectedPortraitPrompt', '');
     void maybeGeneratePortraits(true);
@@ -802,10 +845,6 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const isSubmitting = generationStarted || pending;
   const showContinue = step === 'name' || step === 'portrait';
   const showCreate = step === 'freeformDetails';
-  const visiblePortraitCandidates = useMemo(
-    () => filterPortraitCandidates(portraitCandidates),
-    [portraitCandidates],
-  );
   const nameOr = (withName: string, withoutName: string) =>
     state.name.trim() ? withName.replace('{name}', state.name.trim()) : withoutName;
 
@@ -1052,17 +1091,15 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                     {(() => {
                       const previewUrl =
                         state.selectedPortraitImage
-                        || visiblePortraitCandidates[activeDotIndex]?.imageDataUrl
                         || visiblePortraitCandidates[0]?.imageDataUrl
                         || null;
                       return previewUrl ? (
                         <div className={styles.portraitPreviewWrap}>
-                          <img
+                          <PortraitPhoto
                             src={previewUrl}
                             alt="Portrait preview"
-                            className={styles.portraitPreviewImage}
-                            loading="eager"
-                            decoding="async"
+                            wrapClassName={styles.portraitPreviewImage}
+                            imageClassName={styles.portraitPhotoImg}
                           />
                           <span className={styles.portraitPreviewBadge}>
                             {state.selectedPortraitImage ? 'Selected' : 'Preview'}
@@ -1081,45 +1118,17 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                           className={`${styles.portraitPickerCard} ${
                             state.selectedPortraitImage === candidate.imageDataUrl ? styles.portraitPickerCardSelected : ''
                           }`}
-                          onClick={() => {
-                            setField('selectedPortraitPrompt', candidate.prompt);
-                            setField('selectedPortraitImage', candidate.imageDataUrl);
-                          }}
+                          onClick={() => selectPortrait(candidate.imageDataUrl, candidate.prompt)}
                         >
-                          <img
+                          <PortraitPhoto
                             src={candidate.imageDataUrl}
                             alt={candidate.label}
-                            className={styles.portraitPickerImage}
-                            loading="eager"
-                            decoding="async"
+                            wrapClassName={styles.portraitPickerImage}
+                            imageClassName={styles.portraitPhotoImg}
                           />
                           <span className={styles.portraitPickerLabel}>{candidate.label}</span>
                         </button>
                       ))}
-                    </div>
-                    <div className={styles.carouselContainer}>
-                      <div className={styles.carouselTrack} ref={carouselRef}>
-                        {visiblePortraitCandidates.map((candidate) => (
-                          <button
-                            key={`carousel-${candidate.id}`}
-                            type="button"
-                            className={`${styles.carouselCard} ${
-                              state.selectedPortraitImage === candidate.imageDataUrl ? styles.carouselCardSelected : ''
-                            }`}
-                            onClick={() => {
-                              setField('selectedPortraitPrompt', candidate.prompt);
-                              setField('selectedPortraitImage', candidate.imageDataUrl);
-                            }}
-                          >
-                            <img src={candidate.imageDataUrl} alt={candidate.label} className={styles.carouselImage} />
-                          </button>
-                        ))}
-                      </div>
-                      <div className={styles.carouselDots}>
-                        {visiblePortraitCandidates.map((_, i) => (
-                          <span key={i} className={`${styles.dot} ${i === activeDotIndex ? styles.dotActive : ''}`} />
-                        ))}
-                      </div>
                     </div>
                   </>
                 )}
