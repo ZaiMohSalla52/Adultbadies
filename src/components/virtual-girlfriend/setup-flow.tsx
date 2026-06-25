@@ -44,11 +44,13 @@ const PortraitPhoto = ({
   alt,
   wrapClassName,
   imageClassName,
+  onFailed,
 }: {
   src: string;
   alt: string;
   wrapClassName: string;
   imageClassName: string;
+  onFailed?: () => void;
 }) => (
   <div
     className={wrapClassName}
@@ -63,6 +65,7 @@ const PortraitPhoto = ({
       loading="eager"
       decoding="sync"
       referrerPolicy="no-referrer"
+      onError={() => onFailed?.()}
     />
   </div>
 );
@@ -469,14 +472,15 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const [recoverableCompanionId, setRecoverableCompanionId] = useState<string | null>(null);
   const portraitGenInFlight = useRef(false);
   const lockedPortraitSelection = useRef({ image: '', prompt: '' });
+  const [failedPortraitIds, setFailedPortraitIds] = useState<Set<string>>(() => new Set());
 
   const step = STEPS[stepIndex];
   const progress = useMemo(() => ((stepIndex + 1) / STEPS.length) * 100, [stepIndex]);
   const labels = useMemo(() => getCompanionLabels(state.sex), [state.sex]);
   const portraitTraitsKey = useMemo(() => portraitTraitsKeyFromState(state), [state]);
   const visiblePortraitCandidates = useMemo(
-    () => filterPortraitCandidates(portraitCandidates),
-    [portraitCandidates],
+    () => filterPortraitCandidates(portraitCandidates).filter((candidate) => !failedPortraitIds.has(candidate.id)),
+    [portraitCandidates, failedPortraitIds],
   );
 
   useEffect(() => {
@@ -620,6 +624,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         throw new Error('Portrait previews could not be published. Check image storage settings and try again.');
       }
 
+      setFailedPortraitIds(new Set());
       setPortraitCandidates(validCandidates);
       setPortraitsForTraitsKey(traitsKey);
 
@@ -836,6 +841,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const regeneratePortraits = () => {
     setPortraitCandidates([]);
     setPortraitsForTraitsKey(null);
+    setFailedPortraitIds(new Set());
     lockedPortraitSelection.current = { image: '', prompt: '' };
     setField('selectedPortraitImage', '');
     setField('selectedPortraitPrompt', '');
@@ -1100,6 +1106,12 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                             alt="Portrait preview"
                             wrapClassName={styles.portraitPreviewImage}
                             imageClassName={styles.portraitPhotoImg}
+                            onFailed={() => {
+                              const failed = visiblePortraitCandidates.find((entry) => entry.imageDataUrl === previewUrl);
+                              if (failed) {
+                                setFailedPortraitIds((prev) => new Set(prev).add(failed.id));
+                              }
+                            }}
                           />
                           <span className={styles.portraitPreviewBadge}>
                             {state.selectedPortraitImage ? 'Selected' : 'Preview'}
@@ -1125,6 +1137,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                             alt={candidate.label}
                             wrapClassName={styles.portraitPickerImage}
                             imageClassName={styles.portraitPhotoImg}
+                            onFailed={() => {
+                              setFailedPortraitIds((prev) => new Set(prev).add(candidate.id));
+                              if (state.selectedPortraitImage === candidate.imageDataUrl) {
+                                const fallback = visiblePortraitCandidates.find((entry) => entry.id !== candidate.id);
+                                if (fallback) selectPortrait(fallback.imageDataUrl, fallback.prompt);
+                              }
+                            }}
                           />
                           <span className={styles.portraitPickerLabel}>{candidate.label}</span>
                         </button>

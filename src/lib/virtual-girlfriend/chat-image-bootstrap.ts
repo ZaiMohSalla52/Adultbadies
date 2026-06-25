@@ -119,3 +119,55 @@ export const resolveCanonicalReferenceForChat = (
   // Identity lock must use the canonical portrait only — never a random gallery scene.
   return existingImages.find((image) => image.image_kind === 'canonical' && image.delivery_url) ?? null;
 };
+
+export type ChatFaceReference = {
+  deliveryUrl: string;
+  imageId: string | null;
+  originMimeType: string | null;
+  source: 'canonical' | 'setup_portrait';
+};
+
+const resolveSetupPortraitUrl = (
+  companion: VirtualGirlfriendCompanionRecord,
+  visualProfile: VirtualGirlfriendVisualProfileRecord | null,
+) => {
+  const fromProfile = companion.structured_profile?.selectedPortraitImage?.trim() ?? '';
+  if (/^https?:\/\//i.test(fromProfile)) return fromProfile;
+
+  const fromVisualProfile =
+    typeof visualProfile?.source_setup?.selectedPortraitImage === 'string'
+      ? visualProfile.source_setup.selectedPortraitImage.trim()
+      : '';
+  if (/^https?:\/\//i.test(fromVisualProfile)) return fromVisualProfile;
+
+  return null;
+};
+
+/** Face reference for chat image generation — canonical when ready, else setup portrait URL. */
+export const resolveChatFaceReference = (input: {
+  companion: VirtualGirlfriendCompanionRecord;
+  visualProfile: VirtualGirlfriendVisualProfileRecord | null;
+  existingImages: VirtualGirlfriendCompanionImageRecord[];
+}): ChatFaceReference | null => {
+  const canonical = resolveCanonicalReferenceForChat(input.visualProfile, input.existingImages);
+  if (canonical?.delivery_url) {
+    return {
+      deliveryUrl: canonical.delivery_url,
+      imageId: canonical.id,
+      originMimeType: canonical.origin_mime_type,
+      source: 'canonical',
+    };
+  }
+
+  const setupPortraitUrl = resolveSetupPortraitUrl(input.companion, input.visualProfile);
+  if (setupPortraitUrl) {
+    return {
+      deliveryUrl: setupPortraitUrl,
+      imageId: null,
+      originMimeType: 'image/png',
+      source: 'setup_portrait',
+    };
+  }
+
+  return null;
+};

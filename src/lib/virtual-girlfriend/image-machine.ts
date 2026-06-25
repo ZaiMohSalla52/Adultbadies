@@ -29,7 +29,7 @@ import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/s
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
 import { detectExplicitImageIntent, isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
 import {
-  resolveCanonicalReferenceForChat,
+  resolveChatFaceReference,
   resolveChatVisualContext,
 } from '@/lib/virtual-girlfriend/chat-image-bootstrap';
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
@@ -1092,8 +1092,12 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     };
   }
 
-  const canonical = resolveCanonicalReferenceForChat(input.visualProfile, input.existingImages);
-  if (!canonical) {
+  const faceReference = resolveChatFaceReference({
+    companion: input.companion,
+    visualProfile: input.visualProfile,
+    existingImages: input.existingImages,
+  });
+  if (!faceReference) {
     const reason = 'missing_prerequisites:canonical_reference_missing';
     logImageMachine(scope, 'final_outcome', { status: 'skipped_prerequisites', reason });
     return {
@@ -1106,11 +1110,11 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
   }
 
   logImageMachine(scope, 'reference_resolved', {
-    canonicalImageId: canonical.id,
-    referenceImageKind: canonical.image_kind,
+    canonicalImageId: faceReference.imageId,
+    referenceSource: faceReference.source,
     referenceDeliveryUrlHost: (() => {
       try {
-        return new URL(canonical.delivery_url).host;
+        return new URL(faceReference.deliveryUrl).host;
       } catch {
         return 'invalid-url';
       }
@@ -1123,10 +1127,14 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
   try {
     const reference = await downloadReferenceBytes({
       scope,
-      deliveryUrl: canonical.delivery_url,
-      fallbackMimeType: canonical.origin_mime_type,
+      deliveryUrl: faceReference.deliveryUrl,
+      fallbackMimeType: faceReference.originMimeType,
     });
-    logImageMachine(scope, 'download_success', { canonicalImageId: canonical.id, bytes: reference.bytes.byteLength });
+    logImageMachine(scope, 'download_success', {
+      canonicalImageId: faceReference.imageId,
+      referenceSource: faceReference.source,
+      bytes: reference.bytes.byteLength,
+    });
 
     const chatPromptInput = toChatPromptInput(
       input.companion,
@@ -1153,9 +1161,9 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       requestedLook: chatPromptInput.requestedLook,
     });
 
-    const faceReference: PortraitReferenceImage =
-      /^https?:\/\//i.test(canonical.delivery_url.trim())
-        ? { url: canonical.delivery_url.trim() }
+    const faceGenReference: PortraitReferenceImage =
+      /^https?:\/\//i.test(faceReference.deliveryUrl.trim())
+        ? { url: faceReference.deliveryUrl.trim() }
         : { bytes: reference.bytes, mimeType: reference.mimeType };
 
     const generated =
@@ -1163,7 +1171,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
             generateChatImageFromReferenceFaceGen({
               userMessage: input.userMessage!.trim(),
-              reference: faceReference,
+              reference: faceGenReference,
               wardrobeContext: wardrobeContextFromCompanion(input.companion),
               numInferenceSteps: route.numInferenceSteps,
             }),
@@ -1202,7 +1210,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       },
       generated,
       identityPack: visualContext.identityPack,
-      referenceImageId: canonical.id,
+      referenceImageId: faceReference.imageId ?? undefined,
       lineageExtra: {
         generation_mode: 'chat_from_canonical',
         chatCategory: input.category,
@@ -1258,30 +1266,42 @@ export const runPortraitPreviewImageMachine = async (
   return { kind: 'portrait_preview', status: 'ready', candidates };
 };
 
+const generatePortraitPreviewCandidate = async (
+  input: VirtualGirlfriendPortraitPreviewRequest,
+  index: number,
+): Promise<VirtualGirlfriendPortraitPreviewCandidate> => {
+  const prompt = buildPreviewPrompt(input, index);
+  const seed = Math.floor(Math.random() * 2147483647);
+  const generated = await withRetries({
+    attempts: 2,
+    scope: 'portrait_preview',
+    stage: 'provider_request',
+    reason: 'provider_error',
+    run: () =>
+      withTimeout('provider_generation', 45_000, () => generatePortraitPreviewImage(prompt, seed)),
+  });
+  const imageDataUrl = portraitPreviewDeliveryUrl(generated);
+  if (!imageDataUrl.trim()) {
+    throw new Error('Portrait preview provider returned an empty image.');
+  }
+
+  return {
+    id: `candidate-${index + 1}`,
+    label: `Candidate ${index + 1}`,
+    prompt,
+    promptVersion: PROMPT_VERSION.preview,
+    imageDataUrl,
+  };
+};
+
 const fallbackParallelGeneration = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
   count: number,
 ): Promise<VirtualGirlfriendPortraitPreviewCandidate[]> => {
+  const target = Math.min(Math.max(count, 2), 4);
+  const maxAttempts = target + 2;
   const settled = await Promise.allSettled(
-    Array.from({ length: count }).map(async (_, index) => {
-      const prompt = buildPreviewPrompt(input, index);
-      const seed = Math.floor(Math.random() * 2147483647);
-      const generated = await withRetries({
-        attempts: 1,
-        scope: 'portrait_preview',
-        stage: 'provider_request',
-        reason: 'provider_error',
-        run: () =>
-          withTimeout('provider_generation', 45_000, () => generatePortraitPreviewImage(prompt, seed)),
-      });
-      return {
-        id: `candidate-${index + 1}`,
-        label: `Candidate ${index + 1}`,
-        prompt,
-        promptVersion: PROMPT_VERSION.preview,
-        imageDataUrl: portraitPreviewDeliveryUrl(generated),
-      } satisfies VirtualGirlfriendPortraitPreviewCandidate;
-    }),
+    Array.from({ length: maxAttempts }).map((_, index) => generatePortraitPreviewCandidate(input, index)),
   );
 
   const candidates = settled
@@ -1296,5 +1316,5 @@ const fallbackParallelGeneration = async (
     throw new Error('Not enough portrait preview candidates generated successfully');
   }
 
-  return candidates;
+  return candidates.slice(0, target);
 };

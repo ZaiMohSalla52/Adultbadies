@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildBootstrapIdentityPack,
   resolveCanonicalReferenceForChat,
+  resolveChatFaceReference,
   resolveChatVisualContext,
 } from '@/lib/virtual-girlfriend/chat-image-bootstrap';
 import type {
@@ -145,5 +146,24 @@ describe('chat image bootstrap', () => {
       existingImages: [],
     });
     expect(context).toBeNull();
+  });
+
+  it('falls back to setup portrait URL when canonical is not ready', () => {
+    const companionWithPortrait = {
+      ...companion,
+      structured_profile: {
+        ...companion.structured_profile,
+        selectedPortraitImage: 'https://cdn.example.com/setup-portrait.png',
+      },
+    } as VirtualGirlfriendCompanionRecord;
+
+    const resolved = resolveChatFaceReference({
+      companion: companionWithPortrait,
+      visualProfile,
+      existingImages: [],
+    });
+
+    expect(resolved?.source).toBe('setup_portrait');
+    expect(resolved?.deliveryUrl).toBe('https://cdn.example.com/setup-portrait.png');
   });
 });

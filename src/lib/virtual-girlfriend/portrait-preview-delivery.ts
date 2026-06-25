@@ -16,6 +16,34 @@ const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string }
 
 const isHostedUrl = (value: string) => /^https?:\/\//i.test(value.trim());
 
+export const isReachablePortraitPreviewUrl = async (url: string) => {
+  const trimmed = url.trim();
+  if (!isHostedUrl(trimmed)) return false;
+
+  try {
+    const response = await fetch(trimmed, {
+      method: 'GET',
+      headers: { Range: 'bytes=0-1023' },
+      cache: 'no-store',
+    });
+    return response.ok || response.status === 206;
+  } catch {
+    return false;
+  }
+};
+
+export const filterReachablePortraitPreviewCandidates = async (
+  candidates: VirtualGirlfriendPortraitPreviewCandidate[],
+) => {
+  const checks = await Promise.all(
+    candidates.map(async (candidate) => ({
+      candidate,
+      ok: await isReachablePortraitPreviewUrl(candidate.imageDataUrl),
+    })),
+  );
+  return checks.filter((entry) => entry.ok).map((entry) => entry.candidate);
+};
+
 const publishPreviewImage = async (input: {
   bytes: Buffer;
   mimeType: string;
@@ -62,7 +90,7 @@ export const deliverPortraitPreviewCandidates = async (
           sessionId,
           index,
         });
-        if (!deliveryUrl) return candidate;
+        if (!deliveryUrl || !isHostedUrl(deliveryUrl)) return candidate;
         return { ...candidate, imageDataUrl: deliveryUrl };
       } catch (error) {
         console.warn('[portrait-preview] hosted delivery failed, keeping data URL fallback', {
