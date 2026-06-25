@@ -1,5 +1,5 @@
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
-import { classifyChatTurnIntent, type ChatTurnIntent, type PhotoDeliveryIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
+import { classifyChatTurnIntent, type ChatTurnIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import type {

@@ -36,8 +36,45 @@ type PortraitCandidate = { id: string; imageDataUrl: string; prompt: string; lab
 
 const isHostedPortraitUrl = (value: string | null | undefined) => /^https?:\/\//i.test(String(value ?? '').trim());
 
+const isUsablePortraitUrl = (value: string | null | undefined) => {
+  const trimmed = String(value ?? '').trim();
+  return isHostedPortraitUrl(trimmed) || /^data:image\//i.test(trimmed);
+};
+
 const filterPortraitCandidates = (candidates: PortraitCandidate[]) =>
-  candidates.filter((candidate) => isHostedPortraitUrl(candidate.imageDataUrl));
+  candidates.filter((candidate) => isUsablePortraitUrl(candidate.imageDataUrl));
+
+const preloadPortraitUrl = (url: string) =>
+  new Promise<boolean>((resolve) => {
+    const trimmed = url.trim();
+    if (!trimmed) {
+      resolve(false);
+      return;
+    }
+
+    const img = new window.Image();
+    const timer = window.setTimeout(() => resolve(false), 12_000);
+    img.onload = () => {
+      window.clearTimeout(timer);
+      resolve(true);
+    };
+    img.onerror = () => {
+      window.clearTimeout(timer);
+      resolve(false);
+    };
+    img.referrerPolicy = 'origin';
+    img.src = trimmed;
+  });
+
+const filterBrowserLoadableCandidates = async (candidates: PortraitCandidate[]) => {
+  const checks = await Promise.all(
+    candidates.map(async (candidate) => ({
+      candidate,
+      ok: await preloadPortraitUrl(candidate.imageDataUrl),
+    })),
+  );
+  return checks.filter((entry) => entry.ok).map((entry) => entry.candidate);
+};
 
 const PortraitPhoto = ({
   src,
@@ -51,19 +88,36 @@ const PortraitPhoto = ({
   wrapClassName: string;
   imageClassName: string;
   onFailed?: () => void;
-}) => (
-  <div className={wrapClassName}>
-    <img
-      src={src}
-      alt={alt}
-      className={imageClassName}
-      loading="eager"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={() => onFailed?.()}
-    />
-  </div>
-);
+}) => {
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setLoaded(false);
+    setFailed(false);
+  }, [src]);
+
+  if (failed) return null;
+
+  return (
+    <div className={wrapClassName}>
+      {!loaded ? <div className={styles.portraitPhotoSkeleton} aria-hidden /> : null}
+      <img
+        src={src}
+        alt={alt}
+        className={`${imageClassName}${loaded ? ` ${styles.portraitPhotoLoaded}` : ` ${styles.portraitPhotoLoading}`}`}
+        loading="eager"
+        decoding="async"
+        referrerPolicy="origin"
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          setFailed(true);
+          onFailed?.();
+        }}
+      />
+    </div>
+  );
+};
 
 type SetupConflict = {
   companionName?: string;
@@ -614,9 +668,9 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
       const body = await readJsonResponse<{ candidates?: PortraitCandidate[]; error?: string }>(response);
       if (!response.ok || !body.candidates?.length) throw new Error(body.error ?? 'Unable to generate portraits now.');
 
-      const validCandidates = filterPortraitCandidates(body.candidates);
+      const validCandidates = await filterBrowserLoadableCandidates(filterPortraitCandidates(body.candidates));
       if (validCandidates.length < 2) {
-        throw new Error('Portrait previews could not be published. Check image storage settings and try again.');
+        throw new Error('Portrait previews could not be displayed. Check image storage (Cloudinary) and tap Regenerate looks.');
       }
 
       setFailedPortraitIds(new Set());
@@ -784,7 +838,15 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           }),
         });
 
-        const body = await readJsonResponse<VirtualGirlfriendSetupResult>(response);
+        const body = await readJsonResponse<
+          VirtualGirlfriendSetupResult & { error?: string; code?: string; verificationPath?: string }
+        >(response);
+
+        if (body.code === 'AGE_VERIFICATION_REQUIRED') {
+          router.push(body.verificationPath ?? '/age-verification');
+          setGenerationStarted(false);
+          return;
+        }
 
         if (
           body.state === 'generating'
@@ -818,14 +880,26 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         }
 
         if (!response.ok) {
-          setError(body.message ?? 'Server error while creating your companion setup.');
+          setError(
+            body.message
+            ?? body.error
+            ?? `Server error while creating your companion setup (${response.status}).`,
+          );
           setConflictHelp(null);
           setGenerationStarted(false);
           setStepIndex(STEPS.length - 1);
           return;
         }
-      } catch {
-        setError('Unable to submit setup right now. Generation has not started yet. Please try again.');
+
+        setError(body.message ?? 'Unexpected setup response. Please try again.');
+        setGenerationStarted(false);
+        setStepIndex(STEPS.length - 1);
+      } catch (submitError) {
+        setError(
+          submitError instanceof Error
+            ? submitError.message
+            : 'Unable to submit setup right now. Generation has not started yet. Please try again.',
+        );
         setConflictHelp(null);
         setRecoverableCompanionId(null);
         setGenerationStarted(false);

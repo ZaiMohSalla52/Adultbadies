@@ -1,4 +1,3 @@
-import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
   createVirtualGirlfriendProactiveEvent,
   getLatestDeliveredVirtualGirlfriendProactiveEvent,
@@ -194,7 +193,6 @@ const deliverSingleProactiveEvent = async (input: {
       return false;
     }
 
-    const entitlements = await getUserEntitlements(input.token, input.userId);
     let attachments: VirtualGirlfriendMessageAttachment[] = [];
 
     if (Math.random() < 0.35) {

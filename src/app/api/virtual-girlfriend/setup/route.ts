@@ -152,6 +152,7 @@ export async function POST(request: NextRequest) {
 
   console.info('[virtual-girlfriend][setup] request received', { userId: auth.user.id });
 
+  try {
   let body: VirtualGirlfriendSetupPayload & { companionId?: string; createNew?: boolean };
   try {
     body = (await request.json()) as VirtualGirlfriendSetupPayload & { companionId?: string; createNew?: boolean };
@@ -387,4 +388,22 @@ export async function POST(request: NextRequest) {
     redirectTo: `/virtual-girlfriend/chat?companionId=${companion.id}`,
     message: `Your ${labels.roleShort.toLowerCase()} is ready to chat — ${labels.photosLabel} are generating now.`,
   } satisfies VirtualGirlfriendSetupResult);
+  } catch (error) {
+    console.error('[virtual-girlfriend][setup] unhandled failure', error);
+    const detail = error instanceof Error ? error.message : String(error);
+    const isSupabase = detail.includes('Supabase REST');
+    const isPersona = /persona|together|modelslab|llm/i.test(detail);
+
+    return NextResponse.json(
+      {
+        state: 'failed',
+        message: isSupabase
+          ? 'Could not save your companion right now. Please wait a moment and try again.'
+          : isPersona
+            ? 'Could not generate your companion personality. Please try again.'
+            : 'Server error while creating your companion setup. Please try again.',
+      } satisfies VirtualGirlfriendSetupResult,
+      { status: 500 },
+    );
+  }
 }

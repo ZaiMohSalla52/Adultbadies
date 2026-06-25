@@ -66,10 +66,29 @@ export async function POST(request: NextRequest) {
 
     const delivered = await deliverPortraitPreviewCandidates(result.candidates, auth.user.id);
     const hostedOnly = delivered.filter((candidate) => /^https?:\/\//i.test(candidate.imageDataUrl.trim()));
-    const candidates = await filterReachablePortraitPreviewCandidates(hostedOnly);
+    let candidates = await filterReachablePortraitPreviewCandidates(hostedOnly);
 
     if (candidates.length < 2) {
-      return NextResponse.json({ error: 'Not enough portrait previews were generated. Please try again.' }, { status: 500 });
+      const dataUrlFallback = delivered.filter((candidate) => /^data:image\//i.test(candidate.imageDataUrl.trim()));
+      if (dataUrlFallback.length >= 2) {
+        candidates = dataUrlFallback;
+      }
+    }
+
+    if (candidates.length < 2) {
+      const hasCloudinary = Boolean(
+        process.env.CLOUDINARY_CLOUD_NAME
+        && process.env.CLOUDINARY_API_KEY
+        && process.env.CLOUDINARY_API_SECRET,
+      );
+      return NextResponse.json(
+        {
+          error: hasCloudinary
+            ? 'Not enough portrait previews were generated. Please try again.'
+            : 'Portrait hosting is not configured. Set CLOUDINARY_* env vars so previews can load in the browser.',
+        },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ ok: true, candidates: candidates.slice(0, 3) });
