@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 import { STYLE_VIBE_OPTIONS } from '@/lib/virtual-girlfriend/outfit-presets';
 import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import type { VirtualGirlfriendSetupResult } from '@/lib/virtual-girlfriend/types';
+import {
+  EYE_SWATCHES,
+  HAIR_SWATCHES,
+  ORIGIN_SWATCHES,
+  SetupOptionVisual,
+  type SetupIconId,
+} from '@/components/virtual-girlfriend/setup-option-icons';
 import styles from './setup-flow.module.css';
 
 type BuilderStep =
@@ -54,7 +61,13 @@ type CreatorState = {
 };
 
 type Option = { label: string; value: string };
-type PhotoOption = Option & { image?: string; icon?: string };
+type IconOption = Option & {
+  icon?: SetupIconId;
+  swatch?: string;
+  swatchGradient?: string;
+  eyeColor?: string;
+  age?: string;
+};
 type EmojiOption = Option & { icon: string };
 
 const STEPS: BuilderStep[] = [
@@ -97,99 +110,91 @@ const makeInitialState = (): CreatorState => ({
   selectedPortraitImage: '',
 });
 
-const sexOptions: PhotoOption[] = [
-  {
-    label: 'Female',
-    value: 'female',
-    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=500&fit=crop&crop=face',
-  },
-  {
-    label: 'Male',
-    value: 'male',
-    image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=500&fit=crop&crop=face',
-  },
+const sexOptions: IconOption[] = [
+  { label: 'Female', value: 'female', icon: 'sex-female' },
+  { label: 'Male', value: 'male', icon: 'sex-male' },
 ];
 
-const originOptions: PhotoOption[] = [
-  { label: 'Caucasian', value: 'white', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=300&h=300&fit=crop&crop=face' },
-  { label: 'East Asian', value: 'asian', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&h=300&fit=crop&crop=face' },
-  { label: 'South Asian', value: 'south_asian', image: 'https://images.unsplash.com/photo-1521119989659-a83eee488004?w=300&h=300&fit=crop&crop=face' },
-  { label: 'Black / African', value: 'black', image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=300&h=300&fit=crop&crop=face' },
-  { label: 'Latina', value: 'latina', image: 'https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?w=300&h=300&fit=crop&crop=face' },
-  { label: 'Middle Eastern', value: 'middle_eastern', image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=300&h=300&fit=crop&crop=face' },
-  { label: 'Mixed', value: 'mixed', image: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=300&h=300&fit=crop&crop=face' },
-  { label: 'Random', value: 'random', icon: '🎲' },
+const originOptions: IconOption[] = [
+  { label: 'Caucasian', value: 'white', swatch: ORIGIN_SWATCHES.white },
+  { label: 'East Asian', value: 'asian', swatch: ORIGIN_SWATCHES.asian },
+  { label: 'South Asian', value: 'south_asian', swatch: ORIGIN_SWATCHES.south_asian },
+  { label: 'Black / African', value: 'black', swatch: ORIGIN_SWATCHES.black },
+  { label: 'Latina', value: 'latina', swatch: ORIGIN_SWATCHES.latina },
+  { label: 'Middle Eastern', value: 'middle_eastern', swatch: ORIGIN_SWATCHES.middle_eastern },
+  { label: 'Mixed', value: 'mixed', swatchGradient: ORIGIN_SWATCHES.mixed },
+  { label: 'Random', value: 'random', icon: 'random' },
 ];
 
-const hairOptions: PhotoOption[] = [
-  { label: 'Black', value: 'black', image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=300&h=300&fit=crop' },
-  { label: 'Dark brown', value: 'dark brown', image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=300&h=300&fit=crop' },
-  { label: 'Light brown', value: 'light brown', image: 'https://images.unsplash.com/photo-1580618432175-d524d0ccc6f8?w=300&h=300&fit=crop' },
-  { label: 'Blonde', value: 'blonde', image: 'https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=300&h=300&fit=crop' },
-  { label: 'Platinum', value: 'platinum', image: 'https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=300&h=300&fit=crop' },
-  { label: 'Auburn', value: 'auburn', image: 'https://images.unsplash.com/photo-1534375971785-5c1826f739d8?w=300&h=300&fit=crop' },
-  { label: 'Red', value: 'red', image: 'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=300&h=300&fit=crop' },
-  { label: 'Silver', value: 'silver', image: 'https://images.unsplash.com/photo-1554244933-d876deb6b2ff?w=300&h=300&fit=crop' },
-  { label: 'Random', value: 'random', icon: '🎲' },
+const hairOptions: IconOption[] = [
+  { label: 'Black', value: 'black', swatch: HAIR_SWATCHES.black },
+  { label: 'Dark brown', value: 'dark brown', swatch: HAIR_SWATCHES['dark brown'] },
+  { label: 'Light brown', value: 'light brown', swatch: HAIR_SWATCHES['light brown'] },
+  { label: 'Blonde', value: 'blonde', swatch: HAIR_SWATCHES.blonde },
+  { label: 'Platinum', value: 'platinum', swatch: HAIR_SWATCHES.platinum },
+  { label: 'Auburn', value: 'auburn', swatch: HAIR_SWATCHES.auburn },
+  { label: 'Red', value: 'red', swatch: HAIR_SWATCHES.red },
+  { label: 'Silver', value: 'silver', swatch: HAIR_SWATCHES.silver },
+  { label: 'Random', value: 'random', icon: 'random' },
 ];
 
-const bodyOptions: PhotoOption[] = [
-  { label: 'Slim', value: 'slim', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&h=300&fit=crop' },
-  { label: 'Petite', value: 'petite', image: 'https://images.unsplash.com/photo-1583254571898-39b1b28fd042?w=300&h=300&fit=crop' },
-  { label: 'Athletic', value: 'athletic', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=300&fit=crop' },
-  { label: 'Curvy', value: 'curvy', image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=300&h=300&fit=crop' },
-  { label: 'Plus size', value: 'plus size', image: 'https://images.unsplash.com/photo-1529903384028-929ae5dccdf1?w=300&h=300&fit=crop' },
-  { label: 'Random', value: 'random', icon: '🎲' },
+const bodyOptions: IconOption[] = [
+  { label: 'Slim', value: 'slim', icon: 'body-slim' },
+  { label: 'Petite', value: 'petite', icon: 'body-petite' },
+  { label: 'Athletic', value: 'athletic', icon: 'body-athletic' },
+  { label: 'Curvy', value: 'curvy', icon: 'body-curvy' },
+  { label: 'Plus size', value: 'plus size', icon: 'body-plus' },
+  { label: 'Random', value: 'random', icon: 'random' },
 ];
 
-const breastSizeOptions: PhotoOption[] = [
-  { label: 'Small', value: 'small', image: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=300&h=300&fit=crop' },
-  { label: 'Medium', value: 'medium', image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=300&h=300&fit=crop' },
-  { label: 'Large', value: 'large', image: 'https://images.unsplash.com/photo-1581338834647-b0fb40704e21?w=300&h=300&fit=crop' },
-  { label: 'Random', value: 'random', icon: '🎲' },
+const breastSizeOptions: IconOption[] = [
+  { label: 'Small', value: 'small', icon: 'chest-small' },
+  { label: 'Medium', value: 'medium', icon: 'chest-medium' },
+  { label: 'Large', value: 'large', icon: 'chest-large' },
+  { label: 'Random', value: 'random', icon: 'random' },
 ];
 
-const ageOptions: PhotoOption[] = [
-  { label: '18', value: '18', image: 'https://images.unsplash.com/photo-1503185912284-5271ff81b9a8?w=300&h=300&fit=crop&crop=face' },
-  { label: '21', value: '21', image: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=300&h=300&fit=crop&crop=face' },
-  { label: '24', value: '24', image: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300&h=300&fit=crop&crop=face' },
-  { label: '27', value: '27', image: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=300&h=300&fit=crop&crop=face' },
-  { label: '30', value: '30', image: 'https://images.unsplash.com/photo-1521146764736-56c929d59c83?w=300&h=300&fit=crop&crop=face' },
-  { label: '35', value: '35', image: 'https://images.unsplash.com/photo-1552374196-c4e7ffc6e126?w=300&h=300&fit=crop&crop=face' },
-  { label: '40', value: '40', image: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=300&h=300&fit=crop&crop=face' },
-  { label: 'Random', value: 'random', icon: '🎲' },
+const ageOptions: IconOption[] = [
+  { label: '18', value: '18', age: '18' },
+  { label: '21', value: '21', age: '21' },
+  { label: '24', value: '24', age: '24' },
+  { label: '27', value: '27', age: '27' },
+  { label: '30', value: '30', age: '30' },
+  { label: '35', value: '35', age: '35' },
+  { label: '40', value: '40', age: '40' },
+  { label: 'Random', value: 'random', icon: 'random' },
 ];
 
-const occupationOptions: PhotoOption[] = [
-  { label: 'Student', value: 'student', image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=300&h=300&fit=crop' },
-  { label: 'Teacher', value: 'teacher', image: 'https://images.unsplash.com/photo-1580894732444-8ecded7900cd?w=300&h=300&fit=crop' },
-  { label: 'Nurse', value: 'nurse', image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop' },
-  { label: 'Fitness trainer', value: 'fitness trainer', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=300&h=300&fit=crop' },
-  { label: 'Chef', value: 'chef', image: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=300&h=300&fit=crop' },
-  { label: 'Lawyer', value: 'lawyer', image: 'https://images.unsplash.com/photo-1589578527966-fdac0f44566c?w=300&h=300&fit=crop' },
-  { label: 'Artist', value: 'artist', image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=300&h=300&fit=crop' },
-  { label: 'Pilot', value: 'pilot', image: 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?w=300&h=300&fit=crop' },
-  { label: 'Doctor', value: 'doctor', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=300&h=300&fit=crop' },
-  { label: 'Model', value: 'model', image: 'https://images.unsplash.com/photo-1469460340997-2f854421e72f?w=300&h=300&fit=crop' },
-  { label: 'Musician', value: 'musician', image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=300&h=300&fit=crop' },
-  { label: 'Random', value: 'random', icon: '🎲' },
+const occupationOptions: IconOption[] = [
+  { label: 'Student', value: 'student', icon: 'occ-student' },
+  { label: 'Teacher', value: 'teacher', icon: 'occ-teacher' },
+  { label: 'Nurse', value: 'nurse', icon: 'occ-nurse' },
+  { label: 'Fitness trainer', value: 'fitness trainer', icon: 'occ-fitness' },
+  { label: 'Chef', value: 'chef', icon: 'occ-chef' },
+  { label: 'Lawyer', value: 'lawyer', icon: 'occ-lawyer' },
+  { label: 'Artist', value: 'artist', icon: 'occ-artist' },
+  { label: 'Pilot', value: 'pilot', icon: 'occ-pilot' },
+  { label: 'Doctor', value: 'doctor', icon: 'occ-doctor' },
+  { label: 'Model', value: 'model', icon: 'occ-model' },
+  { label: 'Musician', value: 'musician', icon: 'occ-musician' },
+  { label: 'Random', value: 'random', icon: 'random' },
 ];
 
-const hairLengthOptions: EmojiOption[] = [
-  { label: 'Short', value: 'short', icon: '✂️' },
-  { label: 'Medium', value: 'medium', icon: '💇' },
-  { label: 'Long', value: 'long', icon: '💫' },
-  { label: 'Random', value: 'random', icon: '🎲' },
+const hairLengthOptions: IconOption[] = [
+  { label: 'Short', value: 'short', icon: 'hair-length-short' },
+  { label: 'Medium', value: 'medium', icon: 'hair-length-medium' },
+  { label: 'Long', value: 'long', icon: 'hair-length-long' },
+  { label: 'Random', value: 'random', icon: 'random' },
 ];
 
-const eyeColorOptions: EmojiOption[] = [
-  { label: 'Brown', value: 'brown', icon: '🟤' },
-  { label: 'Dark brown', value: 'dark brown', icon: '🤎' },
-  { label: 'Blue', value: 'blue', icon: '🔵' },
-  { label: 'Green', value: 'green', icon: '🟢' },
-  { label: 'Hazel', value: 'hazel', icon: '🟡' },
-  { label: 'Amber', value: 'amber', icon: '🟠' },
-  { label: 'Random', value: 'random', icon: '🎲' },
+const eyeColorOptions: IconOption[] = [
+  { label: 'Brown', value: 'brown', icon: 'eye', eyeColor: EYE_SWATCHES.brown },
+  { label: 'Dark brown', value: 'dark brown', icon: 'eye', eyeColor: EYE_SWATCHES['dark brown'] },
+  { label: 'Blue', value: 'blue', icon: 'eye', eyeColor: EYE_SWATCHES.blue },
+  { label: 'Green', value: 'green', icon: 'eye', eyeColor: EYE_SWATCHES.green },
+  { label: 'Hazel', value: 'hazel', icon: 'eye', eyeColor: EYE_SWATCHES.hazel },
+  { label: 'Amber', value: 'amber', icon: 'eye', eyeColor: EYE_SWATCHES.amber },
+  { label: 'Random', value: 'random', icon: 'random' },
 ];
 
 const personalityOptions: EmojiOption[] = [
@@ -235,23 +240,26 @@ const detailChips = [
   'Gamer',
 ];
 
-const HAIR_COLOR_SWATCHES: Record<string, string> = {
-  black: '#1a1a1a',
-  'dark brown': '#3b2314',
-  'light brown': '#a0724e',
-  blonde: '#d4b87a',
-  platinum: '#e8dcc8',
-  auburn: '#6a2c1a',
-  red: '#8b2500',
-};
+const renderOptionVisual = (option: IconOption) => {
+  if (option.swatch || option.swatchGradient) {
+    return (
+      <span
+        className={styles.swatchVisual}
+        style={{ background: option.swatchGradient ?? option.swatch }}
+      />
+    );
+  }
 
-const EYE_COLOR_SWATCHES: Record<string, string> = {
-  brown: '#6b3a2a',
-  'dark brown': '#3b2314',
-  blue: '#4a7ca8',
-  green: '#4a7c4f',
-  hazel: '#8e7540',
-  amber: '#c88a2e',
+  if (option.age) {
+    return <span className={styles.ageVisual}>{option.age}</span>;
+  }
+
+  return (
+    <SetupOptionVisual
+      icon={option.icon}
+      eyeColor={option.eyeColor}
+    />
+  );
 };
 
 const deriveTone = (personality: string): string => {
@@ -704,12 +712,11 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                     <button
                       key={option.value}
                       type="button"
-                      className={`${styles.photoOptionCard} ${styles.genderCard} ${state.sex === option.value ? styles.optionCardSelected : ''}`}
+                      className={`${styles.iconOptionCard} ${styles.genderCard} ${state.sex === option.value ? styles.optionCardSelected : ''}`}
                       onClick={() => handleOptionSelect('sex', option.value)}
                     >
-                      <img src={option.image} alt={option.label} className={styles.photoImage} />
-                      <span className={styles.photoOverlay} />
-                      <span className={styles.photoLabel}>{option.label}</span>
+                      <span className={styles.genderVisual}>{renderOptionVisual(option)}</span>
+                      <span>{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -736,16 +743,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             {step === 'origin' && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>{nameOr('{name}\'s ethnicity', 'Choose ethnicity')}</h2>
-                <div className={styles.photoGridThree}>
+                <div className={styles.optionGridThree}>
                   {originOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`${styles.photoSquareCard} ${state.origin === option.value ? styles.optionCardSelected : ''}`}
+                      className={`${styles.iconOptionCard} ${state.origin === option.value ? styles.optionCardSelected : ''}`}
                       onClick={() => handleOptionSelect('origin', option.value)}
                     >
-                      {option.image ? <img src={option.image} alt={option.label} className={styles.squareImage} /> : <span className={styles.iconOnly}>{option.icon}</span>}
-                      <span className={styles.squareLabel}>{option.label}</span>
+                      <span className={styles.iconVisual}>{renderOptionVisual(option)}</span>
+                      <span>{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -755,16 +762,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             {step === 'hairColor' && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>{nameOr('{name}\'s hair color', 'Choose hair color')}</h2>
-                <div className={styles.photoGridThree}>
+                <div className={styles.optionGridThree}>
                   {hairOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`${styles.photoSquareCard} ${state.hairColor === option.value ? styles.optionCardSelected : ''}`}
+                      className={`${styles.iconOptionCard} ${state.hairColor === option.value ? styles.optionCardSelected : ''}`}
                       onClick={() => handleOptionSelect('hairColor', option.value)}
                     >
-                      {option.image ? <img src={option.image} alt={option.label} className={styles.squareImage} /> : <span className={styles.iconOnly}>{option.icon}</span>}
-                      <span className={styles.squareLabel}>{option.label}</span>
+                      <span className={styles.iconVisual}>{renderOptionVisual(option)}</span>
+                      <span>{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -779,10 +786,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                     <button
                       key={option.value}
                       type="button"
-                      className={`${styles.textOptionCard} ${state.hairLength === option.value ? styles.optionCardSelected : ''}`}
+                      className={`${styles.iconOptionCard} ${state.hairLength === option.value ? styles.optionCardSelected : ''}`}
                       onClick={() => handleOptionSelect('hairLength', option.value)}
                     >
-                      <span className={styles.cardIcon}>{option.icon}</span>
+                      <span className={styles.iconVisual}>{renderOptionVisual(option)}</span>
                       <span>{option.label}</span>
                     </button>
                   ))}
@@ -798,10 +805,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                     <button
                       key={option.value}
                       type="button"
-                      className={`${styles.textOptionCard} ${state.eyeColor === option.value ? styles.optionCardSelected : ''}`}
+                      className={`${styles.iconOptionCard} ${state.eyeColor === option.value ? styles.optionCardSelected : ''}`}
                       onClick={() => handleOptionSelect('eyeColor', option.value)}
                     >
-                      <span className={styles.cardIcon}>{option.icon}</span>
+                      <span className={styles.iconVisual}>{renderOptionVisual(option)}</span>
                       <span>{option.label}</span>
                     </button>
                   ))}
@@ -812,16 +819,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             {step === 'bodyType' && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>{nameOr('{name}\'s body type', 'Choose body type')}</h2>
-                <div className={styles.photoGridThree}>
+                <div className={styles.optionGridThree}>
                   {bodyOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`${styles.photoSquareCard} ${state.bodyType === option.value ? styles.optionCardSelected : ''}`}
+                      className={`${styles.iconOptionCard} ${state.bodyType === option.value ? styles.optionCardSelected : ''}`}
                       onClick={() => handleOptionSelect('bodyType', option.value)}
                     >
-                      {option.image ? <img src={option.image} alt={option.label} className={styles.squareImage} /> : <span className={styles.iconOnly}>{option.icon}</span>}
-                      <span className={styles.squareLabel}>{option.label}</span>
+                      <span className={styles.iconVisual}>{renderOptionVisual(option)}</span>
+                      <span>{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -831,16 +838,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             {step === 'age' && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>{nameOr('How old is {name}?', 'How old?')}</h2>
-                <div className={styles.photoGridThree}>
+                <div className={styles.optionGridThree}>
                   {ageOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`${styles.photoSquareCard} ${state.age === option.value ? styles.optionCardSelected : ''}`}
+                      className={`${styles.iconOptionCard} ${state.age === option.value ? styles.optionCardSelected : ''}`}
                       onClick={() => handleOptionSelect('age', option.value)}
                     >
-                      {option.image ? <img src={option.image} alt={option.label} className={styles.squareImage} /> : <span className={styles.iconOnly}>{option.icon}</span>}
-                      <span className={styles.squareLabel}>{option.label}</span>
+                      <span className={styles.iconVisual}>{renderOptionVisual(option)}</span>
+                      <span>{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -850,16 +857,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             {step === 'breastSize' && state.sex === 'female' && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>{nameOr('{name}\'s chest size', 'Choose chest size')}</h2>
-                <div className={styles.photoGridThree}>
+                <div className={styles.optionGridThree}>
                   {breastSizeOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`${styles.photoSquareCard} ${state.breastSize === option.value ? styles.optionCardSelected : ''}`}
+                      className={`${styles.iconOptionCard} ${state.breastSize === option.value ? styles.optionCardSelected : ''}`}
                       onClick={() => handleOptionSelect('breastSize', option.value)}
                     >
-                      {option.image ? <img src={option.image} alt={option.label} className={styles.squareImage} /> : <span className={styles.iconOnly}>{option.icon}</span>}
-                      <span className={styles.squareLabel}>{option.label}</span>
+                      <span className={styles.iconVisual}>{renderOptionVisual(option)}</span>
+                      <span>{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -941,16 +948,16 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             {step === 'occupation' && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>{nameOr('What does {name} do?', 'Choose occupation')}</h2>
-                <div className={styles.photoGridThree}>
+                <div className={styles.optionGridThree}>
                   {occupationOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`${styles.photoSquareCard} ${state.occupation === option.value ? styles.optionCardSelected : ''}`}
+                      className={`${styles.iconOptionCard} ${state.occupation === option.value ? styles.optionCardSelected : ''}`}
                       onClick={() => handleOptionSelect('occupation', option.value)}
                     >
-                      {option.image ? <img src={option.image} alt={option.label} className={styles.squareImage} /> : <span className={styles.iconOnly}>{option.icon}</span>}
-                      <span className={styles.squareLabel}>{option.label}</span>
+                      <span className={styles.iconVisual}>{renderOptionVisual(option)}</span>
+                      <span>{option.label}</span>
                     </button>
                   ))}
                 </div>
