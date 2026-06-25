@@ -257,17 +257,26 @@ export const generatePreviewWithCharacterReferenceFlux = async (
 
 export const generateCanonicalImageFromReferenceWithFlux = async (input: {
   prompt: string;
-  referenceImageBytes: Buffer;
-  referenceMimeType: string;
+  reference: PortraitReferenceImage;
   imageWeight?: number;
-}): Promise<GeneratedImage> =>
-  generateKontextFromReference({
-    prompt: input.prompt,
-    referenceImageBytes: input.referenceImageBytes,
-    referenceMimeType: input.referenceMimeType,
-    surface: 'canonical',
-    errorLabel: 'Flux canonical generation with selected portrait reference failed',
-  });
+}): Promise<GeneratedImage> => {
+  const surfaceParams = SURFACE_PARAMS.canonical;
+  const model = kontextModelForSurface('canonical');
+  const response = await callFal(
+    model,
+    {
+      prompt: input.prompt,
+      image_url: resolvePortraitReferenceImageUrl(input.reference),
+      aspect_ratio: resolveKontextAspect(surfaceParams.aspect_ratio),
+      num_images: surfaceParams.num_images,
+      output_format: 'png',
+      enable_safety_checker: true,
+    },
+    'Flux canonical generation with selected portrait reference failed',
+  );
+
+  return extractGeneratedImage(response, model);
+};
 
 export const generateGalleryImageFromReferenceWithFlux = async (input: {
   prompt: string;

@@ -298,14 +298,14 @@ export const generatePreviewWithCharacterReferenceModelsLab = async (
 
 export const generateCanonicalImageFromReferenceWithModelsLab = async (input: {
   prompt: string;
-  referenceImageBytes: Buffer;
-  referenceMimeType: string;
+  reference: { bytes: Buffer; mimeType: string } | { url: string };
   imageWeight?: number;
 }): Promise<GeneratedImage> =>
   generateKontextFromReference({
     prompt: input.prompt,
-    referenceImageBytes: input.referenceImageBytes,
-    referenceMimeType: input.referenceMimeType,
+    ...('url' in input.reference
+      ? { referenceImageUrl: input.reference.url }
+      : { referenceImageBytes: input.reference.bytes, referenceMimeType: input.reference.mimeType }),
     surface: 'canonical',
     errorLabel: 'ModelsLab canonical generation with selected portrait reference failed',
   });

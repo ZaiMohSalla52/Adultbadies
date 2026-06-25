@@ -54,8 +54,7 @@ export const generatePreviewWithCharacterReference = (
 
 export const generateCanonicalImageFromReference = (input: {
   prompt: string;
-  referenceImageBytes: Buffer;
-  referenceMimeType: string;
+  reference: PortraitReferenceImage;
   imageWeight?: number;
 }): Promise<GeneratedImage> =>
   isModelsLabImageProvider()

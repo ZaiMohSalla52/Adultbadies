@@ -30,7 +30,7 @@ import type {
 // far exceeds the platform default function limit. 60s is the safe ceiling
 // across Vercel plans; Pro/Enterprise can raise this to 300.
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const CONFLICT_FIELD_LABELS: Record<string, string> = {
   selectedPortraitPrompt: 'portrait style',

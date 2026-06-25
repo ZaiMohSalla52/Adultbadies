@@ -673,7 +673,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const isSubmitting = generationStarted || pending;
-  const showContinue = step === 'name' || step === 'portrait' || step === 'freeformDetails';
+  const showContinue = step === 'name' || step === 'portrait';
   const showCreate = step === 'freeformDetails';
   const nameOr = (withName: string, withoutName: string) =>
     state.name.trim() ? withName.replace('{name}', state.name.trim()) : withoutName;
