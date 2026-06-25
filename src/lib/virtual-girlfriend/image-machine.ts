@@ -64,7 +64,10 @@ const randomChatVariantIndex = () => Math.floor(Math.random() * MAX_IMAGE_VARIAN
 const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
 const MACHINE_TIMEOUT_MS = {
+  /** Portrait / canonical / gallery — typically finishes under 60s. */
   providerRequest: 60_000,
+  /** In-chat Face Gen: ModelsLab poll + reference upload + storage often exceeds 60s. */
+  chatProviderRequest: 180_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;
@@ -1152,7 +1155,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
 
     const generated =
       route.provider === 'face_gen' && input.userMessage?.trim()
-        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () =>
+        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
             generateChatImageFromReferenceFaceGen({
               userMessage: input.userMessage!.trim(),
               reference: faceReference,
@@ -1160,18 +1163,20 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
               numInferenceSteps: route.numInferenceSteps,
             }),
           )
-        : await runProviderGeneration({
-            scope,
-            mode: 'chat_from_reference',
-            prompt,
-            reference: { bytes: reference.bytes, mimeType: reference.mimeType },
-            kontextOptions: {
-              guidanceScale: route.guidanceScale,
-              numInferenceSteps: route.numInferenceSteps,
-              enableSafetyChecker: route.enableSafetyChecker,
-            },
-            preferDevModel: route.modelKind === 'kontext_dev',
-          });
+        : await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
+            runProviderGeneration({
+              scope,
+              mode: 'chat_from_reference',
+              prompt,
+              reference: { bytes: reference.bytes, mimeType: reference.mimeType },
+              kontextOptions: {
+                guidanceScale: route.guidanceScale,
+                numInferenceSteps: route.numInferenceSteps,
+                enableSafetyChecker: route.enableSafetyChecker,
+              },
+              preferDevModel: route.modelKind === 'kontext_dev',
+            }),
+          );
 
     const chatImage = await buildImageRecord({
       token: input.token,

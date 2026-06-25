@@ -15,7 +15,7 @@ import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/
 import type { VirtualGirlfriendImageCategory } from '@/lib/virtual-girlfriend/types';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
