@@ -11,7 +11,7 @@ const TOPLESS_PATTERN =
   /\b(tits|titties|breasts?|boobs?|nipples?|areola|cleavage|topless|topless|no\s*bra|without\s*(a\s*)?bra|bra\s*off|remove\s*(your\s*)?bra|bare\s*chest|bare\s*breasts?|show\s*(me\s*)?(your\s*)?(tits|titties|breasts?|boobs?|nipples?|chest)|flash\s*(me\s*)?(your\s*)?(tits|titties|breasts?|boobs?))\b/i;
 
 const FULL_NUDE_PATTERN =
-  /\b(fully?\s*nude|completely?\s*naked|full[\s-]?body\s*nude|without\s*clothes|no\s*clothes|undressed|strip(ped)?\s*naked)\b/i;
+  /\b(nude|naked|fully?\s*nude|completely?\s*naked|full[\s-]?body\s*nude|without\s*clothes|no\s*clothes|undressed|strip(ped)?\s*naked)\b/i;
 
 const UNDERWEAR_PATTERN =
   /\b(lingerie|panties|thong|g[\s-]?string|underwear|bra\s*and\s*panties|in\s*your\s*underwear)\b/i;

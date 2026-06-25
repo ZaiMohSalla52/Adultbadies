@@ -39,12 +39,26 @@ describe('resolveChatGenerationRoute', () => {
     expect(route.enableSafetyChecker).toBe(false);
   });
 
-  it('routes softer explicit adult chat to kontext dev without safety checker', () => {
+  it('routes softer explicit adult chat to Face Gen when ModelsLab is preferred', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
       adultContentEnabled: true,
       highExposure: false,
+      preferFaceGen: true,
+    });
+    expect(route.provider).toBe('face_gen');
+    expect(route.modelKind).toBe('face_gen');
+    expect(route.enableSafetyChecker).toBe(false);
+  });
+
+  it('routes softer explicit adult chat to kontext dev when Face Gen disabled', () => {
+    const route = resolveChatGenerationRoute({
+      explicit: true,
+      requestedLook: true,
+      adultContentEnabled: true,
+      highExposure: false,
+      preferFaceGen: false,
     });
     expect(route.provider).toBe('flux_kontext');
     expect(route.modelKind).toBe('kontext_dev');

@@ -38,7 +38,7 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const encoder = new TextEncoder();
 
@@ -176,11 +176,20 @@ export async function POST(request: NextRequest) {
           visualSceneHint: moment.visualSceneHint,
           preferFreshGeneration: moment.preferFreshGeneration,
         })
-          .then((result) => ({
-            outcome: result.outcome,
-            attachment: result.attachment,
-            reason: result.reason ?? null,
-          }))
+          .then((result) => {
+            console.info('[virtual-girlfriend][chat/stream] image_task_resolved', {
+              outcome: result.outcome,
+              source: result.attachment?.source ?? null,
+              imageId: result.attachment?.imageId ?? null,
+              reason: result.reason ?? null,
+              explicitPhotoRequest,
+            });
+            return {
+              outcome: result.outcome,
+              attachment: result.attachment,
+              reason: result.reason ?? null,
+            };
+          })
           .catch((error) => {
             console.error('[virtual-girlfriend] image resolve failed', error);
             return {

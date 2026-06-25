@@ -116,13 +116,6 @@ export const resolveCanonicalReferenceForChat = (
     if (byId) return byId;
   }
 
-  const canonical = existingImages.find((image) => image.image_kind === 'canonical' && image.delivery_url);
-  if (canonical) return canonical;
-
-  const gallery = existingImages.filter((image) => image.image_kind === 'gallery' && image.delivery_url);
-  if (gallery.length > 0) {
-    return gallery[Math.floor(Math.random() * gallery.length)] ?? null;
-  }
-
-  return null;
+  // Identity lock must use the canonical portrait only — never a random gallery scene.
+  return existingImages.find((image) => image.image_kind === 'canonical' && image.delivery_url) ?? null;
 };

@@ -10,6 +10,11 @@ describe('parseExplicitExposure', () => {
     expect(spec.kontextEditInstruction.toLowerCase()).toContain('topless');
   });
 
+  it('detects standalone nude and naked as full nude', () => {
+    expect(parseExplicitExposure('send me a nude pic').level).toBe('full_nude');
+    expect(parseExplicitExposure('show me naked').level).toBe('full_nude');
+  });
+
   it('forces phone selfie pose when user asks for selfie', () => {
     const spec = parseExplicitExposure('send me your tits no bra, holding phone taking selfie');
     expect(spec.level).toBe('topless');

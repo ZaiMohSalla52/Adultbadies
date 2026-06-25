@@ -110,10 +110,18 @@ describe('chat image bootstrap', () => {
     expect(pack.identityInvariants.bodyPresentation).toContain('curvy');
   });
 
-  it('resolves canonical from gallery when canonical_reference_image_id is missing', () => {
+  it('resolves canonical portrait when canonical_reference_image_id is missing', () => {
     const canonical = image({ id: 'canonical-1', image_kind: 'canonical' });
     const resolved = resolveCanonicalReferenceForChat(visualProfile, [canonical]);
     expect(resolved?.id).toBe('canonical-1');
+  });
+
+  it('does not use random gallery images as face reference', () => {
+    const galleryOnly = [
+      image({ id: 'gallery-1', image_kind: 'gallery', delivery_url: 'https://cdn.example.com/g1.png' }),
+      image({ id: 'gallery-2', image_kind: 'gallery', delivery_url: 'https://cdn.example.com/g2.png' }),
+    ];
+    expect(resolveCanonicalReferenceForChat(visualProfile, galleryOnly)).toBeNull();
   });
 
   it('bootstraps visual context when visual profile row is missing but images exist', () => {

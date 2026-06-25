@@ -1,7 +1,7 @@
 /*
  * Single routing policy for in-chat image generation.
  *
- * ModelsLab explicit high-exposure chat (topless / full nude) routes to Face Gen
+ * ModelsLab explicit adult chat routes to Face Gen
  * (`/api/v6/image_editing/face_gen`) — the same family the ModelsLab playground
  * uses for face-locked explicit selfies. Flux Kontext dev is kept for softer
  * explicit and wardrobe-change requests.
@@ -28,7 +28,7 @@ export const resolveChatGenerationRoute = (input: {
   preferFaceGen?: boolean;
 }): ChatGenerationRoute => {
   const adultChat = input.adultContentEnabled && input.explicit;
-  const useFaceGen = adultChat && input.highExposure && (input.preferFaceGen ?? true);
+  const useFaceGen = adultChat && (input.preferFaceGen ?? true);
 
   if (useFaceGen) {
     return {

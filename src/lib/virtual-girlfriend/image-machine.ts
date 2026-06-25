@@ -1099,6 +1099,15 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
 
   logImageMachine(scope, 'reference_resolved', {
     canonicalImageId: canonical.id,
+    referenceImageKind: canonical.image_kind,
+    referenceDeliveryUrlHost: (() => {
+      try {
+        return new URL(canonical.delivery_url).host;
+      } catch {
+        return 'invalid-url';
+      }
+    })(),
+    profileCanonicalId: input.visualProfile?.canonical_reference_image_id ?? null,
     bootstrapped: visualContext.bootstrapped,
     visualProfileId: visualContext.visualProfileId,
   });
