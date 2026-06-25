@@ -1,12 +1,12 @@
 import type { PropsWithChildren } from 'react';
 import { redirect } from 'next/navigation';
 import { AppShellNav } from '@/components/layout/app-shell-nav';
+import { AgeCacheWarmer } from '@/components/safety/age-cache-warmer';
 import { getAuthenticatedUser } from '@/lib/supabase/auth';
 import {
   getAgeVerification,
   getCachedAgeVerifiedUserId,
   isAgeVerified,
-  setCachedAgeVerifiedUserId,
 } from '@/lib/safety/age';
 
 const appNavItems = [
@@ -31,11 +31,11 @@ export default async function AppLayout({ children }: PropsWithChildren) {
     if (!isAgeVerified(ageVerification)) {
       redirect('/age-verification');
     }
-    await setCachedAgeVerifiedUserId(user.id);
   }
 
   return (
     <div className="app-shell">
+      <AgeCacheWarmer />
       <AppShellNav items={appNavItems} />
 
       <main className="app-shell-main">{children}</main>

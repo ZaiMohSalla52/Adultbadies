@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
-import { isValidDateOfBirth, setCachedAgeVerifiedUserId, submitAgeAttestation } from '@/lib/safety/age';
+import { applyAgeVerifiedCookie, isValidDateOfBirth, submitAgeAttestation } from '@/lib/safety/age';
 
 export async function POST(request: NextRequest) {
   const auth = await requireAuth();
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await setCachedAgeVerifiedUserId(auth.user.id);
-    return NextResponse.json({ ok: true, status: verification.status });
+    const response = NextResponse.json({ ok: true, status: verification.status });
+    return applyAgeVerifiedCookie(response, auth.user.id);
   } catch (error) {
     console.error('[safety] age attestation failed', error);
     return NextResponse.json({ error: 'Unable to verify age right now. Please try again.' }, { status: 500 });

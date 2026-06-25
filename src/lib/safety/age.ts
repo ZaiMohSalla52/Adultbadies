@@ -52,20 +52,24 @@ export const getCachedAgeVerifiedUserId = async (): Promise<string | null> => {
   return cookieStore.get(AGE_VERIFIED_COOKIE)?.value ?? null;
 };
 
-export const setCachedAgeVerifiedUserId = async (userId: string) => {
-  const cookieStore = await cookies();
-  cookieStore.set(AGE_VERIFIED_COOKIE, userId, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: AGE_VERIFIED_MAX_AGE,
-  });
+export const AGE_VERIFIED_COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  secure: process.env.NODE_ENV === 'production',
+  path: '/',
+  maxAge: AGE_VERIFIED_MAX_AGE,
 };
 
-export const clearCachedAgeVerifiedUserId = async () => {
-  const cookieStore = await cookies();
-  cookieStore.delete(AGE_VERIFIED_COOKIE);
+/** Route Handlers only — attach to NextResponse.cookies, not cookies() in layouts. */
+export const applyAgeVerifiedCookie = (response: NextResponse, userId: string) => {
+  response.cookies.set(AGE_VERIFIED_COOKIE, userId, AGE_VERIFIED_COOKIE_OPTIONS);
+  return response;
+};
+
+/** Route Handlers only. */
+export const clearAgeVerifiedCookie = (response: NextResponse) => {
+  response.cookies.delete(AGE_VERIFIED_COOKIE);
+  return response;
 };
 
 /** Read the caller's age-verification state from their own profile row. */
@@ -133,10 +137,7 @@ export const requireAgeVerifiedApi = async (auth: {
   if (cachedUserId === auth.user.id) return null;
 
   const verification = await getAgeVerification(auth.accessToken, auth.user.id);
-  if (isAgeVerified(verification)) {
-    await setCachedAgeVerifiedUserId(auth.user.id);
-    return null;
-  }
+  if (isAgeVerified(verification)) return null;
 
   return NextResponse.json(
     {
