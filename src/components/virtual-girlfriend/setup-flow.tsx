@@ -88,8 +88,6 @@ const STEPS: BuilderStep[] = [
   'freeformDetails',
 ];
 
-const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-
 const makeInitialState = (): CreatorState => ({
   name: '',
   sex: 'female',

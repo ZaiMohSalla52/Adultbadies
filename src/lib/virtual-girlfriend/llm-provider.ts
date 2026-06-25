@@ -22,10 +22,10 @@ export const resolveVgLlmProvider = (): VgLlmProvider => {
   return 'together';
 };
 
-const useModelsLabChat = () => resolveVgLlmProvider() === 'modelslab';
+const isModelsLabChatProvider = () => resolveVgLlmProvider() === 'modelslab';
 
 export const callTogetherChat = async (body: TogetherLegacyBody) => {
-  if (useModelsLabChat()) {
+  if (isModelsLabChatProvider()) {
     return callModelsLabChat(body);
   }
   return callTogetherChatImpl(body);
@@ -35,7 +35,7 @@ export const streamTogetherChat = async (
   body: TogetherLegacyBody,
   handlers: TogetherStreamHandlers = {},
 ) => {
-  if (useModelsLabChat()) {
+  if (isModelsLabChatProvider()) {
     return streamModelsLabChat(body, handlers);
   }
   return streamTogetherChatImpl(body, handlers);

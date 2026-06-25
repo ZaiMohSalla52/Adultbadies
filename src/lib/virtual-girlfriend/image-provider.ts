@@ -27,15 +27,15 @@ export type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-gir
  * image (init_image). No silent cross-provider fallback.
  */
 
-const useModelsLabImages = () => resolveVgImageProvider() === 'modelslab';
+const isModelsLabImageProvider = () => resolveVgImageProvider() === 'modelslab';
 
 export const generateCanonicalImage = (prompt: string): Promise<GeneratedImage> =>
-  useModelsLabImages()
+  isModelsLabImageProvider()
     ? generateCanonicalImageWithModelsLab(prompt)
     : generateCanonicalImageWithFlux(prompt);
 
 export const generatePortraitPreviewImage = (prompt: string, seed?: number): Promise<GeneratedImage> =>
-  useModelsLabImages()
+  isModelsLabImageProvider()
     ? generatePortraitPreviewImageWithModelsLab(prompt, seed)
     : generatePortraitPreviewImageWithFlux(prompt, seed);
 
@@ -45,7 +45,7 @@ export const generatePreviewWithCharacterReference = (
   referenceMimeType: string,
   seed?: number,
 ): Promise<GeneratedImage> =>
-  useModelsLabImages()
+  isModelsLabImageProvider()
     ? generatePreviewWithCharacterReferenceModelsLab(prompt, referenceImageBytes, referenceMimeType, seed)
     : generatePreviewWithCharacterReferenceFlux(prompt, referenceImageBytes, referenceMimeType, seed);
 
@@ -55,7 +55,7 @@ export const generateCanonicalImageFromReference = (input: {
   referenceMimeType: string;
   imageWeight?: number;
 }): Promise<GeneratedImage> =>
-  useModelsLabImages()
+  isModelsLabImageProvider()
     ? generateCanonicalImageFromReferenceWithModelsLab(input)
     : generateCanonicalImageFromReferenceWithFlux(input);
 
@@ -64,7 +64,7 @@ export const generateGalleryImageFromReference = (input: {
   referenceImageBytes: Buffer;
   referenceMimeType: string;
 }): Promise<GeneratedImage> =>
-  useModelsLabImages()
+  isModelsLabImageProvider()
     ? generateGalleryImageFromReferenceWithModelsLab(input)
     : generateGalleryImageFromReferenceWithFlux(input);
 
@@ -75,6 +75,6 @@ export const generateChatImageFromReference = (input: {
   kontextOptions?: KontextGenerationOptions;
   preferDevModel?: boolean;
 }): Promise<GeneratedImage> =>
-  useModelsLabImages()
+  isModelsLabImageProvider()
     ? generateChatImageFromReferenceWithModelsLab(input)
     : generateChatImageFromReferenceWithFlux(input);
