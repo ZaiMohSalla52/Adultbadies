@@ -8,6 +8,13 @@ const getRequired = (v: string | undefined, key: string) => {
 
 const toDataUri = (bytes: Buffer, mimeType: string) => `data:${mimeType};base64,${bytes.toString('base64')}`;
 
+export const isCloudinaryConfigured = () =>
+  Boolean(
+    env.CLOUDINARY_CLOUD_NAME?.trim()
+    && env.CLOUDINARY_API_KEY?.trim()
+    && env.CLOUDINARY_API_SECRET?.trim(),
+  );
+
 export const uploadToCloudinary = async (input: {
   bytes: Buffer;
   mimeType: string;

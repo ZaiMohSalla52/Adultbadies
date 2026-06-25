@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
+import { isBrowserImageDeliveryConfigured } from '@/lib/storage/publish-browser-image';
 import { runPortraitPreviewImageMachine } from '@/lib/virtual-girlfriend/image-machine';
 import {
   deliverPortraitPreviewCandidates,
@@ -76,16 +77,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (candidates.length < 2) {
-      const hasCloudinary = Boolean(
-        process.env.CLOUDINARY_CLOUD_NAME
-        && process.env.CLOUDINARY_API_KEY
-        && process.env.CLOUDINARY_API_SECRET,
-      );
       return NextResponse.json(
         {
-          error: hasCloudinary
+          error: isBrowserImageDeliveryConfigured()
             ? 'Not enough portrait previews were generated. Please try again.'
-            : 'Portrait hosting is not configured. Set CLOUDINARY_* env vars so previews can load in the browser.',
+            : 'Portrait hosting is not configured. Set R2_PUBLIC_BASE_URL (recommended) or CLOUDINARY_* env vars.',
         },
         { status: 500 },
       );

@@ -73,6 +73,25 @@ const signR2Request = (input: { method: 'PUT' | 'DELETE'; key: string; body?: Bu
   };
 };
 
+export const isR2UploadConfigured = () =>
+  Boolean(
+    env.R2_ACCOUNT_ID?.trim()
+    && env.R2_ACCESS_KEY_ID?.trim()
+    && env.R2_SECRET_ACCESS_KEY?.trim()
+    && env.R2_BUCKET_NAME?.trim(),
+  );
+
+export const isR2PublicDeliveryConfigured = () =>
+  Boolean(isR2UploadConfigured() && env.R2_PUBLIC_BASE_URL?.trim());
+
+export const buildR2PublicUrl = (key: string) => {
+  const base = env.R2_PUBLIC_BASE_URL?.trim().replace(/\/$/, '');
+  if (!base) {
+    throw new Error('R2_PUBLIC_BASE_URL is not configured.');
+  }
+  return `${base}/${key.replace(/^\//, '')}`;
+};
+
 export const uploadToR2 = async (input: { key: string; body: Buffer; contentType: string }) => {
   const signed = signR2Request({ method: 'PUT', key: input.key, body: input.body, contentType: input.contentType });
 

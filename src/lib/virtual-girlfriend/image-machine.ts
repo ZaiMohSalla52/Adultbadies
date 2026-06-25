@@ -38,8 +38,8 @@ import { isHighExposureExplicit } from '@/lib/virtual-girlfriend/explicit-exposu
 import { resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
-import { uploadToCloudinary } from '@/lib/storage/cloudinary';
-import { uploadToR2 } from '@/lib/storage/r2';
+import { isCloudinaryConfigured, uploadToCloudinary } from '@/lib/storage/cloudinary';
+import { buildR2PublicUrl, isR2PublicDeliveryConfigured, uploadToR2 } from '@/lib/storage/r2';
 import { VIRTUAL_GIRLFRIEND_GALLERY_TARGET } from '@/lib/virtual-girlfriend/gallery';
 import {
   getVirtualGirlfriendCompanionById,
@@ -591,21 +591,42 @@ const buildImageRecord = async (input: {
 
   logImageMachine(input.scope, 'upload_success', { target: 'r2', key: r2.key });
 
-  logImageMachine(input.scope, 'upload_start', { target: 'cloudinary' });
-  const cloudinary = await withRetries({
-    attempts: MACHINE_RETRY_ATTEMPTS.storageUpload,
-    scope: input.scope,
-    stage: 'storage_upload',
-    reason: 'storage_error',
-    run: () => withTimeout('cloudinary_upload', MACHINE_TIMEOUT_MS.storageUpload, () => uploadToCloudinary({
-      bytes: input.generated.bytes,
-      mimeType: input.generated.mimeType,
-      folderPath: `${input.userId}/${input.companionId}`,
-      publicId: `${STYLE_VERSION}-${input.capture.kind}-${input.capture.variantIndex}-${Date.now()}`,
-    })),
-  });
+  let deliveryProvider: string;
+  let deliveryPublicId: string;
+  let deliveryUrl: string;
+  let deliveryWidth: number | null | undefined = input.generated.width;
+  let deliveryHeight: number | null | undefined = input.generated.height;
 
-  logImageMachine(input.scope, 'upload_success', { target: 'cloudinary', publicId: cloudinary.publicId });
+  if (isR2PublicDeliveryConfigured()) {
+    deliveryProvider = 'cloudflare_r2';
+    deliveryPublicId = r2.key;
+    deliveryUrl = buildR2PublicUrl(r2.key);
+    logImageMachine(input.scope, 'upload_success', { target: 'r2_public', key: r2.key });
+  } else if (isCloudinaryConfigured()) {
+    logImageMachine(input.scope, 'upload_start', { target: 'cloudinary' });
+    const cloudinary = await withRetries({
+      attempts: MACHINE_RETRY_ATTEMPTS.storageUpload,
+      scope: input.scope,
+      stage: 'storage_upload',
+      reason: 'storage_error',
+      run: () => withTimeout('cloudinary_upload', MACHINE_TIMEOUT_MS.storageUpload, () => uploadToCloudinary({
+        bytes: input.generated.bytes,
+        mimeType: input.generated.mimeType,
+        folderPath: `${input.userId}/${input.companionId}`,
+        publicId: `${STYLE_VERSION}-${input.capture.kind}-${input.capture.variantIndex}-${Date.now()}`,
+      })),
+    });
+    deliveryProvider = cloudinary.provider;
+    deliveryPublicId = cloudinary.publicId;
+    deliveryUrl = cloudinary.deliveryUrl;
+    deliveryWidth = cloudinary.width ?? input.generated.width;
+    deliveryHeight = cloudinary.height ?? input.generated.height;
+    logImageMachine(input.scope, 'upload_success', { target: 'cloudinary', publicId: cloudinary.publicId });
+  } else {
+    throw new Error(
+      'No public image delivery configured. Set R2_PUBLIC_BASE_URL (recommended) or CLOUDINARY_* env vars.',
+    );
+  }
 
   const [inserted] = await insertCompanionImages(input.token, [{
     user_id: input.userId,
@@ -617,11 +638,11 @@ const buildImageRecord = async (input: {
     origin_storage_key: r2.key,
     origin_mime_type: input.generated.mimeType,
     origin_byte_size: input.generated.bytes.byteLength,
-    delivery_provider: cloudinary.provider,
-    delivery_public_id: cloudinary.publicId,
-    delivery_url: cloudinary.deliveryUrl,
-    width: cloudinary.width ?? input.generated.width,
-    height: cloudinary.height ?? input.generated.height,
+    delivery_provider: deliveryProvider,
+    delivery_public_id: deliveryPublicId,
+    delivery_url: deliveryUrl,
+    width: deliveryWidth ?? input.generated.width,
+    height: deliveryHeight ?? input.generated.height,
     prompt_hash: input.promptHash,
     style_version: STYLE_VERSION,
     seed_metadata: {},

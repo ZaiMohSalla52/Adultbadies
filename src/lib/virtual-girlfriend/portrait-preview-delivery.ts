@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
-import { env } from '@/lib/env';
-import { uploadToCloudinary } from '@/lib/storage/cloudinary';
-import { uploadReferenceImageUrl } from '@/lib/virtual-girlfriend/modelslab-client';
+import {
+  buildPortraitPreviewStorageKey,
+  publishBrowserImage,
+} from '@/lib/storage/publish-browser-image';
 import type { VirtualGirlfriendPortraitPreviewCandidate } from '@/lib/virtual-girlfriend/image-machine';
 
 const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string } | null => {
@@ -44,30 +45,6 @@ export const filterReachablePortraitPreviewCandidates = async (
   return checks.filter((entry) => entry.ok).map((entry) => entry.candidate);
 };
 
-const publishPreviewImage = async (input: {
-  bytes: Buffer;
-  mimeType: string;
-  userId: string;
-  sessionId: string;
-  index: number;
-}) => {
-  if (env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET) {
-    const uploaded = await uploadToCloudinary({
-      bytes: input.bytes,
-      mimeType: input.mimeType,
-      folderPath: `portrait-previews/${input.userId}`,
-      publicId: `${input.sessionId}-${input.index + 1}`,
-    });
-    return uploaded.deliveryUrl;
-  }
-
-  if (env.MODELSLAB_API_KEY?.trim()) {
-    return uploadReferenceImageUrl(input.bytes, input.mimeType);
-  }
-
-  return null;
-};
-
 /** Replace heavy base64 previews with short-lived hosted URLs for API responses. */
 export const deliverPortraitPreviewCandidates = async (
   candidates: VirtualGirlfriendPortraitPreviewCandidate[],
@@ -83,15 +60,21 @@ export const deliverPortraitPreviewCandidates = async (
       if (!parsed) return candidate;
 
       try {
-        const deliveryUrl = await publishPreviewImage({
-          bytes: parsed.bytes,
-          mimeType: parsed.mimeType,
+        const storageKey = buildPortraitPreviewStorageKey({
           userId,
           sessionId,
           index,
+          mimeType: parsed.mimeType,
         });
-        if (!deliveryUrl || !isHostedUrl(deliveryUrl)) return candidate;
-        return { ...candidate, imageDataUrl: deliveryUrl };
+        const published = await publishBrowserImage({
+          bytes: parsed.bytes,
+          mimeType: parsed.mimeType,
+          storageKey,
+          cloudinaryFolderPath: `portrait-previews/${userId}`,
+          cloudinaryPublicId: `${sessionId}-${index + 1}`,
+        });
+        if (!published?.deliveryUrl || !isHostedUrl(published.deliveryUrl)) return candidate;
+        return { ...candidate, imageDataUrl: published.deliveryUrl };
       } catch (error) {
         console.warn('[portrait-preview] hosted delivery failed, keeping data URL fallback', {
           userId,
