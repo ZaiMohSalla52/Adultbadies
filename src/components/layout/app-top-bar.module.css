@@ -26,12 +26,12 @@
 .brandIcon {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #ffba2c, #ff8a00);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff2e63, #c084fc);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1a1200;
+  color: #fff;
 }
 
 .brandText {
@@ -41,7 +41,7 @@
 }
 
 .brandAccent {
-  color: #ffba2c;
+  color: #ff5c8a;
 }
 
 .actions {
@@ -52,11 +52,11 @@
 
 .premiumBtn {
   padding: 8px 16px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #ffba2c, #ff8a00);
-  color: #1a1200;
+  border-radius: 10px;
+  background: linear-gradient(130deg, #ff2e63, #8b5cf6);
+  color: #fff;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -75,7 +75,7 @@
 
 .accountBtn:hover {
   color: #fff;
-  border-color: rgba(255, 186, 44, 0.4);
+  border-color: rgba(255, 46, 99, 0.4);
 }
 
 @media (max-width: 1100px) {

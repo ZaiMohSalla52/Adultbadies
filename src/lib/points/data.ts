@@ -1,4 +1,5 @@
 import { env } from '@/lib/env';
+import { POINTS } from '@/lib/points/constants';
 import { supabaseRest } from '@/lib/supabase/rest';
 
 export type UnlockResult = {
@@ -117,6 +118,68 @@ export const grantCompanionImageAccess = async (
   }
 
   await grantCompanionImageAccessViaServiceRole(userId, imageId);
+};
+
+export type MessagePointSpendResult = {
+  ok: boolean;
+  balance: number;
+  cost: number;
+  reason?: string;
+};
+
+const isMissingMessageSpendRpc = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('PGRST202') || message.includes('spend_chat_message_point');
+};
+
+/** Spend points for one chat message. DB enforces cost (1 pt) and balance. */
+export const spendChatMessagePoint = async (token: string, userId: string): Promise<MessagePointSpendResult> => {
+  try {
+    const result = await supabaseRest<MessagePointSpendResult>('rpc/spend_chat_message_point', token, {
+      method: 'POST',
+      body: {},
+    });
+    return {
+      ok: Boolean(result.ok),
+      balance: result.balance ?? 0,
+      cost: result.cost ?? POINTS.messageCost,
+      reason: result.reason,
+    };
+  } catch (error) {
+    if (!isMissingMessageSpendRpc(error)) throw error;
+    console.warn(
+      '[points] spend_chat_message_point RPC missing — using balance check fallback. Run supabase/migrations/021_chat_message_point_cost.sql.',
+    );
+  }
+
+  const balance = await getPointBalance(token, userId);
+  if (balance < POINTS.messageCost) {
+    return { ok: false, balance, cost: POINTS.messageCost, reason: 'insufficient_points' };
+  }
+
+  const rows = await supabaseRest<{ balance: number }[]>('point_balances', token, {
+    searchParams: new URLSearchParams({
+      select: 'balance',
+      user_id: `eq.${userId}`,
+      limit: '1',
+    }),
+  });
+  const current = rows[0]?.balance ?? 0;
+  if (current < POINTS.messageCost) {
+    return { ok: false, balance: current, cost: POINTS.messageCost, reason: 'insufficient_points' };
+  }
+
+  const updated = await supabaseRest<{ balance: number }[]>('point_balances', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({ user_id: `eq.${userId}` }),
+    body: { balance: current - POINTS.messageCost },
+  });
+
+  return {
+    ok: true,
+    balance: updated[0]?.balance ?? current - POINTS.messageCost,
+    cost: POINTS.messageCost,
+  };
 };
 
 /** Spend points to unlock a gallery image. The DB enforces cost and balance. */

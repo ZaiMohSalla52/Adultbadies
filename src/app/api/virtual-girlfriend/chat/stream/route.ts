@@ -10,7 +10,6 @@ import {
   getOrCreateVirtualGirlfriendUserStyleProfile,
   getVirtualGirlfriendCompanionImages,
   getVirtualGirlfriendMessages,
-  getVirtualGirlfriendUserMessageCountForToday,
   insertVirtualGirlfriendMessage,
   insertVirtualGirlfriendMessageReturningId,
   patchVirtualGirlfriendMessage,
@@ -20,7 +19,8 @@ import {
 } from '@/lib/virtual-girlfriend/data';
 import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
-import { grantCompanionImageAccess } from '@/lib/points/data';
+import { grantCompanionImageAccess, spendChatMessagePoint } from '@/lib/points/data';
+import { POINTS } from '@/lib/points/constants';
 import { resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
 import { streamVirtualGirlfriendChatTurn } from '@/lib/virtual-girlfriend/chat-turn';
 
@@ -87,25 +87,25 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: 'Message is required.' }), { status: 400 });
   }
 
-  const [companion, entitlements, usedToday] = await Promise.all([
+  const [companion, entitlements] = await Promise.all([
     requestedCompanionId
       ? getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
       : getActiveVirtualGirlfriend(auth.accessToken, auth.user.id),
     getUserEntitlements(auth.accessToken, auth.user.id),
-    getVirtualGirlfriendUserMessageCountForToday(auth.accessToken, auth.user.id),
   ]);
 
   if (!companion || !companion.setup_completed) {
     return new Response(JSON.stringify({ error: 'Complete Virtual Girlfriend setup first.' }), { status: 400 });
   }
 
-  const limit = entitlements.limits.virtualGirlfriendMessagesPerDay;
-
-  if (limit !== null && usedToday >= limit) {
+  const pointSpend = await spendChatMessagePoint(auth.accessToken, auth.user.id);
+  if (!pointSpend.ok) {
     return new Response(
       JSON.stringify({
-        error: 'Daily Virtual Girlfriend free message limit reached.',
-        code: 'VG_LIMIT_REACHED',
+        error: `Not enough points. Each message costs ${POINTS.messageCost} point.`,
+        code: 'INSUFFICIENT_POINTS',
+        balance: pointSpend.balance,
+        cost: pointSpend.cost,
         upgradePath: '/premium',
       }),
       { status: 402 },

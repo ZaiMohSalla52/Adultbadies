@@ -23,9 +23,9 @@ const featureRows = [
     premium: 'Included',
   },
   {
-    name: 'Virtual Girlfriend text chat',
-    free: '20 messages/day',
-    premium: 'Expanded daily access',
+    name: 'AI chat messages',
+    free: `${POINTS.messageCost} point each`,
+    premium: `${POINTS.messageCost} point each + monthly stipend`,
   },
   {
     name: 'Virtual Girlfriend voice chat',

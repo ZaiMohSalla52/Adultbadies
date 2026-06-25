@@ -182,7 +182,7 @@ export const AppShellNav = ({ items, mobile = false }: { items: readonly AppNavI
           <span className={styles.premiumPromoIcon} aria-hidden>👑</span>
           Join Premium
         </Link>
-        <p className={styles.premiumPromoSub}>Enjoy unlimited messages</p>
+        <p className={styles.premiumPromoSub}>1 point per message · monthly points stipend</p>
       </div>
     </aside>
   );

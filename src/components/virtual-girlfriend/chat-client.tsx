@@ -15,6 +15,7 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 import { getOutfitPresetsForSex } from '@/lib/virtual-girlfriend/outfit-presets';
 import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
+import { POINTS } from '@/lib/points/constants';
 import { polishChatDisplayText } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { ChatAvatarImage } from './chat-avatar-image';
 import { ChatImageAttachment } from './chat-image-attachment';
@@ -141,8 +142,8 @@ export const VirtualGirlfriendChatClient = ({
   const voiceRunRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const limit = entitlements.limits.virtualGirlfriendMessagesPerDay;
-  const reachedLimit = limit !== null && usedToday >= limit;
+  const messageCost = POINTS.messageCost;
+  const insufficientPoints = pointBalance < messageCost;
   const outfitPresets = useMemo(() => getOutfitPresetsForSex(companionSex), [companionSex]);
   const labels = useMemo(() => getCompanionLabels(companionSex), [companionSex]);
 
@@ -231,7 +232,7 @@ export const VirtualGirlfriendChatClient = ({
 
   const send = async (override?: string) => {
     const text = (override ?? draft).trim();
-    if (!text || pending || reachedLimit) return;
+    if (!text || pending || insufficientPoints) return;
 
     setPending(true);
     setIsStreaming(true);
@@ -263,13 +264,25 @@ export const VirtualGirlfriendChatClient = ({
     });
 
     if (!response.ok || !response.body) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+        balance?: number;
+      };
       setMessages((prev) => prev.filter((message) => message.id !== optimisticUser.id));
-      setError(body.error ?? 'Unable to send message.');
+      if (body.code === 'INSUFFICIENT_POINTS') {
+        if (typeof body.balance === 'number') setPointBalance(body.balance);
+        setError(`Not enough points. Each message costs ${messageCost} point.`);
+      } else {
+        setError(body.error ?? 'Unable to send message.');
+      }
       setPending(false);
       setIsStreaming(false);
+      setCompanionActivity('idle');
       return;
     }
+
+    setPointBalance((prev) => Math.max(0, prev - messageCost));
 
     type DonePayload = {
       content: string;
@@ -1035,13 +1048,10 @@ export const VirtualGirlfriendChatClient = ({
           ? styles.voiceToneWarning
           : '';
 
-  const helperText = useMemo(() => {
-    if (limit === null) {
-      return 'Premium messages available today.';
-    }
-
-    return `${usedToday}/${limit} messages today`;
-  }, [limit, usedToday]);
+  const helperText = useMemo(
+    () => `💜 ${pointBalance} points · ${messageCost} per message · unblur ${POINTS.unblurCost} pts`,
+    [pointBalance, messageCost],
+  );
 
   const avatarUrl = liveAvatarUrl;
   const backdropUrl = liveBackdropUrl;
@@ -1297,12 +1307,12 @@ export const VirtualGirlfriendChatClient = ({
               ))}
             </div>
           ) : null}
-          {reachedLimit ? (
+          {insufficientPoints ? (
             <div className={styles.limitBox}>
-              <p>You reached today&apos;s free message limit.</p>
+              <p>You need at least {messageCost} point to send a message.</p>
               <div className={styles.limitActions}>
                 <Link href="/premium" className={styles.linkButton}>
-                  Upgrade to Premium
+                  Get Premium points
                 </Link>
                 <Link href={`/virtual-girlfriend/profile?companionId=${companionId}`} className={styles.linkButtonGhost}>
                   Back to profile

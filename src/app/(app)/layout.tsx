@@ -47,11 +47,12 @@ export default async function AppLayout({ children }: PropsWithChildren) {
     <div className="app-shell">
       <AgeCacheWarmer />
       <AppTopBar />
-      <Suspense fallback={null}>
-        <AppShellNav items={desktopNavItems} />
-      </Suspense>
-
-      <main className="app-shell-main">{children}</main>
+      <div className="app-shell-body">
+        <Suspense fallback={null}>
+          <AppShellNav items={desktopNavItems} />
+        </Suspense>
+        <main className="app-shell-main">{children}</main>
+      </div>
 
       <Suspense fallback={null}>
         <AppShellNav items={mobileNavItems} mobile />

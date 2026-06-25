@@ -312,6 +312,39 @@
   margin-inline: auto;
 }
 
+.portraitPreviewWrap {
+  position: relative;
+  width: min(320px, 88vw);
+  margin: 0 auto 16px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 46, 99, 0.35);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.portraitPreviewImage {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+}
+
+.portraitPreviewBadge {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(7, 11, 20, 0.72);
+  border: 1px solid rgba(255, 46, 99, 0.35);
+  color: #ff8ba7;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .carouselContainer {
   width: 100%;
   overflow: hidden;
@@ -375,8 +408,16 @@
 }
 
 @media (max-width: 767px) {
+  .portraitPreviewWrap {
+    width: min(280px, 92vw);
+  }
+
   .carouselCard {
-    flex: 0 0 70%;
+    flex: 0 0 62%;
+  }
+
+  .carouselImage {
+    min-height: 220px;
   }
 
   .genderCard {

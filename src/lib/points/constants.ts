@@ -7,6 +7,8 @@
  * these values are for UI display and gating logic only — keep them in sync.
  */
 export const POINTS = {
+  /** Cost in points per AI chat message. */
+  messageCost: 1,
   /** Cost in points to permanently unblur one gallery photo. */
   unblurCost: 15,
   /** Points granted to an active-premium member once per billing period. */

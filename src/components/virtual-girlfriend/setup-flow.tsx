@@ -990,6 +990,26 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                   <>
                     <h2 className={styles.stepTitle}>{nameOr(`Pick {name}'s portrait`, labels.pickPortrait)}</h2>
                     <p className={styles.loadingSubtext}>Pick the face that matches their style and personality.</p>
+                    {(() => {
+                      const previewUrl =
+                        state.selectedPortraitImage
+                        || portraitCandidates[activeDotIndex]?.imageDataUrl
+                        || null;
+                      return previewUrl ? (
+                        <div className={styles.portraitPreviewWrap}>
+                          <img
+                            src={previewUrl}
+                            alt="Portrait preview"
+                            className={styles.portraitPreviewImage}
+                          />
+                          {state.selectedPortraitImage ? (
+                            <span className={styles.portraitPreviewBadge}>Selected</span>
+                          ) : (
+                            <span className={styles.portraitPreviewBadge}>Preview</span>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
                     <button type="button" className={styles.skipButton} onClick={regeneratePortraits} disabled={portraitsLoading}>
                       Regenerate looks
                     </button>
