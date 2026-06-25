@@ -12,6 +12,7 @@ import {
   SetupOptionVisual,
   type SetupIconId,
 } from '@/components/virtual-girlfriend/setup-option-icons';
+import { readJsonResponse } from '@/lib/api/read-json-response';
 import styles from './setup-flow.module.css';
 
 type BuilderStep =
@@ -487,7 +488,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         }),
       });
 
-      const body = (await response.json()) as { candidates?: PortraitCandidate[]; error?: string };
+      const body = await readJsonResponse<{ candidates?: PortraitCandidate[]; error?: string }>(response);
       if (!response.ok || !body.candidates?.length) throw new Error(body.error ?? 'Unable to generate portraits now.');
       setPortraitCandidates(body.candidates);
       if (force) {
@@ -615,7 +616,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           }),
         });
 
-        const body = (await response.json()) as VirtualGirlfriendSetupResult;
+        const body = await readJsonResponse<VirtualGirlfriendSetupResult>(response);
 
         if (
           body.state === 'generating'

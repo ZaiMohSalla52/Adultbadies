@@ -53,7 +53,14 @@ export const postModelsLabJson = async (
     body: JSON.stringify(body),
   });
 
-  const payload = (await response.json()) as ModelsLabApiResponse;
+  const raw = await response.text();
+  let payload: ModelsLabApiResponse;
+  try {
+    payload = JSON.parse(raw) as ModelsLabApiResponse;
+  } catch {
+    throw new Error(`${errorLabel}: ${raw.trim().slice(0, 180) || `HTTP ${response.status}`}`);
+  }
+
   if (!response.ok || payload.status === 'error') {
     const message = payload.message ?? payload.messege ?? `HTTP ${response.status}`;
     throw new Error(`${errorLabel}: ${message}`);

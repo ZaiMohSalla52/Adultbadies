@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import { runPortraitPreviewImageMachine } from '@/lib/virtual-girlfriend/image-machine';
+import { deliverPortraitPreviewCandidates } from '@/lib/virtual-girlfriend/portrait-preview-delivery';
 import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
 
 // Portrait preview generates several candidate images; raise the function
@@ -58,7 +59,19 @@ export async function POST(request: NextRequest) {
       count: 4,
     });
 
-    return NextResponse.json({ ok: true, candidates: result.candidates });
+    const candidates = await deliverPortraitPreviewCandidates(result.candidates, auth.user.id);
+    const stillEmbedded = candidates.some((candidate) => candidate.imageDataUrl.startsWith('data:'));
+    if (stillEmbedded) {
+      return NextResponse.json(
+        {
+          error:
+            'Portrait previews were generated but could not be published to a URL. Configure Cloudinary or ModelsLab storage.',
+        },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ ok: true, candidates });
   } catch (error) {
     console.error('[virtual-girlfriend] portrait candidate generation failed', error);
     return NextResponse.json({ error: 'Unable to generate portrait candidates right now.' }, { status: 500 });

@@ -152,7 +152,18 @@ export async function POST(request: NextRequest) {
 
   console.info('[virtual-girlfriend][setup] request received', { userId: auth.user.id });
 
-  const body = (await request.json()) as VirtualGirlfriendSetupPayload & { companionId?: string; createNew?: boolean };
+  let body: VirtualGirlfriendSetupPayload & { companionId?: string; createNew?: boolean };
+  try {
+    body = (await request.json()) as VirtualGirlfriendSetupPayload & { companionId?: string; createNew?: boolean };
+  } catch {
+    return NextResponse.json(
+      {
+        state: 'blocked_pre_gen',
+        message: 'Setup payload was too large or invalid. Please regenerate portraits and try again.',
+      } satisfies VirtualGirlfriendSetupResult,
+      { status: 413 },
+    );
+  }
   const baseName = String(body.name ?? '').trim();
 
   if (!baseName) {
