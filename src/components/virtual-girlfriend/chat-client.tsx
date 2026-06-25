@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import type { Entitlements } from '@/lib/subscriptions/types';
 import type {
   VirtualGirlfriendMessageRecord,
@@ -15,6 +16,7 @@ import type {
 import { getOutfitPresetsForSex } from '@/lib/virtual-girlfriend/outfit-presets';
 import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import { polishChatDisplayText } from '@/lib/virtual-girlfriend/reply-sanitizer';
+import { ChatAvatarImage } from './chat-avatar-image';
 import { ChatImageAttachment } from './chat-image-attachment';
 import { UnlockableGallery } from './unlockable-gallery';
 import styles from './chat-client.module.css';
@@ -24,6 +26,7 @@ type ChatClientProps = {
   companionName: string;
   companionAvatarUrl?: string | null;
   portraitBackdropUrl?: string | null;
+  portraitPreviewUrl?: string | null;
   initialMessages: VirtualGirlfriendMessageRecord[];
   entitlements: Entitlements;
   usedToday: number;
@@ -58,6 +61,7 @@ export const VirtualGirlfriendChatClient = ({
   companionName,
   companionAvatarUrl,
   portraitBackdropUrl,
+  portraitPreviewUrl,
   initialMessages,
   entitlements,
   usedToday,
@@ -73,7 +77,10 @@ export const VirtualGirlfriendChatClient = ({
   pointBalance: initialPointBalance,
   unblurCost,
 }: ChatClientProps) => {
+  const router = useRouter();
   const [messages, setMessages] = useState(initialMessages);
+  const [liveAvatarUrl, setLiveAvatarUrl] = useState(companionAvatarUrl ?? portraitPreviewUrl ?? '');
+  const [liveBackdropUrl, setLiveBackdropUrl] = useState(portraitBackdropUrl ?? companionAvatarUrl ?? portraitPreviewUrl ?? '');
   const [styleProfile, setStyleProfile] = useState(initialStyleProfile);
   const [infoTab, setInfoTab] = useState<'photos' | 'wardrobe' | 'profile'>('photos');
   const [outfitMenuOpen, setOutfitMenuOpen] = useState(false);
@@ -137,6 +144,74 @@ export const VirtualGirlfriendChatClient = ({
   useEffect(() => {
     scrollToBottom();
   }, []);
+
+  useEffect(() => {
+    const nextAvatar = companionAvatarUrl ?? portraitPreviewUrl ?? '';
+    const nextBackdrop = portraitBackdropUrl ?? companionAvatarUrl ?? portraitPreviewUrl ?? '';
+    setLiveAvatarUrl(nextAvatar);
+    setLiveBackdropUrl(nextBackdrop);
+  }, [companionAvatarUrl, portraitBackdropUrl, portraitPreviewUrl]);
+
+  useEffect(() => {
+    if (companionAvatarUrl) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 90;
+
+    const poll = async (): Promise<boolean> => {
+      attempts += 1;
+      try {
+        const response = await fetch(
+          `/api/virtual-girlfriend/generation-status?companionId=${encodeURIComponent(companionId)}`,
+          { cache: 'no-store' },
+        );
+        if (!response.ok || cancelled) return attempts >= maxAttempts;
+
+        const data = (await response.json()) as {
+          canonicalUrl?: string | null;
+          portraitPreviewUrl?: string | null;
+          status?: string;
+        };
+
+        if (data.canonicalUrl) {
+          setLiveAvatarUrl(data.canonicalUrl);
+          setLiveBackdropUrl(data.canonicalUrl);
+          router.refresh();
+          return true;
+        }
+
+        if (data.portraitPreviewUrl) {
+          setLiveAvatarUrl((current) => current || data.portraitPreviewUrl || '');
+          setLiveBackdropUrl((current) => current || data.portraitPreviewUrl || '');
+        }
+
+        if (data.status && data.status !== 'generating') {
+          router.refresh();
+          return true;
+        }
+      } catch {
+        // keep polling through transient failures
+      }
+
+      return attempts >= maxAttempts;
+    };
+
+    const interval = setInterval(() => {
+      void poll().then((done) => {
+        if (done) clearInterval(interval);
+      });
+    }, 3000);
+
+    void poll().then((done) => {
+      if (done) clearInterval(interval);
+    });
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [companionAvatarUrl, companionId, router]);
 
   const send = async (override?: string) => {
     const text = (override ?? draft).trim();
@@ -952,8 +1027,8 @@ export const VirtualGirlfriendChatClient = ({
     return `${usedToday}/${limit} messages today`;
   }, [limit, usedToday]);
 
-  const avatarUrl = companionAvatarUrl ?? '';
-  const backdropUrl = portraitBackdropUrl ?? companionAvatarUrl ?? '';
+  const avatarUrl = liveAvatarUrl;
+  const backdropUrl = liveBackdropUrl;
 
   return (
     <div className={styles.chatLayout}>
@@ -965,7 +1040,7 @@ export const VirtualGirlfriendChatClient = ({
             </svg>
           </Link>
           <div className={styles.headerAvatar}>
-            {avatarUrl ? <Image src={avatarUrl} alt={companionName} width={36} height={36} sizes="36px" /> : <span>{companionName.charAt(0)}</span>}
+            {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={36} height={36} sizes="36px" /> : <span>{companionName.charAt(0)}</span>}
           </div>
           <div className={styles.companionHeaderInfo}>
             <span className={styles.headerName}>{companionName}</span>
@@ -1095,7 +1170,7 @@ export const VirtualGirlfriendChatClient = ({
             return (
               <div key={message.id} className={styles.messageCompanion}>
                 <div className={styles.companionAvatar}>
-                  {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
+                  {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
                 </div>
                 <div className={styles.bubbleGroup}>
                   {renderBubbles.map((part, idx) => (
@@ -1142,7 +1217,7 @@ export const VirtualGirlfriendChatClient = ({
           {isStreaming && companionActivity === 'typing' && !messages.some((message) => message.id.startsWith('temp-assistant-')) ? (
             <div className={styles.messageCompanion}>
               <div className={styles.companionAvatar}>
-                {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
+                {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
               </div>
               <div className={styles.typingIndicator} aria-label={`${companionName} is typing`}>
                 <span className={styles.typingDot} />
@@ -1240,7 +1315,7 @@ export const VirtualGirlfriendChatClient = ({
 
       <aside className={styles.infoPanel}>
         <div className={styles.infoPanelPortrait}>
-          {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={320} height={420} sizes="320px" /> : null}
+          {backdropUrl ? <ChatAvatarImage src={backdropUrl} alt={companionName} width={320} height={420} sizes="320px" /> : null}
         </div>
         <h2 className={styles.infoPanelName}>{companionName}</h2>
         {personality ? <p className={styles.infoPanelSub}>{personality}</p> : null}

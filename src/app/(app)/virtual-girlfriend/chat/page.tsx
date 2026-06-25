@@ -17,6 +17,13 @@ import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery'
 import { claimPointStipend, getPointBalance, getUnlockedImageIds } from '@/lib/points/data';
 import { POINTS } from '@/lib/points/constants';
 
+export const dynamic = 'force-dynamic';
+
+const resolvePortraitPreviewUrl = (value: string | null | undefined) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+};
+
 export default async function VirtualGirlfriendChatPage({
   searchParams,
 }: {
@@ -68,12 +75,16 @@ export default async function VirtualGirlfriendChatPage({
     getUnlockedImageIds(auth.accessToken, auth.user.id, companion.id),
   ]);
 
+  const portraitPreviewUrl = resolvePortraitPreviewUrl(companion.structured_profile?.selectedPortraitImage);
+  const canonicalUrl = curated.canonical?.delivery_url ?? null;
+
   return (
     <VirtualGirlfriendChatClient
       companionId={companion.id}
       companionName={companion.name}
-      companionAvatarUrl={curated.canonical?.delivery_url ?? null}
-      portraitBackdropUrl={curated.canonical?.delivery_url ?? null}
+      companionAvatarUrl={canonicalUrl}
+      portraitBackdropUrl={canonicalUrl ?? portraitPreviewUrl}
+      portraitPreviewUrl={portraitPreviewUrl}
       initialMessages={messages}
       entitlements={entitlements}
       usedToday={usedToday}

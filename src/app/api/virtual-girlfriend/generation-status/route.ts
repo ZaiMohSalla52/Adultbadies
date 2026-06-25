@@ -3,8 +3,9 @@ import { requireAuth } from '@/app/api/onboarding/shared';
 import {
   getLatestVisualProfileForCompanion,
   getVirtualGirlfriendCompanionById,
-  getVirtualGirlfriendCompanionImages,
+  getVirtualGirlfriendCompanionThumbnailBatch,
 } from '@/lib/virtual-girlfriend/data';
+import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import { resolveCompanionImageState } from '@/lib/virtual-girlfriend/generation-state';
 
 export const runtime = 'nodejs';
@@ -23,15 +24,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Companion not found.' }, { status: 404 });
   }
 
-  const [visualProfile, images] = await Promise.all([
+  const [visualProfile, thumbnailMap] = await Promise.all([
     getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companionId),
-    getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companionId),
+    getVirtualGirlfriendCompanionThumbnailBatch(auth.accessToken, auth.user.id, [companionId]),
   ]);
 
+  const images = thumbnailMap.get(companionId) ?? [];
   const status = resolveCompanionImageState({ companion, images, visualProfile });
+  const curated = curateVirtualGirlfriendImages(images, {
+    lockedCanonicalImageId: visualProfile?.canonical_reference_image_id ?? null,
+  });
+  const portraitPreviewUrl =
+    typeof companion.structured_profile?.selectedPortraitImage === 'string'
+      ? companion.structured_profile.selectedPortraitImage.trim() || null
+      : null;
 
   return NextResponse.json(
-    { status, generationStatus: companion.generation_status, imageCount: images.length },
+    {
+      status,
+      generationStatus: companion.generation_status,
+      imageCount: images.length,
+      canonicalUrl: curated.canonical?.delivery_url ?? null,
+      portraitPreviewUrl,
+    },
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }

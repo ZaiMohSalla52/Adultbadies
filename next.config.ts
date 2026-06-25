@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: 'assets.modelslab.ai' },
+      { protocol: 'https', hostname: 'images.stablediffusionapi.com' },
       { protocol: 'https', hostname: supabaseHost },
       { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
