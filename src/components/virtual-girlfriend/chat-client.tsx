@@ -14,6 +14,7 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 import { getOutfitPresetsForSex } from '@/lib/virtual-girlfriend/outfit-presets';
 import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
+import { polishChatDisplayText } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { ChatImageAttachment } from './chat-image-attachment';
 import { UnlockableGallery } from './unlockable-gallery';
 import styles from './chat-client.module.css';
@@ -82,7 +83,6 @@ export const VirtualGirlfriendChatClient = ({
   const [pending, setPending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [companionActivity, setCompanionActivity] = useState<'idle' | 'typing' | 'sending_photo'>('idle');
-  const [photoGenerating, setPhotoGenerating] = useState(false);
   const [sidebarImages, setSidebarImages] = useState(galleryImages);
   const [sidebarUnlocked, setSidebarUnlocked] = useState(unlockedImageIds);
   const [stylePending, setStylePending] = useState<VirtualGirlfriendStyleControlPreset | null>(null);
@@ -145,7 +145,6 @@ export const VirtualGirlfriendChatClient = ({
     setPending(true);
     setIsStreaming(true);
     setCompanionActivity('typing');
-    setPhotoGenerating(false);
     setError(null);
     setDraft('');
     setOutfitMenuOpen(false);
@@ -207,6 +206,7 @@ export const VirtualGirlfriendChatClient = ({
       assistantId: null as string | null,
     };
     let liveAttachments: VirtualGirlfriendMessageAttachment[] = [];
+    let photoPending = false;
 
     const ensureStreamingAssistant = (token: string) => {
       const streamId = streamState.assistantId ?? `temp-assistant-${Date.now()}`;
@@ -214,10 +214,12 @@ export const VirtualGirlfriendChatClient = ({
 
       setMessages((prev) => {
         const existing = prev.find((message) => message.id === streamId);
+        const rawContent = existing ? `${existing.content}${token}` : token;
+        const content = polishChatDisplayText(rawContent);
         if (existing) {
           return prev.map((message) =>
             message.id === streamId
-              ? { ...message, content: `${message.content}${token}` }
+              ? { ...message, content }
               : message,
           );
         }
@@ -227,7 +229,7 @@ export const VirtualGirlfriendChatClient = ({
           {
             id: streamId,
             role: 'assistant' as const,
-            content: token,
+            content,
             conversation_id: 'temp',
             user_id: 'temp',
             created_at: new Date().toISOString(),
@@ -329,22 +331,21 @@ export const VirtualGirlfriendChatClient = ({
                 ? event.payload.segments
                 : [event.payload.content];
             finalizeSegments(segments, event.payload.contentType);
-            setCompanionActivity((current) => (current === 'typing' ? 'idle' : current));
+            setCompanionActivity(photoPending ? 'sending_photo' : 'idle');
           }
 
           if (event.type === 'image_generating') {
-            setPhotoGenerating(event.payload.active);
-            setCompanionActivity('sending_photo');
+            photoPending = event.payload.active;
           }
 
           if (event.type === 'image') {
-            setPhotoGenerating(false);
+            photoPending = false;
             setCompanionActivity('idle');
             attachImageToAssistant(event.payload.attachment);
           }
 
           if (event.type === 'image_failed') {
-            setPhotoGenerating(false);
+            photoPending = false;
             setCompanionActivity('idle');
             const detail = event.payload.reason ?? event.payload.outcome;
             setError(
@@ -415,7 +416,6 @@ export const VirtualGirlfriendChatClient = ({
     setPending(false);
     setIsStreaming(false);
     setCompanionActivity('idle');
-    setPhotoGenerating(false);
     scrollToBottom();
   };
 
@@ -1120,7 +1120,7 @@ export const VirtualGirlfriendChatClient = ({
                             ) : null,
                           )
                         : null}
-                      {part ? <p>{part}</p> : null}
+                      {part ? <p>{polishChatDisplayText(part)}</p> : null}
                       {idx === renderBubbles.length - 1 ? (
                         <div className={styles.messageActions}>
                           <span className={styles.timestamp}>{formatTime(message.created_at)}</span>
@@ -1152,17 +1152,6 @@ export const VirtualGirlfriendChatClient = ({
             </div>
           ) : null}
 
-          {photoGenerating ? (
-            <div className={styles.messageCompanion}>
-              <div className={styles.companionAvatar}>
-                {companionAvatarUrl ? <Image src={companionAvatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
-              </div>
-              <div className={styles.photoSendingIndicator} aria-label={`${companionName} is sending a photo`}>
-                <div className={styles.photoSendingShimmer} />
-                <span className={styles.photoSendingLabel}>Sending photo…</span>
-              </div>
-            </div>
-          ) : null}
           </div>
         </div>
 

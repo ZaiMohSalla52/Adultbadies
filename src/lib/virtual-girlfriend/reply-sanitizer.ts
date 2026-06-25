@@ -35,11 +35,26 @@ const FORBIDDEN_PATTERNS: RegExp[] = [
 export const containsForbiddenReplyLanguage = (text: string) =>
   FORBIDDEN_PATTERNS.some((pattern) => pattern.test(text));
 
-const SMIRK_ACTION_PATTERN = /\*smirks?\*/gi;
+const META_ACTION_PATTERNS: RegExp[] = [
+  /\*smirks?\*/gi,
+  /\*photosending\*/gi,
+  /\*photo[\s-]?sending\*/gi,
+  /\*sends?(?:ing)?(?:\s+a)?\s+photo\*/gi,
+  /\*uploading(?:\s+photo)?\*/gi,
+  /\*attaching(?:\s+photo)?\*/gi,
+];
 
-const polishRoleplayActions = (text: string) => {
-  const withoutSmirk = text.replace(SMIRK_ACTION_PATTERN, '').replace(/\n{3,}/g, '\n\n').trim();
-  return withoutSmirk;
+/** Strip roleplay/meta noise and markdown so chat reads like plain texting. */
+export const polishChatDisplayText = (text: string) => {
+  let cleaned = text;
+  for (const pattern of META_ACTION_PATTERNS) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  // **bold** or __bold__ → plain word
+  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/__([^_]+)__/g, '$1');
+  // stray single-asterisk emphasis *word* → word (keep short actions users might want elsewhere)
+  cleaned = cleaned.replace(/(?<!\*)\*([a-z][a-z\s]{0,24})\*(?!\*)/gi, '$1');
+  return cleaned.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
 };
 
 const stripForbiddenSentences = (text: string) =>
@@ -64,7 +79,7 @@ export const sanitizeAssistantReply = (input: {
   if (!trimmed) return '';
 
   if (!containsForbiddenReplyLanguage(trimmed)) {
-    return polishRoleplayActions(trimmed);
+    return polishChatDisplayText(trimmed);
   }
 
   if (input.imageAttached) {
@@ -72,7 +87,7 @@ export const sanitizeAssistantReply = (input: {
   }
 
   if (input.photoRequested) {
-    return 'Mmm, I love how bold you are.\n\nStay right there — I\'m sending you something.';
+    return 'Mmm, I love how bold you are.\n\nStay right there — you\'re going to like this.';
   }
 
   if (input.teaseOnly) {
@@ -81,7 +96,7 @@ export const sanitizeAssistantReply = (input: {
 
   const stripped = stripForbiddenSentences(trimmed);
   if (stripped && !containsForbiddenReplyLanguage(stripped)) {
-    return polishRoleplayActions(stripped);
+    return polishChatDisplayText(stripped);
   }
 
   return 'You know exactly what you do to me.\n\nKeep talking — I\'m right here with you.';

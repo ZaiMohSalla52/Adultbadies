@@ -26,7 +26,7 @@ export const buildHeuristicPhotoIntent = (
     imageCategory: spec.imageCategory,
     powerDynamic: 'balanced',
     companionGuidance: spec.explicit
-      ? 'The user asked for an explicit adult photo. A fresh in-app image is generating — flirt in-character, stay eager, and NEVER say you cannot send photos or offer text instead.'
-      : 'The user wants to see you. A photo is being delivered in this app — flirt naturally, react in-character, and NEVER say you cannot send photos or offer text descriptions instead.',
+      ? 'The user asked for an explicit adult photo. Flirt in-character and react to what they asked for — the app attaches the image automatically. NEVER narrate uploading/sending photos, NEVER use *photosending* or similar meta actions, NEVER say you cannot send photos.'
+      : 'The user wants to see you. Flirt naturally and react in-character — the app attaches photos automatically. NEVER narrate uploading/sending, NEVER use *photosending*, NEVER say you cannot send photos or offer text instead.',
   };
 };

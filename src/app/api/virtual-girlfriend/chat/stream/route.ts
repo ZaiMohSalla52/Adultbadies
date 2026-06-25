@@ -23,6 +23,7 @@ import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/
 import { grantCompanionImageAccess } from '@/lib/points/data';
 import { resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
 import { streamVirtualGirlfriendChatTurn } from '@/lib/virtual-girlfriend/chat-turn';
+
 import { resolveImageMomentFromIntent } from '@/lib/virtual-girlfriend/intimacy';
 import { sanitizeIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
 
   const premiumGuidance =
     imageMoment.shouldSendImage && !imageMoment.teaseOnly && !entitlements.isPremium
-      ? 'A fresh photo is generating and may arrive blurred for free users — flirt naturally, tease the reveal, and NEVER say you cannot send photos or offer text descriptions instead.'
+      ? 'A photo will attach automatically after your text (may be blurred for free users). Flirt naturally — NEVER narrate sending photos or use *photosending*.'
       : '';
 
   const stream = new ReadableStream<Uint8Array>({

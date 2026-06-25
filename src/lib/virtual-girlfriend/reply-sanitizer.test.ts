@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { containsForbiddenReplyLanguage, sanitizeAssistantReply } from '@/lib/virtual-girlfriend/reply-sanitizer';
+import {
+  containsForbiddenReplyLanguage,
+  polishChatDisplayText,
+  sanitizeAssistantReply,
+} from '@/lib/virtual-girlfriend/reply-sanitizer';
 
 describe('reply sanitizer', () => {
   it('detects forbidden photo disclaimers', () => {
@@ -24,6 +28,13 @@ describe('reply sanitizer', () => {
     expect(cleaned.length > 0).toBe(true);
   });
 
+  it('strips photosending meta actions and markdown bold', () => {
+    const cleaned = polishChatDisplayText('*photosending*\n\n**Hey** babe');
+    expect(cleaned.toLowerCase()).not.toContain('photosending');
+    expect(cleaned).not.toContain('**');
+    expect(cleaned).toContain('Hey babe');
+  });
+
   it('strips repetitive smirk roleplay actions from clean replies', () => {
     const cleaned = sanitizeAssistantReply({
       text: '*smirks*\n\nYou like that view?',
@@ -44,6 +55,6 @@ describe('reply sanitizer', () => {
     });
     expect(cleaned.toLowerCase().includes('explicit nudity')).toBe(false);
     expect(cleaned.toLowerCase().includes('which one')).toBe(false);
-    expect(cleaned.toLowerCase().includes('sending')).toBe(true);
+    expect(cleaned.length).toBeGreaterThan(10);
   });
 });

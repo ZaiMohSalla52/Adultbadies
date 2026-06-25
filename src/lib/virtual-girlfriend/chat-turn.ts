@@ -16,7 +16,11 @@ import {
 } from '@/lib/virtual-girlfriend/json-reply-stream';
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
-import { containsForbiddenReplyLanguage, sanitizeAssistantReply } from '@/lib/virtual-girlfriend/reply-sanitizer';
+import {
+  containsForbiddenReplyLanguage,
+  polishChatDisplayText,
+  sanitizeAssistantReply,
+} from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { moderateVirtualGirlfriendContent } from '@/lib/virtual-girlfriend/safety';
 import type {
   VirtualGirlfriendCompanionRecord,
@@ -145,7 +149,7 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
             buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile, 'text'),
             'Return ONE JSON object for this turn. Emit reply as the FIRST JSON field so the user sees text immediately, then fill intent fields.',
             'Classify user intent semantically from conversation meaning — never keyword lists.',
-            'In reply: natural texting voice — no stock *smirks* action, vary tone every turn, react specifically to what they said.',
+            'In reply: plain texting voice — no markdown (**bold**), no meta actions (*photosending*, *sends photo*, *smirks*). The app handles images silently; never narrate uploading or sending.',
             'Intent fields:',
             '- intimacyActive: adult intimacy scene is active.',
             '- wantsPhoto: user wants to see her or scene deserves a visual.',
@@ -162,7 +166,7 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
             input.imageMoment.teaseOnly
               ? 'No photo attaches this turn — tease in-character, one clear next step.'
               : input.imageMoment.shouldSendImage
-                ? 'A photo may attach shortly after your text — write flirty text that works before and with the image. Never say you cannot send photos.'
+                ? 'A photo will attach automatically after your text — write flirty in-character reply only. Do NOT mention sending/uploading photos or use *photosending*.'
                 : 'No photo expected this turn unless intent changes.',
             intimacyGuidance,
             input.premiumGuidance ?? '',
