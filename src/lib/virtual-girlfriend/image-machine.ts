@@ -4,6 +4,7 @@ import {
   generatePortraitPreviewImage,
   generateGalleryImageFromReference,
   generateChatImageFromReference,
+  generateChatImageFromReferenceFaceGen,
   generateChatImageFromReferenceFaceSwap,
   type GeneratedImage,
   type PortraitReferenceImage,
@@ -40,8 +41,15 @@ import {
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
 import { isNearCloneOfReference } from '@/lib/virtual-girlfriend/image-clone-detection';
+import {
+  isLikelyBodyCroppedAtBottom,
+  isLikelyClothedExplicitFallback,
+} from '@/lib/virtual-girlfriend/image-framing';
 import { isHighExposureExplicit } from '@/lib/virtual-girlfriend/explicit-exposure';
-import { resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import {
+  isPoseHeavyExplicitLevel,
+  resolvePhotoGenerationSpec,
+} from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import {
@@ -78,8 +86,10 @@ const MACHINE_TIMEOUT_MS = {
   portraitPreviewRequest: 120_000,
   /** In-chat photos — Vercel maxDuration 300. */
   chatProviderRequest: 270_000,
-  /** Body text2img + single-face-swap — sole path for adult explicit chat. */
-  chatFaceSwapAttempt: 260_000,
+  /** Face Gen body scene + face swap — primary explicit path. */
+  chatFaceSwapAttempt: 180_000,
+  /** Face Gen only when face swap fails. */
+  chatFaceGenAttempt: 95_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;
@@ -1233,6 +1243,9 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         ? { url: faceReference.deliveryUrl.trim() }
         : { bytes: reference.bytes, mimeType: reference.mimeType };
 
+    const exposureLevel = chatPromptInput.explicitExposureLevel ?? null;
+    const poseHeavyExplicit = isPoseHeavyExplicitLevel(exposureLevel);
+
     const explicitUserPrompt =
       input.userMessage?.trim() && chatPromptInput.explicitIntent
         ? input.userMessage.trim()
@@ -1259,6 +1272,58 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       }
     };
 
+    const needsFullBodyFraming =
+      exposureLevel === 'full_nude' || exposureLevel === 'genital_focus';
+
+    const rejectBodyCrop = (generated: GeneratedImage, label: string) => {
+      if (!needsFullBodyFraming || !generated.bytes.byteLength) return;
+      if (isLikelyBodyCroppedAtBottom(generated.bytes)) {
+        throw new VirtualGirlfriendImageMachineError(
+          `${label} output cropped before legs or feet.`,
+          'provider_error',
+          'provider_request',
+          true,
+        );
+      }
+    };
+
+    const rejectClothedExplicitFallback = (generated: GeneratedImage, label: string) => {
+      if (!poseHeavyExplicit || !generated.bytes.byteLength) return;
+      if (isLikelyClothedExplicitFallback(generated.bytes, exposureLevel)) {
+        throw new VirtualGirlfriendImageMachineError(
+          `${label} kept clothed front pose instead of explicit rear/body request.`,
+          'provider_error',
+          'provider_request',
+          true,
+        );
+      }
+    };
+
+    const generateFaceGenAttempt = (wideFraming: boolean | 'ultra' = false) => {
+      if (!input.userMessage?.trim()) {
+        throw new VirtualGirlfriendImageMachineError(
+          'Face Gen explicit chat requires a user message.',
+          'provider_error',
+          'provider_request',
+        );
+      }
+      return withTimeout('face_gen_generation', MACHINE_TIMEOUT_MS.chatFaceGenAttempt, () =>
+        generateChatImageFromReferenceFaceGen({
+          userMessage: input.userMessage!.trim(),
+          reference: faceGenReference,
+          wardrobeContext: wardrobeContextFromCompanion(input.companion),
+          numInferenceSteps: 41,
+          wideFraming,
+        }),
+      );
+    };
+
+    const generateFaceGenFallback = async () => {
+      const result = await generateFaceGenAttempt(false);
+      rejectBodyCrop(result, 'face_gen');
+      return result;
+    };
+
     const tryFaceSwapExplicit = () => {
       if (!input.userMessage?.trim()) {
         throw new VirtualGirlfriendImageMachineError(
@@ -1276,10 +1341,27 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       );
     };
 
-    const generateExplicitFaceSwap = async () => {
-      const swapped = await tryFaceSwapExplicit();
-      rejectPortraitClone(swapped, 'face_swap');
-      return swapped;
+    const generateExplicitWithFallback = async () => {
+      const tryFaceGenPrimary = async () => {
+        const result = await generateFaceGenFallback();
+        rejectPortraitClone(result, 'face_gen');
+        rejectBodyCrop(result, 'face_gen');
+        return result;
+      };
+
+      try {
+        const swapped = await tryFaceSwapExplicit();
+        rejectPortraitClone(swapped, 'face_swap');
+        rejectClothedExplicitFallback(swapped, 'face_swap');
+        return swapped;
+      } catch (swapError) {
+        logImageMachine(scope, 'explicit_face_swap_fallback_face_gen', {
+          reason: swapError instanceof Error ? swapError.message : 'face_swap_failed',
+          timedOut: swapError instanceof Error && swapError.message.includes('timeout'),
+          exposureLevel,
+        });
+        return tryFaceGenPrimary();
+      }
     };
 
     if (route.modelKind === 'kontext_pro' && (chatPromptInput.explicitIntent || chatPromptInput.requestedLook)) {
@@ -1291,9 +1373,11 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     }
 
     const generated =
-      route.modelKind === 'face_swap' && input.userMessage?.trim()
-        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateExplicitFaceSwap)
-        : await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
+      chatPromptInput.explicitIntent && input.userMessage?.trim()
+        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateExplicitWithFallback)
+        : route.modelKind === 'face_swap' && input.userMessage?.trim()
+          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, tryFaceSwapExplicit)
+          : await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
               runProviderGeneration({
                 scope,
                 mode: 'chat_from_reference',

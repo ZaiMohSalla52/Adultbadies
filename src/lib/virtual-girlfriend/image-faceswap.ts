@@ -1,33 +1,34 @@
+import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import type { WardrobeContext } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import {
+  callModelsLabFaceGen,
   callModelsLabFaceSwap,
-  callModelsLabV6Images,
   downloadModelsLabImage,
   ensureModelsLabHostedImageUrl,
   type ModelsLabApiResponse,
 } from '@/lib/virtual-girlfriend/modelslab-client';
-import { resolveModelsLabExplicitBodyModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
   buildFaceGenExplicitPrompt,
   FACE_GEN_BASE_NEGATIVE_PROMPT,
   FACE_GEN_CROP_NEGATIVE_PROMPT,
+  FACE_GEN_MAX_HEIGHT,
+  FACE_GEN_MAX_WIDTH,
   resolveFaceGenExplicitParams,
 } from '@/lib/virtual-girlfriend/photo-generation-spec';
-import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
+import { env } from '@/lib/env';
 
 /*
- * Adult explicit chat — body scene + face swap only (ModelsLab single-face-swap).
- * No Face Gen / Kontext / SDXL fallbacks (saves credits).
+ * Explicit chat: Face Gen body scene + face swap (ModelsLab single-face-swap).
+ * No separate SDXL/cyberrealistic text2img — that path produced poor body quality.
  *
- * Step 1: text2img uncensored body scene (no identity lock)
+ * Step 1: Face Gen uncensored body scene (low s_scale, composition-first prompt)
  * Step 2: swap canonical companion face onto the scene
+ * On failure → Face Gen only (image-machine fallback)
  */
 
+const MODELSLAB_FACE_GEN_MODEL = env.MODELSLAB_FACE_GEN_MODEL ?? 'ai-avatar-generatorface-gen';
 const MODELSLAB_FACE_SWAP_ENDPOINT = 'single_face_swap';
-const MODELSLAB_EXPLICIT_BODY_MODEL = resolveModelsLabExplicitBodyModel();
-
-const EXPLICIT_BODY_DIMENSIONS = { width: 768, height: 1024 } as const;
 
 const BODY_SCENE_POLL = { maxAttempts: 40, intervalMs: 1_500 } as const;
 const FACE_SWAP_POLL = { maxAttempts: 60, intervalMs: 2_000 } as const;
@@ -69,8 +70,9 @@ export const generateExplicitChatImageWithModelsLabFaceSwap = async (input: {
   wardrobeContext?: WardrobeContext;
 }): Promise<GeneratedImage> => {
   const wardrobeContext = input.wardrobeContext ?? {};
-  if (!input.userMessage.trim()) {
-    throw new Error('Face swap chat generation requires a user message.');
+  const explicit = detectExplicitImageIntent(input.userMessage);
+  if (!explicit) {
+    throw new Error('Face swap explicit pipeline requires an explicit user message.');
   }
 
   const faceImage = await ensureModelsLabHostedImageUrl(input.reference);
@@ -82,20 +84,19 @@ export const generateExplicitChatImageWithModelsLabFaceSwap = async (input: {
     'clothed, dressed, shirt, bra, crop top, jeans, pants, underwear, covered chest, covered breasts',
   ].join(', ');
 
-  const chatParams = SURFACE_PARAMS.chat;
-  const bodyPayload = await callModelsLabV6Images(
-    'text2img',
+  const bodyPayload = await callModelsLabFaceGen(
     {
-      model_id: MODELSLAB_EXPLICIT_BODY_MODEL,
+      model_id: MODELSLAB_FACE_GEN_MODEL,
+      face_image: faceImage,
       prompt: bodyPrompt,
+      style: 'realistic',
       negative_prompt: negativePrompt,
-      width: EXPLICIT_BODY_DIMENSIONS.width,
-      height: EXPLICIT_BODY_DIMENSIONS.height,
-      samples: chatParams.num_images,
-      num_inference_steps: 31,
+      width: explicitParams.width ?? FACE_GEN_MAX_WIDTH,
+      height: explicitParams.height ?? FACE_GEN_MAX_HEIGHT,
+      s_scale: explicitParams.sScale ?? 0.52,
       guidance_scale: explicitParams.guidanceScale ?? 7.5,
-      safety_checker: 'no',
-      enhance_prompt: false,
+      safety_checker: false,
+      num_inference_steps: 31,
     },
     'ModelsLab explicit body scene generation failed',
     BODY_SCENE_POLL,
@@ -120,5 +121,9 @@ export const generateExplicitChatImageWithModelsLabFaceSwap = async (input: {
     FACE_SWAP_POLL,
   );
 
-  return extractGeneratedImage(swapPayload, MODELSLAB_EXPLICIT_BODY_MODEL, `/v6/faceswap/${MODELSLAB_FACE_SWAP_ENDPOINT}`);
+  return extractGeneratedImage(
+    swapPayload,
+    MODELSLAB_FACE_GEN_MODEL,
+    `/v6/faceswap/${MODELSLAB_FACE_SWAP_ENDPOINT}`,
+  );
 };

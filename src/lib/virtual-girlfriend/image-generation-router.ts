@@ -5,7 +5,7 @@
  * safe images even with enable_safety_checker:false. It must NEVER handle
  * explicit or sexual in-chat requests.
  *
- * Explicit nude/topless → Face swap only (body text2img + single-face-swap, no fallbacks)
+ * Explicit nude/topless → Face Gen body scene + face swap; Face Gen fallback on failure
  * Sexual requested-look → Face swap when adult content enabled
  * Passive SFW chat only → Kontext Pro (safety on)
  */
