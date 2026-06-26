@@ -160,6 +160,42 @@ export const callModelsLabV6Images = async (
   return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
 };
 
+const pollModelsLabJob = async (
+  fetchUrls: string[],
+  requestId: string,
+  errorLabel: string,
+  pollOptions?: ModelsLabPollOptions,
+  initial?: ModelsLabApiResponse,
+): Promise<ModelsLabApiResponse> => {
+  const key = assertModelsLabApiKey();
+  const maxAttempts = pollOptions?.maxAttempts ?? 20;
+  const intervalMs = pollOptions?.intervalMs ?? 1_000;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const waitMs = initial?.eta && attempt === 0 ? Math.min(initial.eta * 1_000, 3_000) : intervalMs;
+    await sleep(waitMs);
+
+    let lastPollError: Error | null = null;
+    for (const fetchUrl of fetchUrls) {
+      try {
+        const polled = await postModelsLabJson(fetchUrl, { key, request_id: requestId }, errorLabel);
+        if (polled.status === 'success') return polled;
+        if (polled.status === 'error') {
+          throw new Error(`${errorLabel}: ${polled.message ?? polled.messege ?? 'poll failed'}`);
+        }
+        lastPollError = null;
+        break;
+      } catch (error) {
+        lastPollError = error instanceof Error ? error : new Error(String(error));
+      }
+    }
+
+    if (lastPollError) throw lastPollError;
+  }
+
+  throw new Error(`${errorLabel}: timed out waiting for ModelsLab job.`);
+};
+
 export const awaitModelsLabFaceSwapResult = async (
   initial: ModelsLabApiResponse,
   errorLabel: string,
@@ -170,28 +206,13 @@ export const awaitModelsLabFaceSwapResult = async (
     throw new Error(`${errorLabel}: unexpected ModelsLab face swap response status.`);
   }
 
-  const key = assertModelsLabApiKey();
-  const requestId = String(initial.id);
-  const maxAttempts = pollOptions?.maxAttempts ?? 20;
-  const intervalMs = pollOptions?.intervalMs ?? 1_000;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const waitMs = initial.eta && attempt === 0 ? Math.min(initial.eta * 1_000, 3_000) : intervalMs;
-    await sleep(waitMs);
-
-    const polled = await postModelsLabJson(
-      MODELSLAB_FACE_SWAP_FETCH_URL,
-      { key, request_id: requestId },
-      errorLabel,
-    );
-
-    if (polled.status === 'success') return polled;
-    if (polled.status === 'error') {
-      throw new Error(`${errorLabel}: ${polled.message ?? polled.messege ?? 'face swap poll failed'}`);
-    }
-  }
-
-  throw new Error(`${errorLabel}: timed out waiting for ModelsLab face swap.`);
+  return pollModelsLabJob(
+    [MODELSLAB_FACE_SWAP_FETCH_URL, `${MODELSLAB_V6_BASE}/images/fetch`],
+    String(initial.id),
+    errorLabel,
+    pollOptions,
+    initial,
+  );
 };
 
 export const callModelsLabFaceGen = async (
@@ -210,7 +231,25 @@ export const callModelsLabFaceSwap = async (
   pollOptions?: ModelsLabPollOptions,
 ) => {
   const key = assertModelsLabApiKey();
-  const initial = await postModelsLabJson(MODELSLAB_FACE_SWAP_URL, { key, ...body }, errorLabel);
+  const payload = { key, ...body };
+
+  let initial: ModelsLabApiResponse;
+  try {
+    initial = await postModelsLabJson(MODELSLAB_FACE_SWAP_URL, payload, errorLabel);
+  } catch {
+    initial = await postModelsLabJson(
+      `${MODELSLAB_V6_BASE}/face_swap`,
+      {
+        key,
+        init_image: body.init_image,
+        target_image: body.target_image,
+        watermark: body.watermark ?? 'no',
+        ...(body.model_id ? { model_id: body.model_id } : {}),
+      },
+      errorLabel,
+    );
+  }
+
   return awaitModelsLabFaceSwapResult(initial, errorLabel, pollOptions);
 };
 

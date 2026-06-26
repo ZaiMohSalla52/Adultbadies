@@ -8,14 +8,14 @@ import {
   uploadReferenceImageUrl,
   type ModelsLabApiResponse,
 } from '@/lib/virtual-girlfriend/modelslab-client';
+import { resolveModelsLabSdxlModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
   buildFaceGenExplicitPrompt,
   FACE_GEN_BASE_NEGATIVE_PROMPT,
   FACE_GEN_CROP_NEGATIVE_PROMPT,
-  FACE_GEN_MAX_HEIGHT,
-  FACE_GEN_MAX_WIDTH,
   resolveFaceGenExplicitParams,
 } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
 
 /*
@@ -30,7 +30,9 @@ import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
 
 const MODELSLAB_FACE_SWAP_MODEL = env.MODELSLAB_FACE_SWAP_MODEL ?? 'single-face-swap';
 const MODELSLAB_EXPLICIT_BODY_MODEL =
-  env.MODELSLAB_EXPLICIT_BODY_MODEL ?? env.MODELSLAB_KONTEXT_DEV_MODEL ?? 'flux-kontext-dev';
+  env.MODELSLAB_EXPLICIT_BODY_MODEL ?? resolveModelsLabSdxlModel();
+
+const EXPLICIT_BODY_DIMENSIONS = { width: 768, height: 1024 } as const;
 
 const BODY_SCENE_POLL = { maxAttempts: 40, intervalMs: 1_500 } as const;
 const FACE_SWAP_POLL = { maxAttempts: 20, intervalMs: 1_000 } as const;
@@ -96,15 +98,16 @@ export const generateExplicitChatImageWithModelsLabFaceSwap = async (input: {
     'clothed, dressed, shirt, bra, crop top, jeans, pants, underwear, covered chest, covered breasts',
   ].join(', ');
 
+  const chatParams = SURFACE_PARAMS.chat;
   const bodyPayload = await callModelsLabV6Images(
     'text2img',
     {
       model_id: MODELSLAB_EXPLICIT_BODY_MODEL,
       prompt: bodyPrompt,
       negative_prompt: negativePrompt,
-      width: explicitParams.width ?? FACE_GEN_MAX_WIDTH,
-      height: explicitParams.height ?? FACE_GEN_MAX_HEIGHT,
-      samples: 1,
+      width: EXPLICIT_BODY_DIMENSIONS.width,
+      height: EXPLICIT_BODY_DIMENSIONS.height,
+      samples: chatParams.num_images,
       num_inference_steps: 31,
       guidance_scale: explicitParams.guidanceScale ?? 7.5,
       safety_checker: 'no',

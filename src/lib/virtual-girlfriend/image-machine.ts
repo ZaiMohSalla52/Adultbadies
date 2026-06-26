@@ -6,7 +6,6 @@ import {
   generateChatImageFromReference,
   generateChatImageFromReferenceFaceGen,
   generateChatImageFromReferenceFaceSwap,
-  generateChatImageFromReferenceSdxl,
   type GeneratedImage,
   type PortraitReferenceImage,
 } from '@/lib/virtual-girlfriend/image-provider';
@@ -48,9 +47,7 @@ import {
 } from '@/lib/virtual-girlfriend/image-framing';
 import { isHighExposureExplicit } from '@/lib/virtual-girlfriend/explicit-exposure';
 import {
-  buildExplicitImg2ImgPrompt,
   isPoseHeavyExplicitLevel,
-  resolveExplicitImg2ImgStrength,
   resolvePhotoGenerationSpec,
 } from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
@@ -95,8 +92,8 @@ const MACHINE_TIMEOUT_MS = {
   chatSdxlAttempt: 90_000,
   /** Single Face Gen attempt — queue often exceeds 90s; keep within 270s total budget. */
   chatFaceGenAttempt: 95_000,
-  /** Body text2img + single-face-swap — faster than Face Gen for pose-heavy explicit. */
-  chatFaceSwapAttempt: 140_000,
+  /** Body text2img + single-face-swap — primary path for all explicit chat. */
+  chatFaceSwapAttempt: 180_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;
@@ -1259,7 +1256,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
 
     const explicitUserPrompt =
       input.userMessage?.trim() && chatPromptInput.explicitIntent
-        ? buildExplicitImg2ImgPrompt(input.userMessage.trim(), wardrobeContextFromCompanion(input.companion))
+        ? input.userMessage.trim()
         : prompt;
 
     const rejectPortraitClone = (generated: GeneratedImage, label: string) => {
@@ -1352,153 +1349,24 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       );
     };
 
-    const img2imgStrength = resolveExplicitImg2ImgStrength(exposureLevel);
-
-    const generateKontextExplicitAttempt = () =>
-      runProviderGeneration({
-        scope,
-        mode: 'chat_from_reference',
-        prompt: explicitUserPrompt,
-        reference: { bytes: reference.bytes, mimeType: reference.mimeType },
-        kontextOptions: {
-          guidanceScale: route.guidanceScale,
-          numInferenceSteps: route.numInferenceSteps,
-          enableSafetyChecker: route.enableSafetyChecker,
-          strength: img2imgStrength,
-        },
-        preferDevModel: true,
-        explicitHighExposure: highExposure,
-      });
-
-    const tryKontextExplicit = () =>
-      withTimeout('kontext_explicit', MACHINE_TIMEOUT_MS.chatKontextAttempt, generateKontextExplicitAttempt);
-
-    const trySdxlExplicit = () =>
-      withTimeout('sdxl_generation', MACHINE_TIMEOUT_MS.chatSdxlAttempt, () =>
-        generateChatImageFromReferenceSdxl({
-          prompt: explicitUserPrompt,
-          userMessage: input.userMessage?.trim(),
-          reference: faceGenReference,
-          numInferenceSteps: route.numInferenceSteps,
-          guidanceScale: route.guidanceScale,
-          highExposure,
-          exposureLevel,
-        }),
-      );
-
-    // Kontext cannot flip a front canonical into rear-view — pose-heavy shots use SDXL.
-    const tryImg2ImgExplicit = () =>
-      poseHeavyExplicit ? trySdxlExplicit() : highExposure ? tryKontextExplicit() : trySdxlExplicit();
-
     const generateExplicitWithFallback = async () => {
       const tryFaceGenPrimary = async () => {
         const result = await generateFaceGenFallback();
         rejectPortraitClone(result, 'face_gen');
+        rejectBodyCrop(result, 'face_gen');
         return result;
       };
-
-      const tryFaceGenThenKontextOnCrop = async () => {
-        try {
-          return await tryFaceGenPrimary();
-        } catch (faceGenError) {
-          const cropRejected =
-            faceGenError instanceof VirtualGirlfriendImageMachineError
-            && faceGenError.message.includes('cropped before legs');
-          if (!cropRejected || !highExposure || poseHeavyExplicit) throw faceGenError;
-          logImageMachine(scope, 'explicit_face_gen_crop_fallback_kontext', {
-            reason: faceGenError instanceof Error ? faceGenError.message : 'body_crop_exhausted',
-          });
-          const result = await tryKontextExplicit();
-          rejectPortraitClone(result, 'flux_kontext');
-          rejectClothedExplicitFallback(result, 'flux_kontext');
-          return result;
-        }
-      };
-
-      const tryPoseHeavyExplicit = async () => {
-        try {
-          const swapped = await tryFaceSwapExplicit();
-          rejectPortraitClone(swapped, 'face_swap');
-          rejectClothedExplicitFallback(swapped, 'face_swap');
-          return swapped;
-        } catch (swapError) {
-          logImageMachine(scope, 'explicit_face_swap_fallback_face_gen', {
-            reason: swapError instanceof Error ? swapError.message : 'face_swap_failed',
-            timedOut: swapError instanceof Error && swapError.message.includes('timeout'),
-            exposureLevel,
-          });
-          try {
-            const faceGen = await tryFaceGenPrimary();
-            return faceGen;
-          } catch (faceGenError) {
-            logImageMachine(scope, 'explicit_pose_heavy_fallback_sdxl', {
-              faceSwapReason: swapError instanceof Error ? swapError.message : 'face_swap_failed',
-              faceGenReason: faceGenError instanceof Error ? faceGenError.message : 'face_gen_failed',
-              exposureLevel,
-            });
-            const result = await trySdxlExplicit();
-            rejectPortraitClone(result, 'sdxl');
-            rejectClothedExplicitFallback(result, 'sdxl');
-            return result;
-          }
-        }
-      };
-
-      if (route.provider === 'face_gen' && poseHeavyExplicit) {
-        return tryPoseHeavyExplicit();
-      }
-
-      if (route.provider === 'face_gen') {
-        try {
-          return await tryFaceGenThenKontextOnCrop();
-        } catch (primaryError) {
-          if (!input.userMessage?.trim()) throw primaryError;
-          const timedOut = primaryError instanceof Error && primaryError.message.includes('timeout');
-          if (timedOut) {
-            logImageMachine(scope, 'explicit_face_gen_timeout_fallback_face_swap', {
-              reason: primaryError instanceof Error ? primaryError.message : 'face_gen_timeout',
-              exposureLevel,
-            });
-            try {
-              const swapped = await tryFaceSwapExplicit();
-              rejectPortraitClone(swapped, 'face_swap');
-              return swapped;
-            } catch (swapError) {
-              logImageMachine(scope, 'explicit_face_swap_after_timeout_failed', {
-                reason: swapError instanceof Error ? swapError.message : 'face_swap_failed',
-              });
-            }
-          }
-          logImageMachine(scope, 'explicit_face_gen_fallback_img2img', {
-            reason: primaryError instanceof Error ? primaryError.message : 'face_gen_primary_failed',
-            timedOut,
-            cloneRejected:
-              primaryError instanceof VirtualGirlfriendImageMachineError
-              && primaryError.message.includes('too similar'),
-            fallback: poseHeavyExplicit ? 'sdxl' : highExposure ? 'kontext_dev' : 'sdxl',
-            exposureLevel,
-          });
-          const result = await tryImg2ImgExplicit();
-          const fallbackLabel = poseHeavyExplicit ? 'sdxl' : highExposure ? 'flux_kontext' : 'sdxl';
-          rejectPortraitClone(result, fallbackLabel);
-          rejectClothedExplicitFallback(result, fallbackLabel);
-          return result;
-        }
-      }
 
       try {
-        const result = await tryImg2ImgExplicit();
-        rejectPortraitClone(result, route.provider);
-        return result;
-      } catch (primaryError) {
-        if (!input.userMessage?.trim()) throw primaryError;
-        logImageMachine(scope, 'explicit_primary_fallback_face_gen', {
-          provider: route.provider,
-          reason: primaryError instanceof Error ? primaryError.message : 'explicit_primary_failed',
-          timedOut: primaryError instanceof Error && primaryError.message.includes('timeout'),
-          cloneRejected:
-            primaryError instanceof VirtualGirlfriendImageMachineError
-            && primaryError.message.includes('too similar'),
+        const swapped = await tryFaceSwapExplicit();
+        rejectPortraitClone(swapped, 'face_swap');
+        rejectClothedExplicitFallback(swapped, 'face_swap');
+        return swapped;
+      } catch (swapError) {
+        logImageMachine(scope, 'explicit_face_swap_fallback_face_gen', {
+          reason: swapError instanceof Error ? swapError.message : 'face_swap_failed',
+          timedOut: swapError instanceof Error && swapError.message.includes('timeout'),
+          exposureLevel,
         });
         return tryFaceGenPrimary();
       }

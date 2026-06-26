@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
 
 describe('resolveChatGenerationRoute', () => {
-  it('routes high-exposure explicit nude chat to Face Gen when ModelsLab preferred', () => {
+  it('routes explicit nude chat to face swap', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
@@ -11,13 +11,13 @@ describe('resolveChatGenerationRoute', () => {
       preferFaceGen: true,
       preferSdxl: true,
     });
-    expect(route.provider).toBe('face_gen');
-    expect(route.modelKind).toBe('face_gen');
+    expect(route.provider).toBe('face_swap');
+    expect(route.modelKind).toBe('face_swap');
     expect(route.enableSafetyChecker).toBe(false);
-    expect(route.numInferenceSteps).toBe(41);
+    expect(route.numInferenceSteps).toBe(31);
   });
 
-  it('routes softer explicit adult chat to Face Gen when ModelsLab preferred', () => {
+  it('routes softer explicit adult chat to face swap', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
@@ -26,37 +26,8 @@ describe('resolveChatGenerationRoute', () => {
       preferSdxl: true,
       preferFaceGen: true,
     });
-    expect(route.provider).toBe('face_gen');
-    expect(route.modelKind).toBe('face_gen');
-    expect(route.enableSafetyChecker).toBe(false);
-  });
-
-  it('routes softer explicit adult chat to SDXL when Face Gen disabled', () => {
-    const route = resolveChatGenerationRoute({
-      explicit: true,
-      requestedLook: true,
-      adultContentEnabled: true,
-      highExposure: false,
-      preferSdxl: true,
-      preferFaceGen: false,
-    });
-    expect(route.provider).toBe('sdxl');
-    expect(route.modelKind).toBe('sdxl');
-    expect(route.enableSafetyChecker).toBe(false);
-    expect(route.guidanceScale).toBeGreaterThan(5);
-  });
-
-  it('falls back to kontext dev for explicit when SDXL and Face Gen disabled', () => {
-    const route = resolveChatGenerationRoute({
-      explicit: true,
-      requestedLook: true,
-      adultContentEnabled: true,
-      highExposure: true,
-      preferSdxl: false,
-      preferFaceGen: false,
-    });
-    expect(route.provider).toBe('flux_kontext');
-    expect(route.modelKind).toBe('kontext_dev');
+    expect(route.provider).toBe('face_swap');
+    expect(route.modelKind).toBe('face_swap');
     expect(route.enableSafetyChecker).toBe(false);
   });
 
@@ -95,28 +66,17 @@ describe('resolveChatGenerationRoute', () => {
     expect(route.enableSafetyChecker).toBe(true);
   });
 
-  it('never routes explicit adult chat to kontext pro', () => {
+  it('never routes explicit adult chat to kontext pro or sdxl', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
       adultContentEnabled: true,
       preferSdxl: true,
-    });
-    expect(route.modelKind).not.toBe('kontext_pro');
-    expect(route.enableSafetyChecker).toBe(false);
-  });
-
-  it('routes explicit to Kontext dev when both Face Gen and SDXL disabled', () => {
-    const route = resolveChatGenerationRoute({
-      explicit: true,
-      requestedLook: true,
-      adultContentEnabled: true,
-      highExposure: true,
-      preferSdxl: false,
       preferFaceGen: false,
     });
-    expect(route.provider).toBe('flux_kontext');
-    expect(route.modelKind).toBe('kontext_dev');
+    expect(route.provider).toBe('face_swap');
+    expect(route.modelKind).not.toBe('kontext_pro');
+    expect(route.modelKind).not.toBe('sdxl');
     expect(route.enableSafetyChecker).toBe(false);
   });
 });
