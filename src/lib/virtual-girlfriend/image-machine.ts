@@ -5,6 +5,7 @@ import {
   generateGalleryImageFromReference,
   generateChatImageFromReference,
   generateChatImageFromReferenceFaceGen,
+  generateChatImageFromReferenceFaceSwap,
   generateChatImageFromReferenceSdxl,
   type GeneratedImage,
   type PortraitReferenceImage,
@@ -92,8 +93,10 @@ const MACHINE_TIMEOUT_MS = {
   chatKontextAttempt: 90_000,
   /** SDXL/Aurelium img2img attempt before Face Gen fallback. */
   chatSdxlAttempt: 90_000,
-  /** Face Gen fallback only — ModelsLab queue often exceeds 2 minutes. */
-  chatFaceGenAttempt: 180_000,
+  /** Single Face Gen attempt — queue often exceeds 90s; keep within 270s total budget. */
+  chatFaceGenAttempt: 95_000,
+  /** Body text2img + single-face-swap — faster than Face Gen for pose-heavy explicit. */
+  chatFaceSwapAttempt: 140_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;
@@ -1327,32 +1330,26 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     };
 
     const generateFaceGenFallback = async () => {
-      const attempts: Array<boolean | 'ultra'> = poseHeavyExplicit
-        ? [false, true, 'ultra']
-        : [false, true];
-      let lastError: unknown;
+      const result = await generateFaceGenAttempt(false);
+      rejectBodyCrop(result, 'face_gen');
+      return result;
+    };
 
-      for (let i = 0; i < attempts.length; i += 1) {
-        const framing = attempts[i]!;
-        try {
-          const result = await generateFaceGenAttempt(framing);
-          rejectBodyCrop(result, framing === false ? 'face_gen' : framing === true ? 'face_gen_wide' : 'face_gen_ultra');
-          return result;
-        } catch (error) {
-          lastError = error;
-          if (i < attempts.length - 1) {
-            logImageMachine(scope, 'explicit_face_gen_retry', {
-              attempt: i + 1,
-              nextFraming: attempts[i + 1],
-              reason: error instanceof Error ? error.message : 'face_gen_attempt_failed',
-            });
-          }
-        }
+    const tryFaceSwapExplicit = () => {
+      if (!input.userMessage?.trim()) {
+        throw new VirtualGirlfriendImageMachineError(
+          'Face swap explicit chat requires a user message.',
+          'provider_error',
+          'provider_request',
+        );
       }
-
-      throw lastError instanceof Error
-        ? lastError
-        : new VirtualGirlfriendImageMachineError('Face Gen explicit attempts exhausted.', 'provider_error', 'provider_request', true);
+      return withTimeout('face_swap_generation', MACHINE_TIMEOUT_MS.chatFaceSwapAttempt, () =>
+        generateChatImageFromReferenceFaceSwap({
+          userMessage: input.userMessage!.trim(),
+          reference: faceGenReference,
+          wardrobeContext: wardrobeContextFromCompanion(input.companion),
+        }),
+      );
     };
 
     const img2imgStrength = resolveExplicitImg2ImgStrength(exposureLevel);
@@ -1418,14 +1415,63 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         }
       };
 
+      const tryPoseHeavyExplicit = async () => {
+        try {
+          const swapped = await tryFaceSwapExplicit();
+          rejectPortraitClone(swapped, 'face_swap');
+          rejectClothedExplicitFallback(swapped, 'face_swap');
+          return swapped;
+        } catch (swapError) {
+          logImageMachine(scope, 'explicit_face_swap_fallback_face_gen', {
+            reason: swapError instanceof Error ? swapError.message : 'face_swap_failed',
+            timedOut: swapError instanceof Error && swapError.message.includes('timeout'),
+            exposureLevel,
+          });
+          try {
+            const faceGen = await tryFaceGenPrimary();
+            return faceGen;
+          } catch (faceGenError) {
+            logImageMachine(scope, 'explicit_pose_heavy_fallback_sdxl', {
+              faceSwapReason: swapError instanceof Error ? swapError.message : 'face_swap_failed',
+              faceGenReason: faceGenError instanceof Error ? faceGenError.message : 'face_gen_failed',
+              exposureLevel,
+            });
+            const result = await trySdxlExplicit();
+            rejectPortraitClone(result, 'sdxl');
+            rejectClothedExplicitFallback(result, 'sdxl');
+            return result;
+          }
+        }
+      };
+
+      if (route.provider === 'face_gen' && poseHeavyExplicit) {
+        return tryPoseHeavyExplicit();
+      }
+
       if (route.provider === 'face_gen') {
         try {
           return await tryFaceGenThenKontextOnCrop();
         } catch (primaryError) {
           if (!input.userMessage?.trim()) throw primaryError;
+          const timedOut = primaryError instanceof Error && primaryError.message.includes('timeout');
+          if (timedOut) {
+            logImageMachine(scope, 'explicit_face_gen_timeout_fallback_face_swap', {
+              reason: primaryError instanceof Error ? primaryError.message : 'face_gen_timeout',
+              exposureLevel,
+            });
+            try {
+              const swapped = await tryFaceSwapExplicit();
+              rejectPortraitClone(swapped, 'face_swap');
+              return swapped;
+            } catch (swapError) {
+              logImageMachine(scope, 'explicit_face_swap_after_timeout_failed', {
+                reason: swapError instanceof Error ? swapError.message : 'face_swap_failed',
+              });
+            }
+          }
           logImageMachine(scope, 'explicit_face_gen_fallback_img2img', {
             reason: primaryError instanceof Error ? primaryError.message : 'face_gen_primary_failed',
-            timedOut: primaryError instanceof Error && primaryError.message.includes('timeout'),
+            timedOut,
             cloneRejected:
               primaryError instanceof VirtualGirlfriendImageMachineError
               && primaryError.message.includes('too similar'),

@@ -3,6 +3,8 @@ import { env } from '@/lib/env';
 const MODELSLAB_V6_BASE = 'https://modelslab.com/api/v6';
 const MODELSLAB_V7_BASE = 'https://modelslab.com/api/v7/images';
 const MODELSLAB_FACE_GEN_URL = `${MODELSLAB_V6_BASE}/image_editing/face_gen`;
+const MODELSLAB_FACE_SWAP_URL = `${MODELSLAB_V6_BASE}/faceswap/single_face_swap`;
+const MODELSLAB_FACE_SWAP_FETCH_URL = `${MODELSLAB_V6_BASE}/faceswap/fetch`;
 
 export type ModelsLabApiResponse = {
   status: 'success' | 'processing' | 'error';
@@ -158,6 +160,40 @@ export const callModelsLabV6Images = async (
   return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
 };
 
+export const awaitModelsLabFaceSwapResult = async (
+  initial: ModelsLabApiResponse,
+  errorLabel: string,
+  pollOptions?: ModelsLabPollOptions,
+): Promise<ModelsLabApiResponse> => {
+  if (initial.status === 'success') return initial;
+  if (initial.status !== 'processing' || initial.id == null) {
+    throw new Error(`${errorLabel}: unexpected ModelsLab face swap response status.`);
+  }
+
+  const key = assertModelsLabApiKey();
+  const requestId = String(initial.id);
+  const maxAttempts = pollOptions?.maxAttempts ?? 20;
+  const intervalMs = pollOptions?.intervalMs ?? 1_000;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const waitMs = initial.eta && attempt === 0 ? Math.min(initial.eta * 1_000, 3_000) : intervalMs;
+    await sleep(waitMs);
+
+    const polled = await postModelsLabJson(
+      MODELSLAB_FACE_SWAP_FETCH_URL,
+      { key, request_id: requestId },
+      errorLabel,
+    );
+
+    if (polled.status === 'success') return polled;
+    if (polled.status === 'error') {
+      throw new Error(`${errorLabel}: ${polled.message ?? polled.messege ?? 'face swap poll failed'}`);
+    }
+  }
+
+  throw new Error(`${errorLabel}: timed out waiting for ModelsLab face swap.`);
+};
+
 export const callModelsLabFaceGen = async (
   body: Record<string, unknown>,
   errorLabel: string,
@@ -166,6 +202,16 @@ export const callModelsLabFaceGen = async (
   const key = assertModelsLabApiKey();
   const initial = await postModelsLabJson(MODELSLAB_FACE_GEN_URL, { key, ...body }, errorLabel);
   return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
+};
+
+export const callModelsLabFaceSwap = async (
+  body: Record<string, unknown>,
+  errorLabel: string,
+  pollOptions?: ModelsLabPollOptions,
+) => {
+  const key = assertModelsLabApiKey();
+  const initial = await postModelsLabJson(MODELSLAB_FACE_SWAP_URL, { key, ...body }, errorLabel);
+  return awaitModelsLabFaceSwapResult(initial, errorLabel, pollOptions);
 };
 
 export const callModelsLabV7ImageToImage = async (

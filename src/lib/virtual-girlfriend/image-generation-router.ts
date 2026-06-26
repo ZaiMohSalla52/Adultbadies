@@ -6,7 +6,8 @@
  * explicit or sexual in-chat requests.
  *
  * Explicit nude/topless → Face Gen first (uncensored face lock + new scene)
- * Face Gen timeout/clone/failure → Kontext dev (high exposure) or SDXL (softer)
+ * Pose-heavy (ass/genital) → Face swap first (body text2img + single-face-swap)
+ * Face Gen timeout/clone/failure → face swap or Kontext dev / SDXL
  * Sexual requested-look → Face Gen on ModelsLab (uncensored, face-locked)
  * Flux-only explicit fallback → Kontext [dev] with safety checker OFF
  * Passive SFW chat only → Kontext Pro (safety on)

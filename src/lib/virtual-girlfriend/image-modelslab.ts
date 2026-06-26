@@ -402,7 +402,7 @@ export const generateChatImageWithModelsLabFaceGen = async (input: {
       ...(explicitParams?.wideFraming ? { scale_down: 8 } : {}),
     },
     'ModelsLab Face Gen explicit chat generation failed',
-    { maxAttempts: 60, intervalMs: 1_500 },
+    { maxAttempts: 50, intervalMs: 1_500 },
   );
 
   return extractGeneratedImage(payload, MODELSLAB_FACE_GEN_MODEL, '/v6/image_editing/face_gen');
