@@ -12,3 +12,5 @@ pnpm-debug.log*
 .DS_Store
 
 tsconfig.tsbuildinfo
+logs/
+reports/phase0/

@@ -85,6 +85,7 @@ export type VirtualGirlfriendStructuredProfile = {
   preferenceHints: string | null;
   selectedPortraitPrompt?: string | null;
   selectedPortraitImage?: string | null;
+  selectedPortraitSeed?: number | null;
 };
 
 export type VirtualGirlfriendResolvedProfile = {
@@ -444,5 +445,6 @@ export type VirtualGirlfriendSetupPayload = {
   preferenceHints?: string;
   selectedPortraitPrompt?: string;
   selectedPortraitImage?: string;
+  selectedPortraitSeed?: number;
   createNew?: boolean;
 };

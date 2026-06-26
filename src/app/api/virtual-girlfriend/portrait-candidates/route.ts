@@ -1,7 +1,13 @@
+import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import { isBrowserImageDeliveryConfigured } from '@/lib/storage/publish-browser-image';
+import {
+  getLatestVisualProfileForCompanion,
+  listVirtualGirlfriendCompanions,
+} from '@/lib/virtual-girlfriend/data';
+import { collectSiblingDistinctnessCues } from '@/lib/virtual-girlfriend/identity-face-dna';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
 import { assertModelsLabApiKey } from '@/lib/virtual-girlfriend/modelslab-client';
 import {
@@ -74,9 +80,26 @@ export async function POST(request: NextRequest) {
       deliveryConfigured: isBrowserImageDeliveryConfigured(),
     });
 
+    const setupDraftKey = crypto
+      .createHash('sha256')
+      .update(JSON.stringify({ userId: auth.user.id, ...resolvedTraits }))
+      .digest('hex')
+      .slice(0, 16);
+
+    const siblings = await listVirtualGirlfriendCompanions(auth.token, auth.user.id);
+    const siblingProfiles = await Promise.all(
+      siblings.slice(0, 8).map((companion) =>
+        getLatestVisualProfileForCompanion(auth.token, auth.user.id, companion.id)),
+    );
+    const negativeOverlapCues = collectSiblingDistinctnessCues(
+      siblingProfiles.map((profile) => profile?.identity_pack ?? null),
+    );
+
     // Preview-only: this does not persist companion images and is intentionally separate from canonical setup persistence.
     const pipeline = await runPortraitPreviewPipeline({
       userId: auth.user.id,
+      setupDraftKey,
+      negativeOverlapCues,
       ...resolvedTraits,
       count: PORTRAIT_PREVIEW_CANDIDATE_COUNT,
     });

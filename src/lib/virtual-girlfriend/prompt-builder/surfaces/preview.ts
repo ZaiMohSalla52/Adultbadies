@@ -35,6 +35,8 @@ export interface PreviewPromptInput {
   personality?: string;
   occupation?: string;
   freeformDetails?: string;
+  faceDnaLine?: string;
+  negativeOverlapCues?: string[];
 }
 
 const OCCUPATION_VISUAL_MAP: Record<string, string> = {
@@ -107,12 +109,20 @@ function resolveAppearanceCue(styleVibe?: string, personality?: string, occupati
   return parts.length > 0 ? parts.join(', ') + '.' : '';
 }
 
+const formatNegativeOverlapLine = (cues: string[] | undefined): string | null => {
+  const unique = Array.from(new Set((cues ?? []).map((cue) => cue.trim()).filter(Boolean))).slice(0, 8);
+  if (!unique.length) return null;
+  return `Avoid resembling existing companions: ${unique.join('; ')}.`;
+};
+
 export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: number): string => {
   const appearanceCue = resolveAppearanceCue(input.styleVibe, input.personality, input.occupation);
+  const negativeOverlapLine = formatNegativeOverlapLine(input.negativeOverlapCues);
 
   const parts = [
     `${resolveSubjectStrict(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
+    input.faceDnaLine?.trim() ? input.faceDnaLine.trim() : null,
     getPreviewFramingVariant(variantIndex),
     getPreviewSceneVariant(variantIndex),
     getCompositionAnchor('preview'),
@@ -128,6 +138,8 @@ export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: numb
 
   parts.push(EXPOSURE_LIGHTING_TAIL);
   parts.push(PHOTO_REALISM_TAIL);
+
+  if (negativeOverlapLine) parts.push(negativeOverlapLine);
 
   parts.push(buildAllNegatives());
   const ethnicityNegative = resolveEthnicityNegative(input.origin);

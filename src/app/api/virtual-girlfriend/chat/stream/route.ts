@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { NextRequest } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
@@ -27,10 +29,17 @@ import { streamVirtualGirlfriendChatTurn } from '@/lib/virtual-girlfriend/chat-t
 
 import { resolveImageMomentFromIntent } from '@/lib/virtual-girlfriend/intimacy';
 import { sanitizeIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
-import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
+import { detectExplicitImageIntent, isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
+import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
+import {
+  appendTurnTrace,
+  buildTurnTraceIntent,
+  summarizeRetrievedMemories,
+} from '@/lib/virtual-girlfriend/phase0/turn-trace';
 import { isOutfitPhotoRequest } from '@/lib/virtual-girlfriend/outfit-presets';
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
+import { containsForbiddenReplyLanguage } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
 import type { IntimateImageMoment } from '@/lib/virtual-girlfriend/intimacy';
@@ -146,8 +155,20 @@ export async function POST(request: NextRequest) {
       ? 'A photo will attach automatically after your text (may be blurred for free users). Flirt naturally — NEVER narrate sending photos or use *photosending*.'
       : '';
 
+  const expectedImageRoute = resolveChatGenerationRoute({
+    explicit: explicitPhotoRequest,
+    requestedLook: photoRequested,
+    adultContentEnabled: isVirtualGirlfriendAdultContentEnabled(),
+  });
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      const traceId = randomUUID();
+      const turnStartedAt = Date.now();
+      let llmStartedAt: number | null = null;
+      let llmDurationMs: number | null = null;
+      let imageStartedAt: number | null = null;
+      let imageDurationMs: number | null = null;
       let imageTask: Promise<ImageTaskResult> | undefined;
       let imageStarted = false;
 
@@ -167,6 +188,7 @@ export async function POST(request: NextRequest) {
         }
 
         imageStarted = true;
+        imageStartedAt = Date.now();
         enqueueEvent(controller, { type: 'image_generating', payload: { active: true } });
         imageTask = resolveVirtualGirlfriendChatImage({
           token: auth.accessToken,
@@ -181,6 +203,9 @@ export async function POST(request: NextRequest) {
           preferFreshGeneration: moment.preferFreshGeneration,
         })
           .then((result) => {
+            if (imageStartedAt !== null) {
+              imageDurationMs = Date.now() - imageStartedAt;
+            }
             console.info('[virtual-girlfriend][chat/stream] image_task_resolved', {
               outcome: result.outcome,
               source: result.attachment?.source ?? null,
@@ -207,6 +232,7 @@ export async function POST(request: NextRequest) {
       startImageIfNeeded(imageMoment);
 
       try {
+        llmStartedAt = Date.now();
         const turn = await streamVirtualGirlfriendChatTurn({
           companion,
           history,
@@ -231,8 +257,44 @@ export async function POST(request: NextRequest) {
             },
           },
         });
+        llmDurationMs = llmStartedAt !== null ? Date.now() - llmStartedAt : null;
 
         if (!turn.ok) {
+          await appendTurnTrace({
+            schemaVersion: 1,
+            traceId,
+            recordedAt: new Date().toISOString(),
+            userId: auth.user.id,
+            companionId: companion.id,
+            conversationId: conversation.id,
+            isPremium: entitlements.isPremium,
+            timingsMs: {
+              total: Date.now() - turnStartedAt,
+              llm: llmDurationMs ?? undefined,
+            },
+            llm: {
+              model: null,
+              ok: false,
+            },
+            intent: buildTurnTraceIntent({
+              photoRequested,
+              explicitPhotoRequest,
+              heuristicLocked: Boolean(heuristicIntent),
+            }),
+            image: {
+              started: imageStarted,
+              expectedRoute: {
+                provider: expectedImageRoute.provider,
+                modelKind: expectedImageRoute.modelKind,
+              },
+              outcome: 'not_requested',
+              reason: turn.reason,
+              source: null,
+              imageId: null,
+            },
+            memory: summarizeRetrievedMemories(retrievedMemories),
+            flags: ['llm_turn_failed'],
+          });
           enqueueEvent(controller, { type: 'error', payload: { error: turn.reason } });
           controller.close();
           return;
@@ -427,8 +489,89 @@ export async function POST(request: NextRequest) {
             },
           },
         });
+
+        const traceFlags: string[] = [];
+        if (containsForbiddenReplyLanguage(combinedContent)) traceFlags.push('forbidden_language_in_final_reply');
+        if (imageStarted && photoRequestedThisTurn && !streamAttachments.length && !imageMoment.teaseOnly) {
+          traceFlags.push('photo_requested_without_attachment');
+        }
+
+        await appendTurnTrace({
+          schemaVersion: 1,
+          traceId,
+          recordedAt: new Date().toISOString(),
+          userId: auth.user.id,
+          companionId: companion.id,
+          conversationId: conversation.id,
+          assistantMessageId: assistantMessage.id,
+          isPremium: entitlements.isPremium,
+          timingsMs: {
+            total: Date.now() - turnStartedAt,
+            llm: llmDurationMs ?? undefined,
+            image: imageDurationMs ?? undefined,
+          },
+          llm: {
+            model: turn.model,
+            ok: true,
+          },
+          intent: buildTurnTraceIntent({
+            photoRequested,
+            explicitPhotoRequest,
+            heuristicLocked: Boolean(heuristicIntent),
+            intent: turn.intent,
+          }),
+          image: {
+            started: imageStarted,
+            expectedRoute: {
+              provider: expectedImageRoute.provider,
+              modelKind: expectedImageRoute.modelKind,
+            },
+            outcome: imageMoment.teaseOnly ? 'not_requested' : imageOutcome,
+            reason: imageMoment.teaseOnly ? 'tease_before_photo' : imageOutcomeReason,
+            source: streamGenerationMode,
+            imageId: streamAttachments[0]?.imageId ?? null,
+          },
+          memory: summarizeRetrievedMemories(retrievedMemories),
+          flags: traceFlags,
+        });
       } catch (error) {
         console.error('[virtual-girlfriend] stream failed', error);
+        await appendTurnTrace({
+          schemaVersion: 1,
+          traceId,
+          recordedAt: new Date().toISOString(),
+          userId: auth.user.id,
+          companionId: companion.id,
+          conversationId: conversation.id,
+          isPremium: entitlements.isPremium,
+          timingsMs: {
+            total: Date.now() - turnStartedAt,
+            llm: llmDurationMs ?? undefined,
+            image: imageDurationMs ?? undefined,
+          },
+          llm: {
+            model: null,
+            ok: false,
+          },
+          intent: buildTurnTraceIntent({
+            photoRequested,
+            explicitPhotoRequest,
+            heuristicLocked: Boolean(heuristicIntent),
+          }),
+          image: {
+            started: imageStarted,
+            expectedRoute: {
+              provider: expectedImageRoute.provider,
+              modelKind: expectedImageRoute.modelKind,
+            },
+            outcome: 'failed_generation',
+            reason: error instanceof Error ? error.message : 'stream_failed',
+            source: null,
+            imageId: null,
+          },
+          memory: summarizeRetrievedMemories(retrievedMemories),
+          flags: ['stream_failed'],
+        });
         enqueueEvent(controller, {
           type: 'error',
           payload: { error: 'Unable to complete this chat turn right now.' },

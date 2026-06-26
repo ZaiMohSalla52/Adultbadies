@@ -29,18 +29,22 @@ export interface CanonicalPromptInput {
   cameraPreferences?: string[];
   realismLevel?: string;
   negativeConstraints?: string[];
+  negativeOverlapCues?: string[];
 }
 
 export const buildCanonicalPrompt = (input: CanonicalPromptInput): string => {
+  const identityAnchors = input.identityAnchors?.filter(Boolean).join(', ');
   const identityInvariants = input.identityInvariants?.filter(Boolean).join(', ');
   const coreLook = input.coreLook?.filter(Boolean).join(', ');
   const cameraPrefs = input.cameraPreferences?.filter(Boolean).join(', ');
   const negConstraints = input.negativeConstraints?.filter(Boolean).join(', ');
+  const negativeOverlap = input.negativeOverlapCues?.filter(Boolean).join('; ');
 
   return [
     `Portrait photograph of ${resolveSubject(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
     input.occupation ? `Occupation: ${input.occupation}.` : null,
+    identityAnchors ? `Identity anchors: ${identityAnchors}.` : null,
     identityInvariants ? `Identity features: ${identityInvariants}.` : null,
     coreLook ? `Core appearance: ${coreLook}.` : null,
     input.wardrobeDirection ? `Wardrobe: ${input.wardrobeDirection}.` : null,
@@ -52,6 +56,7 @@ export const buildCanonicalPrompt = (input: CanonicalPromptInput): string => {
     buildAllNegatives(),
     resolveEthnicityNegative(input.origin) ?? null,
     negConstraints ? `Also avoid: ${negConstraints}.` : null,
+    negativeOverlap ? `Distinct from other companions — avoid: ${negativeOverlap}.` : null,
   ]
     .filter(Boolean)
     .join(' ');

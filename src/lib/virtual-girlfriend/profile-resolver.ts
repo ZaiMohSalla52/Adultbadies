@@ -56,6 +56,9 @@ const normalizeStructuredProfile = (value: unknown): VirtualGirlfriendStructured
     freeformDetails: toNonEmptyString(raw.freeformDetails),
     selectedPortraitPrompt: toNonEmptyString(raw.selectedPortraitPrompt),
     selectedPortraitImage: toNonEmptyString(raw.selectedPortraitImage),
+    selectedPortraitSeed: Number.isFinite(Number(raw.selectedPortraitSeed))
+      ? Number(raw.selectedPortraitSeed)
+      : null,
   };
 };
 

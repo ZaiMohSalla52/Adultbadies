@@ -9,7 +9,12 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:portrait-integration": "PORTRAIT_PREVIEW_INTEGRATION=1 vitest run src/lib/virtual-girlfriend/portrait-preview.integration.test.ts"
+    "test:portrait-integration": "PORTRAIT_PREVIEW_INTEGRATION=1 vitest run src/lib/virtual-girlfriend/portrait-preview.integration.test.ts",
+    "phase0:face-baseline": "tsx scripts/phase0-face-diversity-baseline.ts",
+    "phase0:face-baseline-local": "tsx scripts/phase0-face-diversity-local.ts",
+    "phase0:chat-audit": "tsx scripts/phase0-chat-thread-audit.ts",
+    "phase0:baseline": "npm run phase0:face-baseline && npm run phase0:chat-audit",
+    "phase0:trace-summary": "tsx scripts/phase0-summarize-turn-traces.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -19,10 +24,14 @@
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "eslint": "^9.34.0",
     "eslint-config-next": "15.5.7",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },

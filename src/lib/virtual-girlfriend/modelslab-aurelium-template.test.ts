@@ -20,7 +20,7 @@ describe('modelslab-aurelium-template', () => {
     expect(prompt).toContain('Close portrait photorealistic seed 30303 hyperrealistic');
     expect(prompt).toContain('long dark brown hair');
     expect(prompt).toContain(AURELIUM_QUALITY_SUFFIX);
-    expect(prompt).toContain('trending on instagram');
+    expect(prompt).not.toContain('trending on instagram');
   });
 
   it('appends gallery quality tail once', () => {

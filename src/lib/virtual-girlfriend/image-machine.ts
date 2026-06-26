@@ -32,6 +32,7 @@ import {
   type ChatPromptInput,
 } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/chat';
 import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
+import { buildFaceDnaLine } from '@/lib/virtual-girlfriend/identity-face-dna';
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
 import { detectExplicitImageIntent, isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
 import {
@@ -242,6 +243,9 @@ export type VirtualGirlfriendPortraitPreviewRequest = {
   kind: 'portrait_preview';
   count?: number;
   userId?: string;
+  companionId?: string;
+  setupDraftKey?: string;
+  negativeOverlapCues?: string[];
   skinTone?: string;
   breastSize?: string;
   styleVibe?: string;
@@ -276,6 +280,7 @@ export type VirtualGirlfriendPortraitPreviewCandidate = {
   id: string;
   label: string;
   prompt: string;
+  seed: number;
   promptVersion: typeof PROMPT_VERSION.preview;
   imageDataUrl: string;
 };
@@ -394,6 +399,7 @@ const toCanonicalPromptInput = (
     cameraPreferences: identityPack?.cameraCompositionPreferences,
     realismLevel: identityPack?.realismPolishLevel,
     negativeConstraints: identityPack?.negativeConstraints,
+    negativeOverlapCues: identityPack?.negativeOverlapCues,
   };
 };
 
@@ -635,6 +641,7 @@ const buildImageRecord = async (input: {
   promptVersion: string;
   surfaceType: string;
   scope: string;
+  seedMetadata?: Record<string, unknown>;
 }) => {
   const key = `virtual-girlfriend-images/${input.userId}/${input.companionId}/${STYLE_VERSION}/${input.capture.kind}-${input.capture.variantIndex}-${Date.now()}.png`;
 
@@ -700,7 +707,7 @@ const buildImageRecord = async (input: {
     height: deliveryHeight ?? input.generated.height,
     prompt_hash: input.promptHash,
     style_version: STYLE_VERSION,
-    seed_metadata: {},
+    seed_metadata: input.seedMetadata ?? {},
     lineage_metadata: {
       generation_mode: input.capture.kind === 'canonical' ? 'canonical' : 'gallery_from_canonical',
       reference_image_id: input.referenceImageId ?? null,
@@ -868,7 +875,14 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
   if (!canonicalCapture) throw new VirtualGirlfriendImagePackError('Canonical capture plan is missing.');
 
   const canonicalPromptInput = toCanonicalPromptInput(input.companion, input.visualProfile.identity_pack);
-  const canonicalPrompt = buildCanonicalPrompt(canonicalPromptInput);
+  const selectedPortraitPrompt = typeof input.visualProfile.source_setup?.selectedPortraitPrompt === 'string'
+    ? input.visualProfile.source_setup.selectedPortraitPrompt.trim()
+    : '';
+  const canonicalPrompt = selectedPortraitPrompt || buildCanonicalPrompt(canonicalPromptInput);
+  const selectedPortraitSeed = Number(input.visualProfile.source_setup?.selectedPortraitSeed);
+  const portraitSeedMetadata = Number.isFinite(selectedPortraitSeed) && selectedPortraitSeed > 0
+    ? { portrait_seed: selectedPortraitSeed, seed_source: 'selected_portrait_preview' }
+    : undefined;
   const seedPortraitValue = typeof input.visualProfile.source_setup?.selectedPortraitImage === 'string'
     ? input.visualProfile.source_setup.selectedPortraitImage
     : null;
@@ -904,8 +918,9 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
     generated: canonicalGenerated,
     identityPack: input.visualProfile.identity_pack,
     promptText: canonicalPrompt,
-    promptVersion: canonicalPromptVersion,
-    surfaceType: 'canonical',
+    promptVersion: selectedPortraitPrompt ? PROMPT_VERSION.preview : canonicalPromptVersion,
+    surfaceType: selectedPortraitPrompt ? 'preview' : 'canonical',
+    seedMetadata: portraitSeedMetadata,
     scope,
   });
   logImageMachine(scope, 'persistence_success', { canonicalImageId: canonicalImage.id });
@@ -1468,6 +1483,8 @@ const portraitPreviewDeliveryUrl = (generated: GeneratedImage) => {
 const derivePortraitPreviewSeed = (input: VirtualGirlfriendPortraitPreviewRequest, index: number) => {
   const fingerprint = JSON.stringify({
     userId: input.userId ?? 'anonymous',
+    companionId: input.companionId ?? null,
+    setupDraftKey: input.setupDraftKey ?? null,
     sex: input.sex,
     origin: input.origin,
     hairColor: input.hairColor,
@@ -1481,6 +1498,7 @@ const derivePortraitPreviewSeed = (input: VirtualGirlfriendPortraitPreviewReques
     personality: input.personality,
     occupation: input.occupation,
     freeformDetails: input.freeformDetails,
+    negativeOverlapCues: input.negativeOverlapCues ?? [],
     index,
   });
   const hash = crypto.createHash('sha256').update(fingerprint).digest();
@@ -1500,7 +1518,25 @@ const generatePortraitPreviewCandidate = async (
   index: number,
   attemptOffset = 0,
 ): Promise<VirtualGirlfriendPortraitPreviewCandidate> => {
-  const prompt = buildPreviewPrompt(input, index);
+  const faceDnaLine = buildFaceDnaLine({
+    userId: input.userId,
+    companionId: input.companionId,
+    setupDraftKey: input.setupDraftKey,
+    sex: input.sex,
+    origin: input.origin,
+    age: input.age,
+    hairColor: input.hairColor,
+    eyeColor: input.eyeColor,
+    variantIndex: index,
+  });
+  const prompt = buildPreviewPrompt(
+    {
+      ...input,
+      faceDnaLine,
+      negativeOverlapCues: input.negativeOverlapCues,
+    },
+    index,
+  );
   const seed = (derivePortraitPreviewSeed(input, index) + attemptOffset) % 2_147_483_647;
   const generated = await withRetries({
     attempts: MACHINE_RETRY_ATTEMPTS.providerRequest,
@@ -1520,6 +1556,7 @@ const generatePortraitPreviewCandidate = async (
     id: `candidate-${index + 1}`,
     label: `Candidate ${index + 1}`,
     prompt,
+    seed,
     promptVersion: PROMPT_VERSION.preview,
     imageDataUrl,
   };

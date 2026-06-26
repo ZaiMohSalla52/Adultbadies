@@ -4,7 +4,7 @@
  */
 
 export const AURELIUM_QUALITY_SUFFIX =
-  'full body, detailed clothing, highly detailed, cinematic lighting, stunningly beautiful, intricate, sharp focus, f/1.8, 85mm, (centered image composition), (professionally color graded), ((bright soft diffused light)), volumetric fog, trending on instagram, trending on tumblr, HDR 4K, 8K';
+  'highly detailed, cinematic lighting, sharp focus, f/1.8, 85mm, centered composition, professionally color graded, soft diffused light, photorealistic HDR';
 
 /** Playground negative — underage guard + anatomy/quality (separate API field). */
 export const AURELIUM_PORTRAIT_NEGATIVE_PROMPT =

@@ -68,6 +68,7 @@ const resolveVisualIdentitySemanticInput = (input: {
     preferenceHints?: string;
     selectedPortraitPrompt?: string;
     selectedPortraitImage?: string;
+    selectedPortraitSeed?: number;
     hairLength?: string;
     eyeColor?: string;
     skinTone?: string;
@@ -101,6 +102,7 @@ const resolveVisualIdentitySemanticInput = (input: {
       preferenceHints: structuredProfile.preferenceHints?.trim() || undefined,
       selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt?.trim() || undefined,
       selectedPortraitImage: structuredProfile.selectedPortraitImage?.trim() || undefined,
+      selectedPortraitSeed: structuredProfile.selectedPortraitSeed ?? undefined,
       hairLength: structuredProfile.hairLength?.trim() || undefined,
       eyeColor: structuredProfile.eyeColor?.trim() || undefined,
       skinTone: structuredProfile.skinTone?.trim() || undefined,
@@ -125,6 +127,7 @@ const resolveVisualIdentitySemanticInput = (input: {
     preferenceHints: input.fallback.preferenceHints?.trim() || undefined,
     selectedPortraitPrompt: input.fallback.selectedPortraitPrompt?.trim() || undefined,
     selectedPortraitImage: input.fallback.selectedPortraitImage?.trim() || undefined,
+    selectedPortraitSeed: input.fallback.selectedPortraitSeed ?? undefined,
     hairLength: input.fallback.hairLength?.trim() || undefined,
     eyeColor: input.fallback.eyeColor?.trim() || undefined,
     skinTone: input.fallback.skinTone?.trim() || undefined,
@@ -395,6 +398,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     freeformDetails?: string;
     selectedPortraitPrompt?: string;
     selectedPortraitImage?: string;
+    selectedPortraitSeed?: number;
     hairLength?: string;
     eyeColor?: string;
     skinTone?: string;
@@ -470,7 +474,10 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
       canonicalGeneratedAt: generated.canonicalImage.created_at,
     },
     canonicalReviewStatus: 'pending',
-    seedPrompt: generated.canonicalImage.prompt_text?.trim() || undefined,
+    seedPrompt:
+      generated.canonicalImage.prompt_text?.trim()
+      || semanticSetup.selectedPortraitPrompt?.trim()
+      || undefined,
     promptVersion: PROMPT_VERSION.canonical,
     surfaceType: 'canonical',
   });

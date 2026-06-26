@@ -24,6 +24,19 @@ export interface RegeneratePromptInput {
 }
 
 export const buildRegeneratePrompt = (input: RegeneratePromptInput): string => {
+  const seedHint = input.seedPromptHint?.trim();
+  if (seedHint) {
+    const identityAnchors = input.identityAnchors?.filter(Boolean).join(', ');
+    return [
+      seedHint,
+      identityAnchors ? `Identity continuity: ${identityAnchors}.` : null,
+      getCompositionAnchor('regenerate'),
+      buildAllNegatives(),
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }
+
   const identityAnchors = input.identityAnchors?.filter(Boolean).join(', ');
 
   return [

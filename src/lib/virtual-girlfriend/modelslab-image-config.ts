@@ -10,8 +10,8 @@ import { env } from '@/lib/env';
 export const MODELSLAB_DEFAULT_PORTRAIT_MODEL =
   'aurelium-photorealistic-people-bysilas-v1-0-1771498462';
 
-/** Setup portrait picker — keep low to conserve ModelsLab credits. */
-export const PORTRAIT_PREVIEW_CANDIDATE_COUNT = 2;
+/** Setup portrait picker — four candidates improve face diversity at selection time. */
+export const PORTRAIT_PREVIEW_CANDIDATE_COUNT = 4;
 
 /** Gallery + identity-lock img2img (Phase 0b bake-off winner for scene variety). */
 export const MODELSLAB_DEFAULT_KONTEXT_PRO_MODEL = 'flux-kontext-pro';

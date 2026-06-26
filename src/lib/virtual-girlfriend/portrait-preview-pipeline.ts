@@ -10,6 +10,9 @@ import type { PreviewTraits } from '@/lib/virtual-girlfriend/types/traits';
 export type PortraitPreviewPipelineInput = PreviewTraits & {
   userId: string;
   count?: number;
+  companionId?: string;
+  setupDraftKey?: string;
+  negativeOverlapCues?: string[];
 };
 
 export type PortraitPreviewPipelineOutcome = {

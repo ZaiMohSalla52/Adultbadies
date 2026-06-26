@@ -32,7 +32,7 @@ type BuilderStep =
   | 'freeformDetails'
   | 'portrait';
 
-type PortraitCandidate = { id: string; imageDataUrl: string; prompt: string; label: string };
+type PortraitCandidate = { id: string; imageDataUrl: string; prompt: string; label: string; seed?: number };
 
 const isHostedPortraitUrl = (value: string | null | undefined) => /^https?:\/\//i.test(String(value ?? '').trim());
 
@@ -137,6 +137,7 @@ type CreatorState = {
   freeformDetails: string;
   selectedPortraitPrompt: string;
   selectedPortraitImage: string;
+  selectedPortraitSeed: number | null;
 };
 
 type Option = { label: string; value: string };
@@ -185,6 +186,7 @@ const makeInitialState = (): CreatorState => ({
   freeformDetails: '',
   selectedPortraitPrompt: '',
   selectedPortraitImage: '',
+  selectedPortraitSeed: null,
 });
 
 const sexOptions: IconOption[] = [
@@ -513,7 +515,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   const [portraitsForTraitsKey, setPortraitsForTraitsKey] = useState<string | null>(null);
   const [recoverableCompanionId, setRecoverableCompanionId] = useState<string | null>(null);
   const portraitGenInFlight = useRef(false);
-  const lockedPortraitSelection = useRef({ image: '', prompt: '' });
+  const lockedPortraitSelection = useRef({ image: '', prompt: '', seed: null as number | null });
   const [failedPortraitIds, setFailedPortraitIds] = useState<Set<string>>(() => new Set());
 
   const step = STEPS[stepIndex];
@@ -533,11 +535,12 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     setPortraitsForTraitsKey(null);
 
     if (step === 'portrait') {
-      lockedPortraitSelection.current = { image: '', prompt: '' };
+      lockedPortraitSelection.current = { image: '', prompt: '', seed: null };
       setState((current) => ({
         ...current,
         selectedPortraitImage: '',
         selectedPortraitPrompt: '',
+        selectedPortraitSeed: null,
       }));
       void maybeGeneratePortraits(true);
     }
@@ -675,11 +678,13 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         lockedPortraitSelection.current = {
           image: firstCandidate.imageDataUrl,
           prompt: firstCandidate.prompt,
+          seed: firstCandidate.seed ?? null,
         };
         setState((current) => ({
           ...current,
           selectedPortraitImage: firstCandidate.imageDataUrl,
           selectedPortraitPrompt: firstCandidate.prompt,
+          selectedPortraitSeed: firstCandidate.seed ?? null,
         }));
       }
     } catch (candidateError) {
@@ -775,18 +780,25 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
       || visiblePortraitCandidates.find((candidate) => candidate.imageDataUrl === image)?.prompt
       || fallbackCandidate?.prompt
       || '';
+    const seed =
+      state.selectedPortraitSeed
+      ?? lockedPortraitSelection.current.seed
+      ?? visiblePortraitCandidates.find((candidate) => candidate.imageDataUrl === image)?.seed
+      ?? fallbackCandidate?.seed
+      ?? null;
 
-    return { image, prompt };
+    return { image, prompt, seed };
   };
 
-  const selectPortrait = (imageUrl: string, prompt: string) => {
-    lockedPortraitSelection.current = { image: imageUrl, prompt };
+  const selectPortrait = (imageUrl: string, prompt: string, seed?: number) => {
+    lockedPortraitSelection.current = { image: imageUrl, prompt, seed: seed ?? null };
     setField('selectedPortraitPrompt', prompt);
     setField('selectedPortraitImage', imageUrl);
+    setField('selectedPortraitSeed', seed ?? null);
   };
 
   const submit = () => {
-    const { image: selectedPortraitImage, prompt: selectedPortraitPrompt } = resolvePortraitSelection();
+    const { image: selectedPortraitImage, prompt: selectedPortraitPrompt, seed: selectedPortraitSeed } = resolvePortraitSelection();
 
     if (!state.name.trim() || !selectedPortraitImage || !selectedPortraitPrompt) {
       setError('Complete required steps before generating.');
@@ -828,6 +840,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             freeformDetails: state.freeformDetails,
             selectedPortraitPrompt,
             selectedPortraitImage,
+            selectedPortraitSeed: selectedPortraitSeed ?? undefined,
           }),
         });
 
@@ -904,9 +917,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     setPortraitCandidates([]);
     setPortraitsForTraitsKey(null);
     setFailedPortraitIds(new Set());
-    lockedPortraitSelection.current = { image: '', prompt: '' };
+    lockedPortraitSelection.current = { image: '', prompt: '', seed: null };
     setField('selectedPortraitImage', '');
     setField('selectedPortraitPrompt', '');
+    setField('selectedPortraitSeed', null);
     void maybeGeneratePortraits(true);
   };
 
@@ -1192,7 +1206,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                           className={`${styles.portraitPickerCard} ${
                             state.selectedPortraitImage === candidate.imageDataUrl ? styles.portraitPickerCardSelected : ''
                           }`}
-                          onClick={() => selectPortrait(candidate.imageDataUrl, candidate.prompt)}
+                          onClick={() => selectPortrait(candidate.imageDataUrl, candidate.prompt, candidate.seed)}
                         >
                           <PortraitPhoto
                             src={candidate.imageDataUrl}

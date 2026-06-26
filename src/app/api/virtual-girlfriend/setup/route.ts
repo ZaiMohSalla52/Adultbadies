@@ -86,6 +86,9 @@ const normalizeSetupInput = (
   preferenceHints: toOptionalString(body.preferenceHints ?? body.freeformDetails),
   selectedPortraitPrompt: toOptionalString(body.selectedPortraitPrompt),
   selectedPortraitImage: toOptionalString(body.selectedPortraitImage),
+  selectedPortraitSeed: Number.isFinite(Number(body.selectedPortraitSeed))
+    ? Number(body.selectedPortraitSeed)
+    : null,
 });
 
 const generateDistinctNameSuggestion = async (input: {
@@ -336,6 +339,7 @@ export async function POST(request: NextRequest) {
     preferenceHints: structuredProfile.preferenceHints ?? undefined,
     selectedPortraitPrompt: structuredProfile.selectedPortraitPrompt ?? undefined,
     selectedPortraitImage: structuredProfile.selectedPortraitImage ?? undefined,
+    selectedPortraitSeed: structuredProfile.selectedPortraitSeed ?? undefined,
     sex: structuredProfile.sex ?? undefined,
     hairLength: structuredProfile.hairLength ?? undefined,
     eyeColor: structuredProfile.eyeColor ?? undefined,
