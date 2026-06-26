@@ -91,6 +91,26 @@ export const uploadReferenceImageUrl = async (bytes: Buffer, mimeType: string) =
   return url;
 };
 
+/** Face swap rejects R2/external URLs — re-host on ModelsLab temp storage. */
+export const ensureModelsLabHostedImageUrl = async (
+  reference: { bytes: Buffer; mimeType: string } | { url: string },
+) => {
+  if ('bytes' in reference) {
+    if (!reference.bytes.byteLength) {
+      throw new Error('ModelsLab hosted image requires non-empty image bytes.');
+    }
+    return uploadReferenceImageUrl(reference.bytes, reference.mimeType);
+  }
+
+  const url = reference.url.trim();
+  if (!/^https?:\/\//i.test(url)) {
+    throw new Error('ModelsLab hosted image requires a valid HTTP(S) URL.');
+  }
+
+  const downloaded = await downloadModelsLabImage(url);
+  return uploadReferenceImageUrl(downloaded.bytes, downloaded.mimeType);
+};
+
 const POLL_INTERVAL_MS = 1_500;
 const POLL_MAX_ATTEMPTS = 45;
 
@@ -160,40 +180,29 @@ export const callModelsLabV6Images = async (
   return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
 };
 
-const pollModelsLabJob = async (
-  fetchUrls: string[],
+const pollModelsLabFaceSwapJob = async (
   requestId: string,
   errorLabel: string,
   pollOptions?: ModelsLabPollOptions,
   initial?: ModelsLabApiResponse,
 ): Promise<ModelsLabApiResponse> => {
   const key = assertModelsLabApiKey();
-  const maxAttempts = pollOptions?.maxAttempts ?? 20;
-  const intervalMs = pollOptions?.intervalMs ?? 1_000;
+  const maxAttempts = pollOptions?.maxAttempts ?? 60;
+  const intervalMs = pollOptions?.intervalMs ?? 2_000;
+  const fetchUrl = `${MODELSLAB_FACE_SWAP_FETCH_URL}/${requestId}`;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const waitMs = initial?.eta && attempt === 0 ? Math.min(initial.eta * 1_000, 3_000) : intervalMs;
+    const waitMs = initial?.eta && attempt === 0 ? Math.min(initial.eta * 1_000, 5_000) : intervalMs;
     await sleep(waitMs);
 
-    let lastPollError: Error | null = null;
-    for (const fetchUrl of fetchUrls) {
-      try {
-        const polled = await postModelsLabJson(fetchUrl, { key, request_id: requestId }, errorLabel);
-        if (polled.status === 'success') return polled;
-        if (polled.status === 'error') {
-          throw new Error(`${errorLabel}: ${polled.message ?? polled.messege ?? 'poll failed'}`);
-        }
-        lastPollError = null;
-        break;
-      } catch (error) {
-        lastPollError = error instanceof Error ? error : new Error(String(error));
-      }
+    const polled = await postModelsLabJson(fetchUrl, { key }, errorLabel);
+    if (polled.status === 'success') return polled;
+    if (polled.status === 'error') {
+      throw new Error(`${errorLabel}: ${polled.message ?? polled.messege ?? 'poll failed'}`);
     }
-
-    if (lastPollError) throw lastPollError;
   }
 
-  throw new Error(`${errorLabel}: timed out waiting for ModelsLab job.`);
+  throw new Error(`${errorLabel}: timed out waiting for ModelsLab face swap.`);
 };
 
 export const awaitModelsLabFaceSwapResult = async (
@@ -206,13 +215,7 @@ export const awaitModelsLabFaceSwapResult = async (
     throw new Error(`${errorLabel}: unexpected ModelsLab face swap response status.`);
   }
 
-  return pollModelsLabJob(
-    [MODELSLAB_FACE_SWAP_FETCH_URL, `${MODELSLAB_V6_BASE}/images/fetch`],
-    String(initial.id),
-    errorLabel,
-    pollOptions,
-    initial,
-  );
+  return pollModelsLabFaceSwapJob(String(initial.id), errorLabel, pollOptions, initial);
 };
 
 export const callModelsLabFaceGen = async (
@@ -231,25 +234,7 @@ export const callModelsLabFaceSwap = async (
   pollOptions?: ModelsLabPollOptions,
 ) => {
   const key = assertModelsLabApiKey();
-  const payload = { key, ...body };
-
-  let initial: ModelsLabApiResponse;
-  try {
-    initial = await postModelsLabJson(MODELSLAB_FACE_SWAP_URL, payload, errorLabel);
-  } catch {
-    initial = await postModelsLabJson(
-      `${MODELSLAB_V6_BASE}/face_swap`,
-      {
-        key,
-        init_image: body.init_image,
-        target_image: body.target_image,
-        watermark: body.watermark ?? 'no',
-        ...(body.model_id ? { model_id: body.model_id } : {}),
-      },
-      errorLabel,
-    );
-  }
-
+  const initial = await postModelsLabJson(MODELSLAB_FACE_SWAP_URL, { key, ...body }, errorLabel);
   return awaitModelsLabFaceSwapResult(initial, errorLabel, pollOptions);
 };
 

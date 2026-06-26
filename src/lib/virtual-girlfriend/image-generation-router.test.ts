@@ -31,28 +31,28 @@ describe('resolveChatGenerationRoute', () => {
     expect(route.enableSafetyChecker).toBe(false);
   });
 
-  it('routes adult requested-look chat to Face Gen when ModelsLab preferred', () => {
+  it('routes adult requested-look chat to face swap', () => {
     const route = resolveChatGenerationRoute({
       explicit: false,
       requestedLook: true,
       adultContentEnabled: true,
       preferFaceGen: true,
     });
-    expect(route.provider).toBe('face_gen');
-    expect(route.modelKind).toBe('face_gen');
+    expect(route.provider).toBe('face_swap');
+    expect(route.modelKind).toBe('face_swap');
     expect(route.enableSafetyChecker).toBe(false);
   });
 
-  it('falls back to kontext dev for requested look when Face Gen disabled', () => {
+  it('falls back to kontext dev for requested look when adult content disabled', () => {
     const route = resolveChatGenerationRoute({
       explicit: false,
       requestedLook: true,
-      adultContentEnabled: true,
+      adultContentEnabled: false,
       preferFaceGen: false,
     });
     expect(route.provider).toBe('flux_kontext');
     expect(route.modelKind).toBe('kontext_dev');
-    expect(route.enableSafetyChecker).toBe(false);
+    expect(route.enableSafetyChecker).toBe(true);
   });
 
   it('uses kontext pro with safety for non-adult passive chat', () => {

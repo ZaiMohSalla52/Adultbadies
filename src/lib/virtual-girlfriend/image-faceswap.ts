@@ -1,14 +1,12 @@
-import { env } from '@/lib/env';
-import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
 import type { WardrobeContext } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import {
   callModelsLabFaceSwap,
   callModelsLabV6Images,
   downloadModelsLabImage,
-  uploadReferenceImageUrl,
+  ensureModelsLabHostedImageUrl,
   type ModelsLabApiResponse,
 } from '@/lib/virtual-girlfriend/modelslab-client';
-import { resolveModelsLabSdxlModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import { resolveModelsLabExplicitBodyModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
   buildFaceGenExplicitPrompt,
   FACE_GEN_BASE_NEGATIVE_PROMPT,
@@ -19,33 +17,20 @@ import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
 
 /*
- * Explicit chat via body scene + face swap (ModelsLab single-face-swap).
- *
- * Faster and more reliable for rear-view / pose-heavy shots than Face Gen,
- * which often queues 60–120s+ and times out inside Vercel's 270s budget.
+ * Adult explicit chat — body scene + face swap only (ModelsLab single-face-swap).
+ * No Face Gen / Kontext / SDXL fallbacks (saves credits).
  *
  * Step 1: text2img uncensored body scene (no identity lock)
- * Step 2: swap canonical companion face onto the scene (<2s typical)
+ * Step 2: swap canonical companion face onto the scene
  */
 
-const MODELSLAB_FACE_SWAP_MODEL = env.MODELSLAB_FACE_SWAP_MODEL ?? 'single-face-swap';
-const MODELSLAB_EXPLICIT_BODY_MODEL =
-  env.MODELSLAB_EXPLICIT_BODY_MODEL ?? resolveModelsLabSdxlModel();
+const MODELSLAB_FACE_SWAP_ENDPOINT = 'single_face_swap';
+const MODELSLAB_EXPLICIT_BODY_MODEL = resolveModelsLabExplicitBodyModel();
 
 const EXPLICIT_BODY_DIMENSIONS = { width: 768, height: 1024 } as const;
 
 const BODY_SCENE_POLL = { maxAttempts: 40, intervalMs: 1_500 } as const;
-const FACE_SWAP_POLL = { maxAttempts: 20, intervalMs: 1_000 } as const;
-
-const resolveFaceImageUrl = async (reference: { bytes: Buffer; mimeType: string } | { url: string }) => {
-  if ('url' in reference && /^https?:\/\//i.test(reference.url.trim())) {
-    return reference.url.trim();
-  }
-  if ('bytes' in reference && reference.bytes.byteLength) {
-    return uploadReferenceImageUrl(reference.bytes, reference.mimeType);
-  }
-  throw new Error('Face swap requires a hosted face URL or reference image bytes.');
-};
+const FACE_SWAP_POLL = { maxAttempts: 60, intervalMs: 2_000 } as const;
 
 /** Body scene prompt — composition without identity lock (face swap handles identity). */
 export const buildExplicitBodyScenePrompt = (message: string, context: WardrobeContext = {}) =>
@@ -84,12 +69,11 @@ export const generateExplicitChatImageWithModelsLabFaceSwap = async (input: {
   wardrobeContext?: WardrobeContext;
 }): Promise<GeneratedImage> => {
   const wardrobeContext = input.wardrobeContext ?? {};
-  const explicit = detectExplicitImageIntent(input.userMessage);
-  if (!explicit) {
-    throw new Error('Face swap explicit pipeline requires an explicit user message.');
+  if (!input.userMessage.trim()) {
+    throw new Error('Face swap chat generation requires a user message.');
   }
 
-  const faceImage = await resolveFaceImageUrl(input.reference);
+  const faceImage = await ensureModelsLabHostedImageUrl(input.reference);
   const bodyPrompt = buildExplicitBodyScenePrompt(input.userMessage, wardrobeContext);
   const explicitParams = resolveFaceGenExplicitParams(input.userMessage, wardrobeContext);
   const negativePrompt = [
@@ -122,16 +106,19 @@ export const generateExplicitChatImageWithModelsLabFaceSwap = async (input: {
     throw new Error('ModelsLab explicit body scene returned no image URL.');
   }
 
+  const hostedBodySceneUrl = await ensureModelsLabHostedImageUrl({ url: bodySceneUrl });
+
   const swapPayload = await callModelsLabFaceSwap(
     {
-      model_id: MODELSLAB_FACE_SWAP_MODEL,
-      init_image: faceImage,
-      target_image: bodySceneUrl,
-      watermark: 'no',
+      init_image: hostedBodySceneUrl,
+      target_image: faceImage,
+      reference_image: faceImage,
+      watermark: false,
+      base64: false,
     },
     'ModelsLab single face swap failed',
     FACE_SWAP_POLL,
   );
 
-  return extractGeneratedImage(swapPayload, MODELSLAB_FACE_SWAP_MODEL, '/v6/faceswap/single_face_swap');
+  return extractGeneratedImage(swapPayload, MODELSLAB_EXPLICIT_BODY_MODEL, `/v6/faceswap/${MODELSLAB_FACE_SWAP_ENDPOINT}`);
 };

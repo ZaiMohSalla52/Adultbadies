@@ -29,6 +29,16 @@ export const resolveModelsLabSdxlModel = () =>
   env.MODELSLAB_SDXL_MODEL?.trim() ||
   'aurelium-photorealistic-people-bysilas-v1-0-1771498462';
 
+/**
+ * Uncensored body scene for explicit face-swap pipeline.
+ * Public NSFW SDXL — faster (~10s) and pose-faithful vs Aurelium img2img on front canonical.
+ */
+export const MODELSLAB_DEFAULT_EXPLICIT_BODY_MODEL =
+  'cyberrealistic-xl-desire-desire-v1-0-dmd2';
+
+export const resolveModelsLabExplicitBodyModel = () =>
+  env.MODELSLAB_EXPLICIT_BODY_MODEL?.trim() || MODELSLAB_DEFAULT_EXPLICIT_BODY_MODEL;
+
 export const isModelsLabRealisticPortraitModel = (modelId: string) =>
   /realistic-portrait|realism/i.test(modelId) && !/aurelium/i.test(modelId);
 

@@ -5,10 +5,8 @@
  * safe images even with enable_safety_checker:false. It must NEVER handle
  * explicit or sexual in-chat requests.
  *
- * Explicit nude/topless → Face swap first (body text2img + single-face-swap)
- * Face swap failure → Face Gen only (no Kontext / SDXL — they keep clothed canonical pose)
- * Sexual requested-look → Face Gen on ModelsLab (uncensored, face-locked)
- * Flux-only explicit fallback → Kontext [dev] with safety checker OFF
+ * Explicit nude/topless → Face swap only (body text2img + single-face-swap, no fallbacks)
+ * Sexual requested-look → Face swap when adult content enabled
  * Passive SFW chat only → Kontext Pro (safety on)
  */
 
@@ -32,24 +30,12 @@ export const resolveChatGenerationRoute = (input: {
 }): ChatGenerationRoute => {
   const adultChat = input.adultContentEnabled && (input.explicit || input.requestedLook);
 
-  if (input.adultContentEnabled && input.explicit) {
+  if (adultChat) {
     return {
       provider: 'face_swap',
       modelKind: 'face_swap',
       guidanceScale: 7.5,
       numInferenceSteps: 31,
-      enableSafetyChecker: false,
-    };
-  }
-
-  const useFaceGen = adultChat && (input.preferFaceGen ?? true);
-
-  if (useFaceGen) {
-    return {
-      provider: 'face_gen',
-      modelKind: 'face_gen',
-      guidanceScale: 7.5,
-      numInferenceSteps: 41,
       enableSafetyChecker: false,
     };
   }

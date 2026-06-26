@@ -397,7 +397,7 @@ export const generateChatImageWithModelsLabFaceGen = async (input: {
       height: explicitParams?.height ?? FACE_GEN_MAX_HEIGHT,
       s_scale: explicitParams?.sScale ?? 0.85,
       guidance_scale: explicitParams?.guidanceScale ?? 7.5,
-      safety_checker: 'no',
+      safety_checker: false,
       num_inference_steps: input.numInferenceSteps ?? 41,
       ...(explicitParams?.wideFraming ? { scale_down: 8 } : {}),
     },
