@@ -1,4 +1,5 @@
 import { env } from '@/lib/env';
+import { repairCompanionImageDeliveryUrl } from '@/lib/storage/delivery-url';
 import { supabaseRest } from '@/lib/supabase/rest';
 import type { DiscoveryCandidate, DiscoveryPhotoRecord, DiscoveryPreferenceRecord, DiscoveryProfileRecord, SwipeRecord } from '@/lib/discovery/types';
 import { getBlockedUserIds } from '@/lib/safety/data';
@@ -76,6 +77,9 @@ type VgImageRow = {
   companion_id: string;
   delivery_url: string;
   image_kind: string;
+  delivery_provider?: string | null;
+  origin_storage_provider?: string | null;
+  origin_storage_key?: string | null;
 };
 
 export const getDiscoverableVirtualGirlfriends = async (token: string, userId: string): Promise<DiscoveryCandidate[]> => {
@@ -94,14 +98,16 @@ export const getDiscoverableVirtualGirlfriends = async (token: string, userId: s
   const companionIds = companions.map((c) => c.id);
   const images = await supabaseRest<VgImageRow[]>('ai_companion_images', token, {
     searchParams: new URLSearchParams({
-      select: 'companion_id,delivery_url,image_kind',
+      select: 'companion_id,delivery_url,image_kind,delivery_provider,origin_storage_provider,origin_storage_key',
       companion_id: `in.(${companionIds.join(',')})`,
       image_kind: 'eq.canonical',
       limit: '50',
     }),
   });
 
-  const imageByCompanionId = new Map(images.map((img) => [img.companion_id, img.delivery_url]));
+  const imageByCompanionId = new Map(
+    images.map((img) => [img.companion_id, repairCompanionImageDeliveryUrl(img)]),
+  );
 
   return companions.map((companion) => {
     const sex = (companion.structured_profile?.sex ?? 'female').toLowerCase();

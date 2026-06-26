@@ -1,4 +1,5 @@
 import { env } from '@/lib/env';
+import { repairCompanionImageDeliveryUrl } from '@/lib/storage/delivery-url';
 import { supabaseRest } from '@/lib/supabase/rest';
 import {
   normalizeMessageAttachments,
@@ -31,7 +32,14 @@ const companionGridSelect =
   'id,user_id,name,display_bio,archetype,setup_completed,generation_status,is_active,updated_at';
 
 const companionThumbnailSelect =
-  'id,companion_id,image_kind,delivery_url,width,height,prompt_hash,quality_score,lineage_metadata,created_at';
+  'id,companion_id,image_kind,delivery_url,delivery_provider,origin_storage_provider,origin_storage_key,width,height,prompt_hash,quality_score,lineage_metadata,created_at';
+
+const normalizeCompanionImageRow = (
+  row: VirtualGirlfriendCompanionImageRecord,
+): VirtualGirlfriendCompanionImageRecord => ({
+  ...row,
+  delivery_url: repairCompanionImageDeliveryUrl(row),
+});
 
 
 const visualProfileSelect =
@@ -771,7 +779,7 @@ export const getVirtualGirlfriendCompanionImages = async (
   userId: string,
   companionId: string,
 ): Promise<VirtualGirlfriendCompanionImageRecord[]> => {
-  return supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+  const rows = await supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
     searchParams: new URLSearchParams({
       select: companionImageSelect,
       user_id: `eq.${userId}`,
@@ -780,6 +788,7 @@ export const getVirtualGirlfriendCompanionImages = async (
       limit: '30',
     }),
   });
+  return rows.map(normalizeCompanionImageRow);
 };
 
 export const getVirtualGirlfriendCompanionImagesBatch = async (
@@ -801,7 +810,7 @@ export const getVirtualGirlfriendCompanionImagesBatch = async (
   });
 
   const map = new Map<string, VirtualGirlfriendCompanionImageRecord[]>();
-  for (const row of rows) {
+  for (const row of rows.map(normalizeCompanionImageRow)) {
     const existing = map.get(row.companion_id) ?? [];
     existing.push(row);
     map.set(row.companion_id, existing);
@@ -833,7 +842,7 @@ export const getVirtualGirlfriendCompanionThumbnailBatch = async (
   });
 
   const map = new Map<string, VirtualGirlfriendCompanionImageRecord[]>();
-  for (const row of rows) {
+  for (const row of rows.map(normalizeCompanionImageRow)) {
     const existing = map.get(row.companion_id) ?? [];
     if (!existing.some((image) => image.id === row.id)) {
       existing.push(row);
@@ -850,13 +859,14 @@ export const listVirtualGirlfriendCompanionImagesByIds = async (
   const ids = Array.from(new Set(imageIds.map((id) => id.trim()).filter(Boolean)));
   if (!ids.length) return [];
 
-  return supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+  const rows = await supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
     searchParams: new URLSearchParams({
       select: companionImageSelect,
       id: `in.(${ids.join(',')})`,
       limit: String(Math.max(ids.length, 1)),
     }),
   });
+  return rows.map(normalizeCompanionImageRow);
 };
 
 export const setCanonicalReferenceImageForVisualProfile = async (
@@ -910,7 +920,8 @@ export const getCanonicalReferenceImageForCompanion = async (
     }),
   });
 
-  return rows[0] ?? null;
+  const row = rows[0];
+  return row ? normalizeCompanionImageRow(row) : null;
 };
 
 export const getLatestVisualProfileForCompanion = async (

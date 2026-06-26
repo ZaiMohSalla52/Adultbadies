@@ -1,4 +1,12 @@
+import { repairCompanionImageDeliveryUrl } from '@/lib/storage/delivery-url';
 import type { VirtualGirlfriendCompanionImageRecord } from '@/lib/virtual-girlfriend/types';
+
+const withRepairedDeliveryUrl = (
+  image: VirtualGirlfriendCompanionImageRecord,
+): VirtualGirlfriendCompanionImageRecord => ({
+  ...image,
+  delivery_url: repairCompanionImageDeliveryUrl(image),
+});
 
 // Max images surfaced on the profile (1 canonical + up to 11 gallery). Chat
 // images also accumulate as gallery-kind, so the grid grows with use.
@@ -130,7 +138,7 @@ export const curateVirtualGirlfriendImages = (
   images: VirtualGirlfriendCompanionImageRecord[],
   options?: { lockedCanonicalImageId?: string | null },
 ) => {
-  const sorted = [...images].sort(compareImageQuality);
+  const sorted = [...images].map(withRepairedDeliveryUrl).sort(compareImageQuality);
   const deduped = uniqueByDistinctness(sorted);
 
   const canonical =
