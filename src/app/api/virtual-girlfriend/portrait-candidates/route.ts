@@ -86,10 +86,10 @@ export async function POST(request: NextRequest) {
       .digest('hex')
       .slice(0, 16);
 
-    const siblings = await listVirtualGirlfriendCompanions(auth.token, auth.user.id);
+    const siblings = await listVirtualGirlfriendCompanions(auth.accessToken, auth.user.id);
     const siblingProfiles = await Promise.all(
       siblings.slice(0, 8).map((companion) =>
-        getLatestVisualProfileForCompanion(auth.token, auth.user.id, companion.id)),
+        getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id)),
     );
     const negativeOverlapCues = collectSiblingDistinctnessCues(
       siblingProfiles.map((profile) => profile?.identity_pack ?? null),
