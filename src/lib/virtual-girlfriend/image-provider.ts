@@ -68,6 +68,7 @@ export const generateChatImageFromReferenceFaceGen = (input: {
   reference: PortraitReferenceImage;
   wardrobeContext?: import('@/lib/virtual-girlfriend/companion-wardrobe').WardrobeContext;
   numInferenceSteps?: number;
+  wideFraming?: boolean;
 }): Promise<GeneratedImage> => {
   if (!isModelsLabImageProvider()) {
     throw new Error('Face Gen chat images require ModelsLab (MODELSLAB_API_KEY).');

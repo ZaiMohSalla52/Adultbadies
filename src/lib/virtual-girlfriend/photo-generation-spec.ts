@@ -129,7 +129,7 @@ export const FACE_GEN_BASE_NEGATIVE_PROMPT =
   'drawing, cartoon, anime, big nose, long nose, fat, ugly, bad anatomy, worst quality, low quality, blurry, censored, black bar, mosaic, watermark, text, logo';
 
 export const FACE_GEN_CROP_NEGATIVE_PROMPT =
-  'headshot only, face only, bust shot, cropped at chest, cropped at shoulders, cut off body, missing legs, legs out of frame, lower body out of frame, portrait close-up only, no full body, shoulders only';
+  'headshot only, face only, bust shot, cropped at chest, cropped at shoulders, cropped at waist, cropped at hips, cropped at thighs, cropped at knees, cut off body, cut off at hips, cut off at thighs, missing legs, legs out of frame, lower body out of frame, thighs cropped, hips cropped, no feet, no knees, portrait close-up only, no full body, shoulders only, torso only, upper body only';
 
 export type FaceGenExplicitParams = {
   prompt: string;
@@ -138,20 +138,29 @@ export type FaceGenExplicitParams = {
   height: number;
   sScale: number;
   guidanceScale: number;
+  wideFraming: boolean;
 };
 
 const resolveFaceGenSubject = (context: WardrobeContext) =>
   context.sex?.trim().toLowerCase() === 'male' ? 'man' : 'woman';
 
+export type FaceGenExplicitOptions = {
+  /** Second attempt after body-crop detection — zoom out further and loosen face lock. */
+  wideFraming?: boolean;
+};
+
 /** Face Gen API params — composition-first prompts; lower s_scale frees body from face lock. */
 export const resolveFaceGenExplicitParams = (
   message: string,
   context: WardrobeContext = {},
+  options: FaceGenExplicitOptions = {},
 ): FaceGenExplicitParams => {
   const exposure = parseExplicitExposure(message);
   const forcedPose = resolveExplicitPoseFromMessage(message);
   const subject = resolveFaceGenSubject(context);
   const trimmed = message.trim();
+  const wide = options.wideFraming ?? false;
+  const wideLead = wide ? 'Extreme wide shot, camera pulled back, zoomed out, ' : 'Wide shot, zoomed out, ';
 
   let compositionLead: string;
   let sScale: number;
@@ -159,30 +168,33 @@ export const resolveFaceGenExplicitParams = (
   switch (exposure.level) {
     case 'full_nude':
       compositionLead = forcedPose
-        ? `Mirror selfie of a fully nude adult ${subject}, naked body visible from face down through hips and thighs, no clothing anywhere, nipples visible.`
-        : `Full-length photograph of a fully nude adult ${subject}, entire naked body visible head to toe in frame, standing facing camera, breasts with nipples visible, uncensored.`;
-      sScale = 0.68;
+        ? `${wideLead}mirror selfie of a fully nude adult ${subject}, naked body visible from face through feet on floor, knees and legs fully in frame, no clothing anywhere, nipples visible.`
+        : `${wideLead}full-length photograph of a fully nude adult ${subject}, entire naked body visible head to toe including feet and knees in frame, standing facing camera, breasts with nipples visible, uncensored.`;
+      sScale = wide ? 0.42 : 0.55;
       break;
     case 'topless':
-      compositionLead = `Three-quarter photograph of adult ${subject}, topless with bare breasts and nipples fully visible, no bra no shirt no crop top.`;
-      sScale = 0.78;
+      compositionLead = `${wide ? wideLead : ''}Three-quarter photograph of adult ${subject}, topless with bare breasts and nipples fully visible down to waist, no bra no shirt no crop top.`;
+      sScale = wide ? 0.58 : 0.68;
       break;
     case 'butt_focus':
-      compositionLead = `Rear-view photograph of nude adult ${subject}, bare buttocks fully visible, no jeans no pants, over-shoulder glance at camera.`;
-      sScale = 0.72;
+      compositionLead = `${wideLead}rear-view photograph of nude adult ${subject}, bare buttocks fully visible, legs and knees in frame down to feet, no jeans no pants, over-shoulder glance at camera.`;
+      sScale = wide ? 0.4 : 0.52;
       break;
     case 'genital_focus':
-      compositionLead = `Full-body nude photograph of adult ${subject}, explicit lower-body framing with spread legs, no underwear blocking view.`;
-      sScale = 0.7;
+      compositionLead = `${wideLead}full-body nude photograph of adult ${subject}, explicit lower-body framing with spread legs and feet visible, no underwear blocking view.`;
+      sScale = wide ? 0.42 : 0.55;
       break;
     default:
-      compositionLead = `Adult explicit photograph of ${subject}, ${exposure.wardrobeInstruction}`;
-      sScale = 0.75;
+      compositionLead = `${wide ? wideLead : ''}Adult explicit photograph of ${subject}, ${exposure.wardrobeInstruction}`;
+      sScale = wide ? 0.5 : 0.62;
   }
 
   const prompt = [
     compositionLead,
-    forcedPose && !compositionLead.toLowerCase().includes('selfie') ? forcedPose : null,
+    forcedPose && !compositionLead.toLowerCase().includes(forcedPose.slice(0, 12).toLowerCase())
+      ? forcedPose
+      : null,
+    wide ? 'Full body must fit in frame with empty space above head and below feet.' : null,
     `User request: "${trimmed}".`,
     'Photorealistic uncensored adult photography, same face as reference.',
   ]
@@ -202,6 +214,7 @@ export const resolveFaceGenExplicitParams = (
     height: FACE_GEN_MAX_HEIGHT,
     sScale,
     guidanceScale: 7.5,
+    wideFraming: wide,
   };
 };
 

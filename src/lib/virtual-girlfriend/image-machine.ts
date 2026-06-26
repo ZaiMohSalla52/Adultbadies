@@ -40,6 +40,7 @@ import {
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
 import { isNearCloneOfReference } from '@/lib/virtual-girlfriend/image-clone-detection';
+import { isLikelyBodyCroppedAtBottom } from '@/lib/virtual-girlfriend/image-framing';
 import { isHighExposureExplicit } from '@/lib/virtual-girlfriend/explicit-exposure';
 import { buildFaceGenExplicitPrompt, resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
@@ -1271,7 +1272,24 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       }
     };
 
-    const generateFaceGenFallback = async () => {
+    const needsFullBodyFraming =
+      chatPromptInput.explicitExposureLevel === 'full_nude'
+      || chatPromptInput.explicitExposureLevel === 'butt_focus'
+      || chatPromptInput.explicitExposureLevel === 'genital_focus';
+
+    const rejectBodyCrop = (generated: GeneratedImage, label: string) => {
+      if (!needsFullBodyFraming || !generated.bytes.byteLength) return;
+      if (isLikelyBodyCroppedAtBottom(generated.bytes)) {
+        throw new VirtualGirlfriendImageMachineError(
+          `${label} output cropped before legs or feet.`,
+          'provider_error',
+          'provider_request',
+          true,
+        );
+      }
+    };
+
+    const generateFaceGenAttempt = (wideFraming = false) => {
       if (!input.userMessage?.trim()) {
         throw new VirtualGirlfriendImageMachineError(
           'Face Gen explicit chat requires a user message.',
@@ -1285,8 +1303,25 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
           reference: faceGenReference,
           wardrobeContext: wardrobeContextFromCompanion(input.companion),
           numInferenceSteps: 41,
+          wideFraming,
         }),
       );
+    };
+
+    const generateFaceGenFallback = async () => {
+      const primary = await generateFaceGenAttempt(false);
+      try {
+        rejectBodyCrop(primary, 'face_gen');
+        return primary;
+      } catch (cropError) {
+        logImageMachine(scope, 'explicit_face_gen_crop_retry', {
+          reason: cropError instanceof Error ? cropError.message : 'body_crop_detected',
+          wideFraming: true,
+        });
+        const wide = await generateFaceGenAttempt(true);
+        rejectBodyCrop(wide, 'face_gen_wide');
+        return wide;
+      }
     };
 
     const generateKontextExplicitAttempt = () =>
@@ -1328,9 +1363,26 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         return result;
       };
 
-      if (route.provider === 'face_gen') {
+      const tryFaceGenThenKontextOnCrop = async () => {
         try {
           return await tryFaceGenPrimary();
+        } catch (faceGenError) {
+          const cropRejected =
+            faceGenError instanceof VirtualGirlfriendImageMachineError
+            && faceGenError.message.includes('cropped before legs');
+          if (!cropRejected || !highExposure) throw faceGenError;
+          logImageMachine(scope, 'explicit_face_gen_crop_fallback_kontext', {
+            reason: faceGenError instanceof Error ? faceGenError.message : 'body_crop_exhausted',
+          });
+          const result = await tryKontextExplicit();
+          rejectPortraitClone(result, 'flux_kontext');
+          return result;
+        }
+      };
+
+      if (route.provider === 'face_gen') {
+        try {
+          return await tryFaceGenThenKontextOnCrop();
         } catch (primaryError) {
           if (!input.userMessage?.trim()) throw primaryError;
           logImageMachine(scope, 'explicit_face_gen_fallback_img2img', {

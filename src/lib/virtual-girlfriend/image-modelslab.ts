@@ -369,12 +369,15 @@ export const generateChatImageWithModelsLabFaceGen = async (input: {
   reference: { bytes: Buffer; mimeType: string } | { url: string };
   wardrobeContext?: WardrobeContext;
   numInferenceSteps?: number;
+  wideFraming?: boolean;
 }): Promise<GeneratedImage> => {
   const faceImage = await resolveFaceImageUrl(input.reference);
   const wardrobeContext = input.wardrobeContext ?? {};
   const explicit = detectExplicitImageIntent(input.userMessage);
   const explicitParams = explicit
-    ? resolveFaceGenExplicitParams(input.userMessage, wardrobeContext)
+    ? resolveFaceGenExplicitParams(input.userMessage, wardrobeContext, {
+        wideFraming: input.wideFraming,
+      })
     : null;
   const prompt =
     explicitParams?.prompt ?? buildFaceGenChatPrompt(input.userMessage, wardrobeContext);
@@ -390,8 +393,9 @@ export const generateChatImageWithModelsLabFaceGen = async (input: {
       height: explicitParams?.height ?? FACE_GEN_MAX_HEIGHT,
       s_scale: explicitParams?.sScale ?? 0.85,
       guidance_scale: explicitParams?.guidanceScale ?? 7.5,
-      safety_checker: false,
+      safety_checker: 'no',
       num_inference_steps: input.numInferenceSteps ?? 41,
+      ...(explicitParams?.wideFraming ? { scale_down: 8 } : {}),
     },
     'ModelsLab Face Gen explicit chat generation failed',
     { maxAttempts: 60, intervalMs: 1_500 },

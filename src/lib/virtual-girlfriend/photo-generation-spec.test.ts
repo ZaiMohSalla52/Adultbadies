@@ -30,17 +30,35 @@ describe('resolvePhotoGenerationSpec', () => {
     const params = resolveFaceGenExplicitParams('send me a nude photo of you', { sex: 'female' });
     expect(params.width).toBe(512);
     expect(params.height).toBe(768);
-    expect(params.sScale).toBeLessThan(0.8);
+    expect(params.sScale).toBeLessThan(0.6);
     expect(params.prompt.toLowerCase()).toContain('head to toe');
+    expect(params.prompt.toLowerCase()).toContain('feet');
     expect(params.prompt.toLowerCase()).toContain('nipples');
     expect(params.negativePrompt.toLowerCase()).toContain('headshot only');
+    expect(params.negativePrompt.toLowerCase()).toContain('cropped at hips');
     expect(params.negativePrompt.toLowerCase()).toContain('crop top');
   });
 
   it('builds chest-visible Face Gen params for topless requests', () => {
     const params = resolveFaceGenExplicitParams('show me your tits', { sex: 'female' });
     expect(params.prompt.toLowerCase()).toContain('nipples fully visible');
-    expect(params.sScale).toBeGreaterThan(0.7);
+    expect(params.sScale).toBeGreaterThan(0.6);
+    expect(params.sScale).toBeLessThan(0.75);
+  });
+
+  it('builds wide rear-view Face Gen params for ass requests', () => {
+    const params = resolveFaceGenExplicitParams('show me your ass', { sex: 'female' });
+    expect(params.prompt.toLowerCase()).toContain('rear-view');
+    expect(params.prompt.toLowerCase()).toContain('feet');
+    expect(params.sScale).toBeLessThan(0.6);
+  });
+
+  it('loosens face lock further on wide framing retry', () => {
+    const normal = resolveFaceGenExplicitParams('show me your ass', { sex: 'female' });
+    const wide = resolveFaceGenExplicitParams('show me your ass', { sex: 'female' }, { wideFraming: true });
+    expect(wide.sScale).toBeLessThan(normal.sScale);
+    expect(wide.prompt.toLowerCase()).toContain('extreme wide shot');
+    expect(wide.wideFraming).toBe(true);
   });
 
   it('uses style-aware wardrobe for surprise requests', () => {
