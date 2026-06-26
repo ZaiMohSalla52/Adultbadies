@@ -9,6 +9,7 @@ import {
   type GeneratedImage,
   type PortraitReferenceImage,
 } from '@/lib/virtual-girlfriend/image-provider';
+import type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import {
@@ -560,11 +561,7 @@ const runProviderGeneration = async (input: {
   prompt: string;
   reference?: PortraitReferenceImage;
   imageWeight?: number;
-  kontextOptions?: {
-    guidanceScale?: number;
-    numInferenceSteps?: number;
-    enableSafetyChecker?: boolean;
-  };
+  kontextOptions?: KontextGenerationOptions;
   preferDevModel?: boolean;
   explicitHighExposure?: boolean;
 }) => {
