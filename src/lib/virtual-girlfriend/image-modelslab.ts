@@ -13,6 +13,7 @@ import type { WardrobeContext } from '@/lib/virtual-girlfriend/companion-wardrob
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import {
   applyModelsLabPortraitPrompt,
+  MODELSLAB_DEFAULT_KONTEXT_PRO_MODEL,
   resolveModelsLabPortraitModel,
 } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
@@ -22,17 +23,18 @@ import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-gir
 export type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
 /*
- * ModelsLab image provider — photorealistic Flux portraits + Flux Kontext pro/dev.
+ * ModelsLab image provider — Phase 1 stack:
  *
- * Portrait text2img defaults to flux-realistic-portrait-v2-0 (not generic `flux`,
- * which skews anime/stylized). Canonical identity lock uses flux-kontext-pro (v7
- * image-to-image) with the selected portrait as init_image.
- *
- * Adult chat routes to flux-kontext-dev (v6 img2img) with safety_checker off.
+ * Portrait preview / fallback canonical text2img → Aurelium (MODELSLAB_PORTRAIT_MODEL)
+ * Setup canonical from selected portrait → direct persist (image-machine, no API)
+ * Gallery from canonical → flux-kontext-pro (v7 img2img)
+ * Adult explicit chat → SDXL img2img; sexual requested-look → Face Gen
+ * Passive adult chat img2img fallback → flux-kontext-dev (v6, safety_checker off)
  */
 
 const MODELSLAB_PORTRAIT_MODEL = resolveModelsLabPortraitModel();
-const MODELSLAB_KONTEXT_PRO_MODEL = env.MODELSLAB_KONTEXT_PRO_MODEL ?? 'flux-kontext-pro';
+const MODELSLAB_KONTEXT_PRO_MODEL =
+  env.MODELSLAB_KONTEXT_PRO_MODEL ?? MODELSLAB_DEFAULT_KONTEXT_PRO_MODEL;
 const MODELSLAB_KONTEXT_DEV_MODEL = env.MODELSLAB_KONTEXT_DEV_MODEL ?? 'flux-kontext-dev';
 const MODELSLAB_FACE_GEN_MODEL = env.MODELSLAB_FACE_GEN_MODEL ?? 'ai-avatar-generatorface-gen';
 const FACE_GEN_NEGATIVE_PROMPT =
@@ -40,7 +42,6 @@ const FACE_GEN_NEGATIVE_PROMPT =
 const MODELSLAB_NEGATIVE_PROMPT = buildModelsLabNegativePrompt();
 
 const PREVIEW_POLL = { maxAttempts: 28, intervalMs: 1_000 } as const;
-const PREVIEW_KONTEXT_POLL = { maxAttempts: 24, intervalMs: 1_000 } as const;
 
 const DIMENSIONS_BY_ASPECT: Record<string, { width: number; height: number }> = {
   '1x1': { width: 1024, height: 1024 },
@@ -66,11 +67,11 @@ const resolvePreviewDimensions = (aspectRatio: string) => resolveDimensions(aspe
 
 const resolveKontextAspect = (aspectRatio: string) => KONTEXT_ASPECT_BY_SURFACE[aspectRatio] ?? '3:4';
 
-const isAdultChatSurface = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') =>
+const isAdultChatSurface = (surface: 'gallery' | 'chat') =>
   surface === 'chat' && isVirtualGirlfriendAdultContentEnabled();
 
 const kontextModelForSurface = (
-  surface: 'preview' | 'canonical' | 'gallery' | 'chat',
+  surface: 'gallery' | 'chat',
   options?: { preferDevModel?: boolean; forceDevModel?: boolean },
 ) => {
   // Kontext Pro is moderated — never route adult / uncensored chat through it.
@@ -104,16 +105,16 @@ const buildModelsLabText2ImgRequest = (input: {
   samples: input.samples,
   num_inference_steps: input.numInferenceSteps,
   guidance_scale: input.guidanceScale,
-  safety_checker: 'yes',
+  safety_checker: 'no',
   scheduler: 'DPMSolverMultistepScheduler',
   ...(input.seed !== undefined ? { seed: input.seed } : {}),
 });
 
 const strengthForKontext = (input: {
-  surface: 'preview' | 'canonical' | 'gallery' | 'chat';
+  surface: 'gallery' | 'chat';
   guidanceScale?: number;
 }) => {
-  if (input.surface === 'canonical' || input.surface === 'preview' || input.surface === 'gallery') {
+  if (input.surface === 'gallery') {
     return 0.42;
   }
 
@@ -239,12 +240,11 @@ const generateKontextFromReference = async (input: {
   referenceImageBytes?: Buffer;
   referenceMimeType?: string;
   referenceImageUrl?: string;
-  surface: 'preview' | 'canonical' | 'gallery' | 'chat';
+  surface: 'gallery' | 'chat';
   seed?: number;
   errorLabel: string;
   kontextOptions?: KontextGenerationOptions;
   preferDevModel?: boolean;
-  skipDownload?: boolean;
 }): Promise<GeneratedImage> => {
   const surfaceParams = SURFACE_PARAMS[input.surface];
   const model = kontextModelForSurface(input.surface, {
@@ -282,7 +282,6 @@ const generateKontextFromReference = async (input: {
     return extractGeneratedImage(payload, model, '/v6/images/img2img');
   }
 
-  const pollOptions = input.surface === 'preview' ? PREVIEW_KONTEXT_POLL : undefined;
   const payload = await callModelsLabV7ImageToImage(
     {
       model_id: model,
@@ -293,43 +292,10 @@ const generateKontextFromReference = async (input: {
       aspect_ratio: resolveKontextAspect(surfaceParams.aspect_ratio),
     },
     input.errorLabel,
-    pollOptions,
   );
 
-  return extractGeneratedImage(payload, model, '/v7/images/image-to-image', {
-    skipDownload: input.skipDownload,
-  });
+  return extractGeneratedImage(payload, model, '/v7/images/image-to-image');
 };
-
-export const generatePreviewWithCharacterReferenceModelsLab = async (
-  prompt: string,
-  reference: { bytes: Buffer; mimeType: string } | { url: string },
-  seed?: number,
-): Promise<GeneratedImage> =>
-  generateKontextFromReference({
-    prompt,
-    ...( 'url' in reference
-      ? { referenceImageUrl: reference.url }
-      : { referenceImageBytes: reference.bytes, referenceMimeType: reference.mimeType }),
-    surface: 'preview',
-    seed,
-    errorLabel: 'ModelsLab character reference generation failed',
-    skipDownload: true,
-  });
-
-export const generateCanonicalImageFromReferenceWithModelsLab = async (input: {
-  prompt: string;
-  reference: { bytes: Buffer; mimeType: string } | { url: string };
-  imageWeight?: number;
-}): Promise<GeneratedImage> =>
-  generateKontextFromReference({
-    prompt: input.prompt,
-    ...('url' in input.reference
-      ? { referenceImageUrl: input.reference.url }
-      : { referenceImageBytes: input.reference.bytes, referenceMimeType: input.reference.mimeType }),
-    surface: 'canonical',
-    errorLabel: 'ModelsLab canonical generation with selected portrait reference failed',
-  });
 
 export const generateGalleryImageFromReferenceWithModelsLab = async (input: {
   prompt: string;

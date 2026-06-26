@@ -8,19 +8,10 @@ import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-gir
 export type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
 /*
- * Flux provider (fal.ai) — sole image provider.
+ * Flux provider (fal.ai) — emergency fallback when VG_IMAGE_PROVIDER=flux.
  *
- * Exposes the generation surface consumed by image-provider.ts / image-machine.
- *
- * - Base text-to-image generation uses FLUX_MODEL (default fal-ai/flux/dev).
- * - Reference / identity-lock generation uses FLUX_KONTEXT_MODEL
- *   (default fal-ai/flux-pro/kontext) to keep the same face across the canonical,
- *   gallery, and chat surfaces ("same person, new scene/outfit").
- *
- * Adult-capable chat: when VG_ALLOW_ADULT_CONTENT is enabled (default), chat
- * Kontext calls disable fal's safety checker so explicit in-chat images are not
- * blocked at the provider. Identity-lock surfaces (preview/canonical/gallery)
- * keep the checker on and retain SFW negatives for stable reference portraits.
+ * Phase 1 production uses ModelsLab (Aurelium portraits, direct-persist canonical,
+ * Kontext Pro gallery). This module remains for dev/emergency override only.
  */
 
 const FLUX_BASE_URL = env.FLUX_BASE_URL ?? 'https://fal.run';
@@ -250,58 +241,6 @@ const generateKontextFromReference = async (input: {
       ...(input.seed !== undefined ? { seed: input.seed } : {}),
     },
     input.errorLabel,
-  );
-
-  return extractGeneratedImage(response, model);
-};
-
-type PortraitReferenceImage = { bytes: Buffer; mimeType: string } | { url: string };
-
-const resolvePortraitReferenceImageUrl = (reference: PortraitReferenceImage) =>
-  'url' in reference ? reference.url : toDataUri(reference.bytes, reference.mimeType);
-
-export const generatePreviewWithCharacterReferenceFlux = async (
-  prompt: string,
-  reference: PortraitReferenceImage,
-  seed?: number,
-): Promise<GeneratedImage> => {
-  const surfaceParams = SURFACE_PARAMS.preview;
-  const model = kontextModelForSurface('preview');
-  const response = await callFal(
-    model,
-    {
-      prompt,
-      image_url: resolvePortraitReferenceImageUrl(reference),
-      aspect_ratio: resolveKontextAspect(surfaceParams.aspect_ratio),
-      num_images: surfaceParams.num_images,
-      output_format: 'png',
-      enable_safety_checker: true,
-      ...(seed !== undefined ? { seed } : {}),
-    },
-    'Flux character reference generation failed',
-  );
-
-  return extractGeneratedImage(response, model);
-};
-
-export const generateCanonicalImageFromReferenceWithFlux = async (input: {
-  prompt: string;
-  reference: PortraitReferenceImage;
-  imageWeight?: number;
-}): Promise<GeneratedImage> => {
-  const surfaceParams = SURFACE_PARAMS.canonical;
-  const model = kontextModelForSurface('canonical');
-  const response = await callFal(
-    model,
-    {
-      prompt: input.prompt,
-      image_url: resolvePortraitReferenceImageUrl(input.reference),
-      aspect_ratio: resolveKontextAspect(surfaceParams.aspect_ratio),
-      num_images: surfaceParams.num_images,
-      output_format: 'png',
-      enable_safety_checker: true,
-    },
-    'Flux canonical generation with selected portrait reference failed',
   );
 
   return extractGeneratedImage(response, model);

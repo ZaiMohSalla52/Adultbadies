@@ -1,0 +1,46 @@
+{
+  "ranAt": "2026-06-26T12:55:14.447Z",
+  "reference": {
+    "source": "screenshots/bakeoff-phase0/aurelium-photorealistic-people-bysilas-v1-0-1771498462_seed10101.png",
+    "file": "screenshots/bakeoff-kontext/00_reference_portrait.png",
+    "initImage": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/temp/20247130681782478513.png"
+  },
+  "kontextProModel": "flux-kontext-pro",
+  "kontextDevModel": "flux-kontext-dev",
+  "scenarios": [
+    {
+      "id": "gallery_pro",
+      "label": "Gallery from canonical — Kontext Pro (production v7 API)",
+      "productionPath": true
+    }
+  ],
+  "results": [
+    {
+      "id": "gallery_pro",
+      "label": "Gallery from canonical — Kontext Pro (production v7 API)",
+      "surface": "gallery",
+      "model": "flux-kontext-pro",
+      "api": "v7",
+      "safetyChecker": null,
+      "productionPath": true,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1291887,
+      "file": "screenshots/bakeoff-kontext/gallery_pro.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0cb35841-19af-48a9-99de-dfcd826a864d.png",
+      "verdict": "CAPABLE"
+    }
+  ],
+  "verdict": {
+    "kontextProProductionCapable": true,
+    "kontextProProductionBlocked": false,
+    "kontextProProductionInconclusive": false,
+    "productionResults": {
+      "gallery_pro": "CAPABLE"
+    },
+    "recommendedCanonicalModel": null,
+    "recommendedGalleryModel": "flux-kontext-pro",
+    "phase1Action": "Keep flux-kontext-pro for canonical + gallery identity lock."
+  }
+}

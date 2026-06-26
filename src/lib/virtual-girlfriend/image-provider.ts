@@ -1,19 +1,15 @@
-import { env } from '@/lib/env';
 import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
+import { resolveModelsLabPortraitModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
   generateCanonicalImageWithFlux,
   generatePortraitPreviewImageWithFlux,
-  generatePreviewWithCharacterReferenceFlux,
-  generateCanonicalImageFromReferenceWithFlux,
   generateGalleryImageFromReferenceWithFlux,
   generateChatImageFromReferenceWithFlux,
 } from '@/lib/virtual-girlfriend/image-flux';
 import {
   generateCanonicalImageWithModelsLab,
   generatePortraitPreviewImageWithModelsLab,
-  generatePreviewWithCharacterReferenceModelsLab,
-  generateCanonicalImageFromReferenceWithModelsLab,
   generateGalleryImageFromReferenceWithModelsLab,
   generateChatImageFromReferenceWithModelsLab,
   generateChatImageWithModelsLabFaceGen,
@@ -23,53 +19,29 @@ import { generateExplicitChatImageWithModelsLabSdxl } from '@/lib/virtual-girlfr
 export type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
 /*
- * Image provider facade.
+ * Image provider facade — ModelsLab-first (Phase 1).
  *
- * Routes to ModelsLab (default when MODELSLAB_API_KEY is set) or fal.ai Flux.
- * Canonical identity lock uses Flux Kontext pro on both providers via reference
- * image (init_image). No silent cross-provider fallback.
+ * Portrait text2img → Aurelium. Canonical from setup portrait → direct persist
+ * (image-machine). Gallery → Kontext Pro. Explicit chat → SDXL / Face Gen.
+ *
+ * fal.ai Flux remains an emergency fallback when VG_IMAGE_PROVIDER=flux.
  */
 
 const isModelsLabImageProvider = () => resolveVgImageProvider() === 'modelslab';
 
-/** Companion text2img always prefers Flux Pro when fal is configured. */
-const preferFluxForCompanionSurfaces = () => Boolean(env.FLUX_API_KEY?.trim());
-
 export const generateCanonicalImage = (prompt: string): Promise<GeneratedImage> =>
-  preferFluxForCompanionSurfaces()
-    ? generateCanonicalImageWithFlux(prompt)
-    : isModelsLabImageProvider()
-      ? generateCanonicalImageWithModelsLab(prompt)
-      : generateCanonicalImageWithFlux(prompt);
+  isModelsLabImageProvider()
+    ? generateCanonicalImageWithModelsLab(prompt)
+    : generateCanonicalImageWithFlux(prompt);
 
 export const generatePortraitPreviewImage = (prompt: string, seed?: number): Promise<GeneratedImage> =>
-  preferFluxForCompanionSurfaces()
-    ? generatePortraitPreviewImageWithFlux(prompt, seed)
-    : isModelsLabImageProvider()
-      ? generatePortraitPreviewImageWithModelsLab(prompt, seed)
-      : generatePortraitPreviewImageWithFlux(prompt, seed);
+  isModelsLabImageProvider()
+    ? generatePortraitPreviewImageWithModelsLab(prompt, seed)
+    : generatePortraitPreviewImageWithFlux(prompt, seed);
 
 export type PortraitReferenceImage =
   | { bytes: Buffer; mimeType: string }
   | { url: string };
-
-export const generatePreviewWithCharacterReference = (
-  prompt: string,
-  reference: PortraitReferenceImage,
-  seed?: number,
-): Promise<GeneratedImage> =>
-  isModelsLabImageProvider()
-    ? generatePreviewWithCharacterReferenceModelsLab(prompt, reference, seed)
-    : generatePreviewWithCharacterReferenceFlux(prompt, reference, seed);
-
-export const generateCanonicalImageFromReference = (input: {
-  prompt: string;
-  reference: PortraitReferenceImage;
-  imageWeight?: number;
-}): Promise<GeneratedImage> =>
-  isModelsLabImageProvider()
-    ? generateCanonicalImageFromReferenceWithModelsLab(input)
-    : generateCanonicalImageFromReferenceWithFlux(input);
 
 export const generateGalleryImageFromReference = (input: {
   prompt: string;
@@ -111,7 +83,7 @@ export const generateChatImageFromReferenceSdxl = (input: {
   guidanceScale?: number;
   highExposure?: boolean;
 }): Promise<GeneratedImage> => {
-  if (!env.MODELSLAB_API_KEY?.trim()) {
+  if (!isModelsLabImageProvider()) {
     throw new Error('SDXL explicit chat images require ModelsLab (MODELSLAB_API_KEY).');
   }
   return generateExplicitChatImageWithModelsLabSdxl(input);

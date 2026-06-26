@@ -1,0 +1,165 @@
+{
+  "ranAt": "2026-06-26T12:27:52.387Z",
+  "aureliumModel": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+  "sdxlModel": "sdxl",
+  "strengths": [
+    0.5,
+    0.58
+  ],
+  "guidance": 5.5,
+  "steps": 32,
+  "reference": {
+    "file": "screenshots/bakeoff-gallery-sdxl-vs-aurelium/00_canonical_reference.png",
+    "initImage": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-54c3acf3-5c3d-4af4-94fe-d1a2cd09597b.jpg",
+    "initMethod": "phase0_report_url"
+  },
+  "results": [
+    {
+      "id": "aurelium_rooftop_s05",
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "promptId": "rooftop",
+      "promptLabel": "Urban rooftop at golden hour, satin slip dress",
+      "strength": 0.5,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 87281,
+      "file": "screenshots/bakeoff-gallery-sdxl-vs-aurelium/aurelium_rooftop_s05.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-ba3efd35-977a-4824-89f3-a7c7f3d9cdfa.jpg",
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "aurelium_rooftop_s058",
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "promptId": "rooftop",
+      "promptLabel": "Urban rooftop at golden hour, satin slip dress",
+      "strength": 0.58,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 85460,
+      "file": "screenshots/bakeoff-gallery-sdxl-vs-aurelium/aurelium_rooftop_s058.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-a60298c1-35ac-4d1d-9386-83613654f83c.jpg",
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "aurelium_apartment_s05",
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "promptId": "apartment",
+      "promptLabel": "Cozy apartment evening, oversized white shirt",
+      "strength": 0.5,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 88282,
+      "file": "screenshots/bakeoff-gallery-sdxl-vs-aurelium/aurelium_apartment_s05.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-6762729e-44f3-47e6-be60-583296422a9d.jpg",
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "aurelium_apartment_s058",
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "promptId": "apartment",
+      "promptLabel": "Cozy apartment evening, oversized white shirt",
+      "strength": 0.58,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 87605,
+      "file": "screenshots/bakeoff-gallery-sdxl-vs-aurelium/aurelium_apartment_s058.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-8dbc36a0-4437-4873-a05a-dc90b43cacda.jpg",
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "sdxl_rooftop_s05",
+      "modelKey": "sdxl",
+      "modelId": "sdxl",
+      "promptId": "rooftop",
+      "promptLabel": "Urban rooftop at golden hour, satin slip dress",
+      "strength": 0.5,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 76860,
+      "file": "screenshots/bakeoff-gallery-sdxl-vs-aurelium/sdxl_rooftop_s05.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-765ad637-9280-4841-b689-3977418f23d2.jpg",
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "sdxl_rooftop_s058",
+      "modelKey": "sdxl",
+      "modelId": "sdxl",
+      "promptId": "rooftop",
+      "promptLabel": "Urban rooftop at golden hour, satin slip dress",
+      "strength": 0.58,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 71055,
+      "file": "screenshots/bakeoff-gallery-sdxl-vs-aurelium/sdxl_rooftop_s058.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-d097473b-15e8-4643-a50a-9c99e776b16e.jpg",
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "sdxl_apartment_s05",
+      "modelKey": "sdxl",
+      "modelId": "sdxl",
+      "promptId": "apartment",
+      "promptLabel": "Cozy apartment evening, oversized white shirt",
+      "strength": 0.5,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 79947,
+      "file": "screenshots/bakeoff-gallery-sdxl-vs-aurelium/sdxl_apartment_s05.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-d341d3c5-116e-4b80-8986-54bfbbcc1989.jpg",
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "sdxl_apartment_s058",
+      "modelKey": "sdxl",
+      "modelId": "sdxl",
+      "promptId": "apartment",
+      "promptLabel": "Cozy apartment evening, oversized white shirt",
+      "strength": 0.58,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 73024,
+      "file": "screenshots/bakeoff-gallery-sdxl-vs-aurelium/sdxl_apartment_s058.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-cf3bd202-0260-4a75-bd9d-500df0e969b3.jpg",
+      "verdict": "CAPABLE"
+    }
+  ],
+  "verdict": {
+    "aurelium": {
+      "capable": 4,
+      "black": 0,
+      "failed": 0,
+      "total": 4
+    },
+    "sdxl": {
+      "capable": 4,
+      "black": 0,
+      "failed": 0,
+      "total": 4
+    },
+    "galleryWinner": "tie_review_visually",
+    "phase1Recommendation": "Both models tied on automated checks — pick by visual face lock + scene variety.",
+    "compareVisually": [
+      "screenshots/bakeoff-gallery-sdxl-vs-aurelium/00_canonical_reference.png",
+      "screenshots/bakeoff-gallery-sdxl-vs-aurelium/aurelium_rooftop_s05.png",
+      "screenshots/bakeoff-gallery-sdxl-vs-aurelium/aurelium_rooftop_s058.png",
+      "screenshots/bakeoff-gallery-sdxl-vs-aurelium/aurelium_apartment_s05.png",
+      "screenshots/bakeoff-gallery-sdxl-vs-aurelium/aurelium_apartment_s058.png",
+      "screenshots/bakeoff-gallery-sdxl-vs-aurelium/sdxl_rooftop_s05.png",
+      "screenshots/bakeoff-gallery-sdxl-vs-aurelium/sdxl_rooftop_s058.png",
+      "screenshots/bakeoff-gallery-sdxl-vs-aurelium/sdxl_apartment_s05.png",
+      "screenshots/bakeoff-gallery-sdxl-vs-aurelium/sdxl_apartment_s058.png"
+    ]
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "ranAt": "2026-06-26T10:26:38.138Z",
+  "prompt": "A real adult woman, age 24. Latina heritage, medium skin tone, long dark brown hair, brown eyes, curvy body. Close portrait, head and shoulders, face prominent. Urban street background with soft bokeh. Single person portrait photograph of a real human, centered frame. Warm golden natural window light, soft directional warmth. Sultry seductive gaze, parted lips, magnetic adult allure. Sultry seductive styling with adult glamour energy. Face and body clearly lit — no underexposure, no muddy darkness, no silhouette. Candid amateur photograph of a real person, natural available light, true-to-life skin tones.",
+  "models": [
+    "flux",
+    "realvisxl-v30",
+    "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+    "beautyfoolultrareal-v20",
+    "sdxl"
+  ],
+  "seeds": [
+    10101,
+    20202,
+    30303
+  ],
+  "results": [
+    {
+      "modelId": "flux",
+      "attempts": [
+        {
+          "seed": 10101,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 947524,
+          "file": "screenshots/bakeoff-phase0/flux_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/3e9ce1e2-6309-4601-a94b-705eff0018c0-0.jpg",
+          "generationTime": null
+        },
+        {
+          "seed": 20202,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 952372,
+          "file": "screenshots/bakeoff-phase0/flux_seed20202.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/fd9f582c-ea6e-426d-b5bc-ae3827a114dd-0.jpg",
+          "generationTime": 9.85
+        },
+        {
+          "seed": 30303,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 989982,
+          "file": "screenshots/bakeoff-phase0/flux_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/8ac1d32f-5743-4c35-acad-59a5135ee8b2-0.jpg",
+          "generationTime": 10.44
+        }
+      ],
+      "success": 3,
+      "black": 0,
+      "nsfwFlagged": 0,
+      "failed": 0
+    },
+    {
+      "modelId": "realvisxl-v30",
+      "attempts": [
+        {
+          "seed": 10101,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1065633,
+          "file": "screenshots/bakeoff-phase0/realvisxl-v30_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-9628cc66-89ca-4f27-b65b-2b027f8740d9.jpg",
+          "generationTime": null
+        },
+        {
+          "seed": 20202,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1015507,
+          "file": "screenshots/bakeoff-phase0/realvisxl-v30_seed20202.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-97319628-e853-40a7-a687-adaa4d25b196.jpg",
+          "generationTime": 12.3
+        },
+        {
+          "seed": 30303,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1073065,
+          "file": "screenshots/bakeoff-phase0/realvisxl-v30_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-1f9ae73a-8a6f-4d7e-b12d-21e8d101f91d.jpg",
+          "generationTime": 10.26
+        }
+      ],
+      "success": 3,
+      "black": 0,
+      "nsfwFlagged": 0,
+      "failed": 0
+    },
+    {
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "attempts": [
+        {
+          "seed": 10101,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1138333,
+          "file": "screenshots/bakeoff-phase0/aurelium-photorealistic-people-bysilas-v1-0-1771498462_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-54c3acf3-5c3d-4af4-94fe-d1a2cd09597b.jpg",
+          "generationTime": null
+        },
+        {
+          "seed": 20202,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1055488,
+          "file": "screenshots/bakeoff-phase0/aurelium-photorealistic-people-bysilas-v1-0-1771498462_seed20202.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-d64e27cf-a87e-494d-afa7-3b0e6052b779.jpg",
+          "generationTime": null
+        },
+        {
+          "seed": 30303,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1198420,
+          "file": "screenshots/bakeoff-phase0/aurelium-photorealistic-people-bysilas-v1-0-1771498462_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-e9253291-c1d1-40bc-80d6-81a083aee238.jpg",
+          "generationTime": null
+        }
+      ],
+      "success": 3,
+      "black": 0,
+      "nsfwFlagged": 0,
+      "failed": 0
+    },
+    {
+      "modelId": "beautyfoolultrareal-v20",
+      "attempts": [
+        {
+          "seed": 10101,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1274268,
+          "file": "screenshots/bakeoff-phase0/beautyfoolultrareal-v20_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-01dc67d3-c3e3-4752-a60b-e2a3a328cf10.jpg",
+          "generationTime": null
+        },
+        {
+          "seed": 20202,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1255472,
+          "file": "screenshots/bakeoff-phase0/beautyfoolultrareal-v20_seed20202.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-66a18504-73a6-4b35-ab35-6226ead18805.jpg",
+          "generationTime": null
+        },
+        {
+          "seed": 30303,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1222505,
+          "file": "screenshots/bakeoff-phase0/beautyfoolultrareal-v20_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-e6dfaa47-9a2f-420d-b293-ae1788667130.jpg",
+          "generationTime": null
+        }
+      ],
+      "success": 3,
+      "black": 0,
+      "nsfwFlagged": 0,
+      "failed": 0
+    },
+    {
+      "modelId": "sdxl",
+      "attempts": [
+        {
+          "seed": 10101,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1019823,
+          "file": "screenshots/bakeoff-phase0/sdxl_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-fc18ac67-fa10-4fb3-8b39-c5a25772e366.jpg",
+          "generationTime": null
+        },
+        {
+          "seed": 20202,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1055512,
+          "file": "screenshots/bakeoff-phase0/sdxl_seed20202.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-daac9765-3103-4269-8adc-98c305eb3a32.jpg",
+          "generationTime": 10.48
+        },
+        {
+          "seed": 30303,
+          "ok": true,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1143706,
+          "file": "screenshots/bakeoff-phase0/sdxl_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-b8d835d4-2f4e-4efe-8694-84cc5e8a254b.jpg",
+          "generationTime": null
+        }
+      ],
+      "success": 3,
+      "black": 0,
+      "nsfwFlagged": 0,
+      "failed": 0
+    }
+  ]
+}

@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import {
   generateCanonicalImage,
-  generateCanonicalImageFromReference,
   generatePortraitPreviewImage,
   generateGalleryImageFromReference,
   generateChatImageFromReference,
@@ -11,6 +10,8 @@ import {
   type PortraitReferenceImage,
 } from '@/lib/virtual-girlfriend/image-provider';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
+import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
+import { resolveModelsLabPortraitModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
   buildCanonicalPrompt,
   canonicalPromptVersion,
@@ -439,6 +440,54 @@ const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string }
 };
 
 /** Portrait picks may be embedded data URLs or hosted preview URLs from ModelsLab/Cloudinary. */
+/** Persist the user-selected Aurelium portrait as canonical — no Kontext/img2img drift. */
+const resolveCanonicalFromSelectedPortrait = async (
+  scope: string,
+  reference: PortraitReferenceImage,
+): Promise<GeneratedImage> => {
+  const portraitModel = resolveModelsLabPortraitModel();
+  let bytes: Buffer;
+  let mimeType: string;
+
+  if ('bytes' in reference && reference.bytes.byteLength) {
+    bytes = reference.bytes;
+    mimeType = reference.mimeType;
+  } else if ('url' in reference) {
+    const downloaded = await downloadReferenceBytes({
+      scope,
+      deliveryUrl: reference.url,
+      fallbackMimeType: 'image/png',
+    });
+    bytes = downloaded.bytes;
+    mimeType = downloaded.mimeType;
+  } else {
+    throw new VirtualGirlfriendImageMachineError('Selected portrait reference is invalid.', 'invalid_reference', 'prerequisites');
+  }
+
+  if (!isUsablePortraitImageBytes(bytes)) {
+    throw new VirtualGirlfriendImageMachineError(
+      'Selected portrait is blank or unusable.',
+      'invalid_reference',
+      'prerequisites',
+    );
+  }
+
+  logImageMachine(scope, 'canonical_direct_persist', { bytes: bytes.byteLength, model: portraitModel });
+
+  return {
+    bytes,
+    mimeType,
+    width: null,
+    height: null,
+    revisedPrompt: null,
+    provider: 'modelslab',
+    model: portraitModel,
+    endpoint: '/canonical/direct_persist',
+    requestId: null,
+    jobId: null,
+  };
+};
+
 const parsePortraitReference = (value: string): PortraitReferenceImage | null => {
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -483,7 +532,7 @@ const downloadReferenceBytes = async (input: {
 
 const runProviderGeneration = async (input: {
   scope: string;
-  mode: 'canonical' | 'canonical_from_reference' | 'gallery_from_reference' | 'chat_from_reference';
+  mode: 'canonical' | 'gallery_from_reference' | 'chat_from_reference';
   prompt: string;
   reference?: PortraitReferenceImage;
   imageWeight?: number;
@@ -502,18 +551,6 @@ const runProviderGeneration = async (input: {
 
     if (!input.reference) {
       throw new VirtualGirlfriendImageMachineError('Reference image missing for provider reference generation.', 'invalid_reference', 'prerequisites');
-    }
-
-    if (input.mode === 'canonical_from_reference') {
-      const reference = input.reference;
-      if (!reference) {
-        throw new VirtualGirlfriendImageMachineError('Reference image missing for canonical generation.', 'invalid_reference', 'prerequisites');
-      }
-      return withTimeout('provider_generation', MACHINE_TIMEOUT_MS.providerRequest, () => generateCanonicalImageFromReference({
-        prompt: input.prompt,
-        reference,
-        imageWeight: input.imageWeight,
-      }));
     }
 
     if (!('bytes' in input.reference)) {
@@ -832,14 +869,14 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
     seedReferenceKind: seedPortrait && 'url' in seedPortrait ? 'url' : seedPortrait ? 'bytes' : 'none',
   });
 
-  const canonicalGenerated = await runProviderGeneration({
-    scope,
-    mode: seedPortrait ? 'canonical_from_reference' : 'canonical',
-    prompt: canonicalPrompt,
-    reference: seedPortrait ?? undefined,
-    imageWeight: 93,
-  });
-  logImageMachine(scope, 'provider_call_success', { stage: 'canonical' });
+  const canonicalGenerated = seedPortrait
+    ? await resolveCanonicalFromSelectedPortrait(scope, seedPortrait)
+    : await runProviderGeneration({
+        scope,
+        mode: 'canonical',
+        prompt: canonicalPrompt,
+      });
+  logImageMachine(scope, 'provider_call_success', { stage: 'canonical', directPersist: Boolean(seedPortrait) });
 
   const canonicalImage = await buildImageRecord({
     token: input.token,
@@ -969,13 +1006,13 @@ const runRegenerateImageMachine = async (input: VirtualGirlfriendRegenerateMachi
     });
   }
 
-  const canonicalGenerated = await runProviderGeneration({
-    scope,
-    mode: seedPortrait ? 'canonical_from_reference' : 'canonical',
-    prompt: canonicalPrompt,
-    reference: seedPortrait ?? undefined,
-    imageWeight: 90,
-  });
+  const canonicalGenerated = seedPortrait
+    ? await resolveCanonicalFromSelectedPortrait(scope, seedPortrait)
+    : await runProviderGeneration({
+        scope,
+        mode: 'canonical',
+        prompt: canonicalPrompt,
+      });
 
   const canonicalImage = await buildImageRecord({
     token: input.token,

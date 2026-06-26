@@ -1,0 +1,86 @@
+{
+  "ranAt": "2026-06-26T12:17:51.633Z",
+  "model": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+  "strength": 0.45,
+  "reference": {
+    "source": "screenshots/bakeoff-phase0/aurelium-photorealistic-people-bysilas-v1-0-1771498462_seed10101.png",
+    "portraitFile": "screenshots/bakeoff-aurelium-img2img/00_portrait_reference.png",
+    "directCanonicalFile": "screenshots/bakeoff-aurelium-img2img/01_canonical_direct_persist.png",
+    "initImage": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-54c3acf3-5c3d-4af4-94fe-d1a2cd09597b.jpg",
+    "initImageMethod": "phase0_report_url"
+  },
+  "results": [
+    {
+      "id": "canonical_img2img",
+      "label": "Canonical — Aurelium img2img from selected portrait",
+      "surface": "canonical",
+      "initFrom": "portrait",
+      "prompt": "Portrait photograph of an adult woman. Latina woman with warm medium-tan skin, age 24, long dark brown hair, brown eyes, curvy body. Wardrobe: black lace camisole, sultry adult glamour styling. Lighting and mood: warm golden window light, seductive magnetic allure, parted lips, direct gaze. Upper body to waist portrait. Subject centered at natural eye-level. Flattering natural light, soft shallow depth of field, real-world background. Sharp lifelike face with natural skin texture. Candid amateur photograph of a real person, natural available light, true-to-life skin tones. Face and body clearly lit — no underexposure, no muddy darkness, no silhouette.",
+      "strength": 0.45,
+      "guidance": 5,
+      "ok": false,
+      "error": "fetch failed",
+      "timedOut": false,
+      "verdict": "FAILED"
+    },
+    {
+      "id": "gallery_from_portrait",
+      "label": "Gallery — Aurelium img2img directly from portrait (shortcut)",
+      "surface": "gallery",
+      "initFrom": "portrait",
+      "prompt": "Portrait photograph of an adult woman. Latina woman with warm medium-tan skin, age 24, long dark brown hair, brown eyes, curvy body. Scene: urban rooftop at golden hour, city skyline bokeh, wind in hair. Wardrobe: fitted satin slip dress, sultry evening look. Lighting: warm sunset rim light, seductive confident expression. Three-quarter waist-up framing. Real-world environment with depth. Candid real-photo feel. Gallery variant. Vary scene, angle, and outfit while preserving identity. Candid amateur photograph of a real person, true-to-life skin tones. Face and body clearly lit — no underexposure, no muddy darkness, no silhouette.",
+      "strength": 0.45,
+      "guidance": 5,
+      "ok": false,
+      "error": "fetch failed",
+      "timedOut": false,
+      "verdict": "FAILED"
+    },
+    {
+      "id": "gallery_from_canonical",
+      "label": "Gallery — Aurelium img2img from canonical output (production chain)",
+      "surface": "gallery",
+      "initFrom": "portrait_fallback",
+      "prompt": "Portrait photograph of an adult woman. Latina woman with warm medium-tan skin, age 24, long dark brown hair, brown eyes, curvy body. Scene: urban rooftop at golden hour, city skyline bokeh, wind in hair. Wardrobe: fitted satin slip dress, sultry evening look. Lighting: warm sunset rim light, seductive confident expression. Three-quarter waist-up framing. Real-world environment with depth. Candid real-photo feel. Gallery variant. Vary scene, angle, and outfit while preserving identity. Candid amateur photograph of a real person, true-to-life skin tones. Face and body clearly lit — no underexposure, no muddy darkness, no silhouette.",
+      "strength": 0.45,
+      "guidance": 5,
+      "ok": false,
+      "error": "fetch failed",
+      "timedOut": false,
+      "verdict": "FAILED"
+    },
+    {
+      "id": "gallery_from_canonical_variant2",
+      "label": "Gallery variant 2 — Aurelium img2img from canonical (different scene)",
+      "surface": "gallery",
+      "initFrom": "portrait_fallback",
+      "prompt": "Portrait photograph of an adult woman. Latina woman with warm medium-tan skin, age 24, long dark brown hair, brown eyes, curvy body. Scene: cozy apartment living room, soft lamp light, evening indoors. Wardrobe: oversized white shirt, relaxed intimate styling. Lighting: warm indoor ambient light, soft natural expression. Three-quarter waist-up framing. Candid real-photo feel. Gallery variant 2. Preserve the same face and identity. True-to-life skin tones. Face clearly lit — no silhouette.",
+      "strength": 0.45,
+      "guidance": 5,
+      "ok": false,
+      "error": "fetch failed",
+      "timedOut": false,
+      "verdict": "FAILED"
+    }
+  ],
+  "verdict": {
+    "directPersistCanonical": {
+      "capable": true,
+      "file": "screenshots/bakeoff-aurelium-img2img/01_canonical_direct_persist.png",
+      "note": "Zero API risk — use selected Aurelium portrait as canonical."
+    },
+    "aureliumCanonicalImg2ImgCapable": false,
+    "aureliumGalleryCapable": false,
+    "results": {
+      "canonical_img2img": "FAILED",
+      "gallery_from_portrait": "FAILED",
+      "gallery_from_canonical": "FAILED",
+      "gallery_from_canonical_variant2": "FAILED"
+    },
+    "phase1Recommendation": "Aurelium img2img not ready — check errors before Phase 1.",
+    "compareVisually": [
+      "screenshots/bakeoff-aurelium-img2img/00_portrait_reference.png",
+      "screenshots/bakeoff-aurelium-img2img/01_canonical_direct_persist.png"
+    ]
+  }
+}
