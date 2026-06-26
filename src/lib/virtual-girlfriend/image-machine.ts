@@ -272,8 +272,9 @@ export type VirtualGirlfriendPortraitPreviewResult = {
   candidates: VirtualGirlfriendPortraitPreviewCandidate[];
 };
 
-const SETUP_GALLERY_BATCH = 3;
-const GALLERY_TOPUP_BATCH = 3;
+// Matches VIRTUAL_GIRLFRIEND_GALLERY_TARGET while credit cap is in effect.
+const SETUP_GALLERY_BATCH = 2;
+const GALLERY_TOPUP_BATCH = 2;
 
 type GalleryScenePreset = {
   framing: string;

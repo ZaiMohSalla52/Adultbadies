@@ -16,6 +16,11 @@ import {
   MODELSLAB_DEFAULT_KONTEXT_PRO_MODEL,
   resolveModelsLabPortraitModel,
 } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import {
+  AURELIUM_PORTRAIT_NEGATIVE_PROMPT,
+  buildAureliumPortraitApiPrompt,
+  isAureliumPortraitModel,
+} from '@/lib/virtual-girlfriend/modelslab-aurelium-template';
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import { buildModelsLabNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
@@ -86,6 +91,15 @@ const kontextModelForSurface = (
 
 const isKontextDevModel = (model: string) => /kontext-dev/i.test(model);
 
+const deriveAureliumSeed = (seed: number | undefined, prompt: string) => {
+  if (seed !== undefined) return seed;
+  let hash = 0;
+  for (let i = 0; i < prompt.length; i += 1) {
+    hash = (hash * 31 + prompt.charCodeAt(i)) >>> 0;
+  }
+  return hash % 2_147_483_647 || 40_404;
+};
+
 const buildModelsLabText2ImgRequest = (input: {
   modelId: string;
   prompt: string;
@@ -95,20 +109,30 @@ const buildModelsLabText2ImgRequest = (input: {
   numInferenceSteps: number;
   guidanceScale: number;
   seed?: number;
-}) => ({
-  model_id: input.modelId,
-  prompt: applyModelsLabPortraitPrompt(input.prompt, input.modelId),
-  negative_prompt: MODELSLAB_NEGATIVE_PROMPT,
-  enhance_prompt: false,
-  width: input.width,
-  height: input.height,
-  samples: input.samples,
-  num_inference_steps: input.numInferenceSteps,
-  guidance_scale: input.guidanceScale,
-  safety_checker: 'no',
-  scheduler: 'DPMSolverMultistepScheduler',
-  ...(input.seed !== undefined ? { seed: input.seed } : {}),
-});
+  useAureliumTemplate?: boolean;
+}) => {
+  const useAurelium = input.useAureliumTemplate ?? isAureliumPortraitModel(input.modelId);
+  const corePrompt = applyModelsLabPortraitPrompt(input.prompt, input.modelId);
+  const seed = useAurelium ? deriveAureliumSeed(input.seed, corePrompt) : input.seed;
+  const prompt = useAurelium
+    ? buildAureliumPortraitApiPrompt({ corePrompt, seed: seed! })
+    : corePrompt;
+
+  return {
+    model_id: input.modelId,
+    prompt,
+    negative_prompt: useAurelium ? AURELIUM_PORTRAIT_NEGATIVE_PROMPT : MODELSLAB_NEGATIVE_PROMPT,
+    enhance_prompt: useAurelium ? 'yes' : false,
+    width: input.width,
+    height: input.height,
+    samples: input.samples,
+    num_inference_steps: input.numInferenceSteps,
+    guidance_scale: input.guidanceScale,
+    safety_checker: 'no',
+    scheduler: useAurelium ? 'UniPCMultistepScheduler' : 'DPMSolverMultistepScheduler',
+    ...(seed !== undefined ? { seed } : {}),
+  };
+};
 
 const strengthForKontext = (input: {
   surface: 'gallery' | 'chat';
@@ -184,8 +208,9 @@ export const generateCanonicalImageWithModelsLab = async (prompt: string): Promi
       width,
       height,
       samples: canonicalParams.num_images,
-      numInferenceSteps: 31,
+      numInferenceSteps: 28,
       guidanceScale: 7.5,
+      useAureliumTemplate: true,
     }),
     'ModelsLab canonical image generation failed',
   );

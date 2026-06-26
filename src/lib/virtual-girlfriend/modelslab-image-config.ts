@@ -16,9 +16,10 @@ export const resolveModelsLabPortraitModel = () =>
   MODELSLAB_DEFAULT_PORTRAIT_MODEL;
 
 export const isModelsLabRealisticPortraitModel = (modelId: string) =>
-  /realistic-portrait|realism/i.test(modelId);
+  /realistic-portrait|realism/i.test(modelId) && !/aurelium/i.test(modelId);
 
 export const applyModelsLabPortraitPrompt = (prompt: string, modelId: string) => {
+  if (/aurelium/i.test(modelId)) return prompt;
   if (!isModelsLabRealisticPortraitModel(modelId) || /r3alisticf/i.test(prompt)) {
     return prompt;
   }

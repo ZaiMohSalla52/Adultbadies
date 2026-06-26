@@ -4,6 +4,7 @@
  * Must remain identity-anchored.
  */
 
+import { appendAureliumGalleryQuality } from '@/lib/virtual-girlfriend/modelslab-aurelium-template';
 import { EXPOSURE_LIGHTING_TAIL, getCompositionAnchor, PHOTO_REALISM_TAIL } from '../primitives/composition';
 import { buildAllNegatives } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
@@ -36,7 +37,7 @@ export const buildGalleryPrompt = (input: GalleryPromptInput, variantIndex: numb
   const coreLook = input.coreLook?.filter(Boolean).join(', ');
   const negConstraints = input.negativeConstraints?.filter(Boolean).join(', ');
 
-  return [
+  const base = [
     `Portrait photograph of ${resolveSubject(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
     input.occupation ? `Occupation: ${input.occupation}.` : null,
@@ -55,6 +56,8 @@ export const buildGalleryPrompt = (input: GalleryPromptInput, variantIndex: numb
   ]
     .filter(Boolean)
     .join(' ');
+
+  return appendAureliumGalleryQuality(base);
 };
 
 export const galleryPromptVersion: string = PROMPT_VERSION.gallery;

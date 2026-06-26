@@ -12,9 +12,9 @@ const withRepairedDeliveryUrl = (
 // images also accumulate as gallery-kind, so the grid grows with use.
 export const VIRTUAL_GIRLFRIEND_MAX_IMAGES = 12;
 
-// Target number of gallery photos generated per companion (excludes canonical).
-// Reached in batches: a first batch at setup, the rest via background top-up.
-export const VIRTUAL_GIRLFRIEND_GALLERY_TARGET = 6;
+// Target gallery photos auto-generated per companion (excludes canonical).
+// Temporarily capped at 2 to conserve ModelsLab credits — raise when ready.
+export const VIRTUAL_GIRLFRIEND_GALLERY_TARGET = 2;
 
 const normalizeText = (value: unknown) =>
   String(value ?? '')
