@@ -4,6 +4,7 @@ import {
   publishBrowserImage,
 } from '@/lib/storage/publish-browser-image';
 import type { VirtualGirlfriendPortraitPreviewCandidate } from '@/lib/virtual-girlfriend/image-machine';
+import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 
 const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string } | null => {
   const matched = dataUrl.trim().match(/^data:(.+?);base64,(.+)$/);
@@ -16,6 +17,21 @@ const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string }
 };
 
 const isHostedUrl = (value: string) => /^https?:\/\//i.test(value.trim());
+
+const downloadPortraitPreviewBytes = async (url: string) => {
+  const response = await fetch(url.trim(), { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Portrait preview download failed (${response.status}).`);
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (!bytes.byteLength) {
+    throw new Error('Portrait preview download returned empty bytes.');
+  }
+  return {
+    bytes,
+    mimeType: response.headers.get('content-type') ?? 'image/png',
+  };
+};
 
 export const isReachablePortraitPreviewUrl = async (url: string) => {
   const trimmed = url.trim();
@@ -54,21 +70,45 @@ export const deliverPortraitPreviewCandidates = async (
 
   return Promise.all(
     candidates.map(async (candidate, index) => {
-      if (isHostedUrl(candidate.imageDataUrl)) return candidate;
-
       const parsed = parseDataUrlImage(candidate.imageDataUrl);
-      if (!parsed) return candidate;
+      let bytes: Buffer | null = parsed?.bytes ?? null;
+      let mimeType = parsed?.mimeType ?? 'image/png';
+
+      if (!bytes && isHostedUrl(candidate.imageDataUrl)) {
+        try {
+          const downloaded = await downloadPortraitPreviewBytes(candidate.imageDataUrl);
+          bytes = downloaded.bytes;
+          mimeType = downloaded.mimeType;
+        } catch (error) {
+          console.warn('[portrait-preview] provider URL download failed', {
+            userId,
+            candidateId: candidate.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return candidate;
+        }
+      }
+
+      if (!bytes) return candidate;
+
+      if (!isUsablePortraitImageBytes(bytes)) {
+        console.warn('[portrait-preview] rejected blank portrait candidate', {
+          userId,
+          candidateId: candidate.id,
+        });
+        return null;
+      }
 
       try {
         const storageKey = buildPortraitPreviewStorageKey({
           userId,
           sessionId,
           index,
-          mimeType: parsed.mimeType,
+          mimeType,
         });
         const published = await publishBrowserImage({
-          bytes: parsed.bytes,
-          mimeType: parsed.mimeType,
+          bytes,
+          mimeType,
           storageKey,
           cloudinaryFolderPath: `portrait-previews/${userId}`,
           cloudinaryPublicId: `${sessionId}-${index + 1}`,
@@ -81,8 +121,9 @@ export const deliverPortraitPreviewCandidates = async (
           candidateId: candidate.id,
           error: error instanceof Error ? error.message : String(error),
         });
-        return candidate;
+        if (parsed) return candidate;
+        return { ...candidate, imageDataUrl: `data:${mimeType};base64,${bytes.toString('base64')}` };
       }
     }),
-  );
+  ).then((results) => results.filter((candidate): candidate is VirtualGirlfriendPortraitPreviewCandidate => candidate !== null));
 };

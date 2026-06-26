@@ -7,6 +7,8 @@ import {
   deliverPortraitPreviewCandidates,
   filterReachablePortraitPreviewCandidates,
 } from '@/lib/virtual-girlfriend/portrait-preview-delivery';
+import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
+import { resolveModelsLabPortraitModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
 
 // Portrait preview generates several candidate images; raise the function
@@ -56,6 +58,12 @@ export async function POST(request: NextRequest) {
       occupation: body.occupation,
       sexuality: body.sexuality,
       freeformDetails: body.freeformDetails,
+    });
+
+    console.info('[virtual-girlfriend] portrait candidate generation start', {
+      userId: auth.user.id,
+      provider: resolveVgImageProvider(),
+      portraitModel: resolveModelsLabPortraitModel(),
     });
 
     // Preview-only: this does not persist companion images and is intentionally separate from canonical setup persistence.

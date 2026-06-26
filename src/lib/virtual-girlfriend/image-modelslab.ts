@@ -41,7 +41,7 @@ const FACE_GEN_NEGATIVE_PROMPT =
   'drawing, cartoon, anime, big nose, long nose, fat, ugly, bad anatomy, worst quality, low quality, blurry, censored, black bar, mosaic, watermark, text, logo, bra, shirt covering chest when topless requested, jeans covering ass when bare ass requested, panties covering when explicit rear requested';
 const MODELSLAB_NEGATIVE_PROMPT = buildModelsLabNegativePrompt();
 
-const PREVIEW_POLL = { maxAttempts: 28, intervalMs: 1_000 } as const;
+const PREVIEW_POLL = { maxAttempts: 45, intervalMs: 1_500 } as const;
 
 const DIMENSIONS_BY_ASPECT: Record<string, { width: number; height: number }> = {
   '1x1': { width: 1024, height: 1024 },
@@ -215,7 +215,10 @@ export const generatePortraitPreviewImageWithModelsLab = async (
     PREVIEW_POLL,
   );
 
-  return extractGeneratedImage(payload, MODELSLAB_PORTRAIT_MODEL, '/v6/images/text2img');
+  // Return the ModelsLab CDN URL immediately; delivery re-hosts to R2/Cloudinary.
+  return extractGeneratedImage(payload, MODELSLAB_PORTRAIT_MODEL, '/v6/images/text2img', {
+    skipDownload: true,
+  });
 };
 
 const resolveReferenceInitImage = async (input: {

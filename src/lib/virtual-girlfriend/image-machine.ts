@@ -68,6 +68,8 @@ const sha = (value: string) => crypto.createHash('sha256').update(value).digest(
 const MACHINE_TIMEOUT_MS = {
   /** Portrait / canonical / gallery — typically finishes under 60s. */
   providerRequest: 60_000,
+  /** Aurelium text2img on ModelsLab can poll 30–90s under load. */
+  portraitPreviewRequest: 120_000,
   /** In-chat photos (Face Gen / Kontext) — aligned with Vercel Pro maxDuration 300. */
   chatProviderRequest: 120_000,
   download: 15_000,
@@ -1395,21 +1397,19 @@ export const runPortraitPreviewImageMachine = async (
 const generatePortraitPreviewCandidate = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
   index: number,
+  attemptOffset = 0,
 ): Promise<VirtualGirlfriendPortraitPreviewCandidate> => {
   const prompt = buildPreviewPrompt(input, index);
-  const seed = derivePortraitPreviewSeed(input, index);
+  const seed = (derivePortraitPreviewSeed(input, index) + attemptOffset) % 2_147_483_647;
   const generated = await withRetries({
-    attempts: 2,
+    attempts: 3,
     scope: 'portrait_preview',
     stage: 'provider_request',
     reason: 'provider_error',
     run: () =>
-      withTimeout('provider_generation', 45_000, () => generatePortraitPreviewImage(prompt, seed)),
+      withTimeout('provider_generation', MACHINE_TIMEOUT_MS.portraitPreviewRequest, () =>
+        generatePortraitPreviewImage(prompt, seed)),
   });
-  if (!generated.bytes.byteLength) {
-    throw new Error('Portrait preview provider returned empty image bytes.');
-  }
-
   const imageDataUrl = portraitPreviewDeliveryUrl(generated);
   if (!imageDataUrl.trim()) {
     throw new Error('Portrait preview provider returned an empty image.');
@@ -1424,15 +1424,56 @@ const generatePortraitPreviewCandidate = async (
   };
 };
 
+const PORTRAIT_PREVIEW_CONCURRENCY = 2;
+
+const runPortraitPreviewTasksWithConcurrency = async (
+  tasks: Array<() => Promise<VirtualGirlfriendPortraitPreviewCandidate>>,
+  concurrency: number,
+) => {
+  const settled: PromiseSettledResult<VirtualGirlfriendPortraitPreviewCandidate>[] = [];
+  let nextTaskIndex = 0;
+
+  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
+    while (nextTaskIndex < tasks.length) {
+      const taskIndex = nextTaskIndex;
+      nextTaskIndex += 1;
+      try {
+        settled[taskIndex] = { status: 'fulfilled', value: await tasks[taskIndex]() };
+      } catch (reason) {
+        settled[taskIndex] = { status: 'rejected', reason };
+      }
+    }
+  });
+
+  await Promise.all(workers);
+  return settled;
+};
+
+const summarizePortraitPreviewFailures = (
+  settled: PromiseSettledResult<VirtualGirlfriendPortraitPreviewCandidate>[],
+) =>
+  settled
+    .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+    .map((result) => (result.reason instanceof Error ? result.reason.message : String(result.reason)));
+
 const fallbackParallelGeneration = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
   count: number,
 ): Promise<VirtualGirlfriendPortraitPreviewCandidate[]> => {
   const target = Math.min(Math.max(count, 2), 4);
-  const maxAttempts = target + 2;
-  const settled = await Promise.allSettled(
-    Array.from({ length: maxAttempts }).map((_, index) => generatePortraitPreviewCandidate(input, index)),
-  );
+  const maxAttempts = target + 3;
+  const tasks = Array.from({ length: maxAttempts }, (_, index) => () =>
+    generatePortraitPreviewCandidate(input, index, Math.floor(index / target)));
+
+  logImageMachine('portrait_preview', 'generation_start', {
+    target,
+    maxAttempts,
+    concurrency: PORTRAIT_PREVIEW_CONCURRENCY,
+    provider: resolveVgImageProvider(),
+    portraitModel: resolveModelsLabPortraitModel(),
+  });
+
+  const settled = await runPortraitPreviewTasksWithConcurrency(tasks, PORTRAIT_PREVIEW_CONCURRENCY);
 
   const candidates = settled
     .filter((result): result is PromiseFulfilledResult<VirtualGirlfriendPortraitPreviewCandidate> => result.status === 'fulfilled')
@@ -1443,8 +1484,19 @@ const fallbackParallelGeneration = async (
     }));
 
   if (candidates.length < 1) {
-    throw new Error('Not enough portrait preview candidates generated successfully');
+    const failures = summarizePortraitPreviewFailures(settled);
+    logImageMachine('portrait_preview', 'generation_failed', {
+      attempts: maxAttempts,
+      failures: failures.slice(0, 5),
+    });
+    const detail = failures[0] ?? 'unknown_error';
+    throw new Error(`Not enough portrait preview candidates generated successfully (${detail})`);
   }
+
+  logImageMachine('portrait_preview', 'generation_success', {
+    requested: target,
+    generated: candidates.length,
+  });
 
   return candidates.slice(0, target);
 };
