@@ -1,6 +1,5 @@
 import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
-import { resolveModelsLabPortraitModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
   generateCanonicalImageWithFlux,
   generatePortraitPreviewImageWithFlux,

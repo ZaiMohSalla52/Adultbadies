@@ -34,15 +34,16 @@ const isDataUrlPreview = (value: string) => /^data:image\//i.test(value.trim());
 export const runPortraitPreviewPipeline = async (
   input: PortraitPreviewPipelineInput,
 ): Promise<PortraitPreviewPipelineOutcome> => {
+  const { userId, count, ...traits } = input;
   const result = await runPortraitPreviewImageMachine({
     kind: 'portrait_preview',
-    userId: input.userId,
-    ...input,
-    count: input.count ?? 3,
+    userId,
+    ...traits,
+    count: count ?? 3,
   });
 
   const generated = result.candidates;
-  const delivered = await deliverPortraitPreviewCandidates(generated, input.userId);
+  const delivered = await deliverPortraitPreviewCandidates(generated, userId);
   const pool = delivered.length > 0 ? delivered : generated;
 
   const hosted = pool.filter((candidate) => isHostedPreviewUrl(candidate.imageDataUrl));
@@ -61,7 +62,7 @@ export const runPortraitPreviewPipeline = async (
     candidates = pool.filter((candidate) => isDataUrlPreview(candidate.imageDataUrl));
   }
 
-  const returned = candidates.slice(0, input.count ?? 3);
+  const returned = candidates.slice(0, count ?? 3);
 
   return {
     ok: returned.length > 0,
