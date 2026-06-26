@@ -33,17 +33,17 @@ export type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-gir
 const isModelsLabImageProvider = () => resolveVgImageProvider() === 'modelslab';
 
 /** Companion text2img always prefers Flux Pro when fal is configured. */
-const useFluxForCompanionSurfaces = () => Boolean(env.FLUX_API_KEY?.trim());
+const preferFluxForCompanionSurfaces = () => Boolean(env.FLUX_API_KEY?.trim());
 
 export const generateCanonicalImage = (prompt: string): Promise<GeneratedImage> =>
-  useFluxForCompanionSurfaces()
+  preferFluxForCompanionSurfaces()
     ? generateCanonicalImageWithFlux(prompt)
     : isModelsLabImageProvider()
       ? generateCanonicalImageWithModelsLab(prompt)
       : generateCanonicalImageWithFlux(prompt);
 
 export const generatePortraitPreviewImage = (prompt: string, seed?: number): Promise<GeneratedImage> =>
-  useFluxForCompanionSurfaces()
+  preferFluxForCompanionSurfaces()
     ? generatePortraitPreviewImageWithFlux(prompt, seed)
     : isModelsLabImageProvider()
       ? generatePortraitPreviewImageWithModelsLab(prompt, seed)
