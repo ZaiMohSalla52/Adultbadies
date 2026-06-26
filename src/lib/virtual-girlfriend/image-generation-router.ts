@@ -1,10 +1,14 @@
 /*
  * Single routing policy for in-chat image generation.
  *
- * Explicit adult chat routes to SDXL img2img (face-locked, uncensored).
- * Non-explicit requested-look adult chat can still use Face Gen on ModelsLab.
- * Flux Kontext is retained for SFW passive chat and as an explicit fallback
- * when ModelsLab SDXL is unavailable.
+ * Kontext Pro applies hosted moderation and blanks explicit content to black /
+ * safe images even with enable_safety_checker:false. It must NEVER handle
+ * explicit or sexual in-chat requests.
+ *
+ * Explicit adult chat  → SDXL img2img (uncensored, face-locked via init_image)
+ * Sexual requested-look → Face Gen on ModelsLab (uncensored, face-locked)
+ * Flux-only explicit fallback → Kontext [dev] with safety checker OFF
+ * Passive SFW chat only → Kontext Pro (safety on)
  */
 
 export type ChatGenerationProvider = 'sdxl' | 'face_gen' | 'flux_kontext';
@@ -34,6 +38,16 @@ export const resolveChatGenerationRoute = (input: {
         modelKind: 'sdxl',
         guidanceScale: input.highExposure ? 7.5 : 6.5,
         numInferenceSteps: input.highExposure ? 36 : 32,
+        enableSafetyChecker: false,
+      };
+    }
+
+    if (input.preferFaceGen ?? false) {
+      return {
+        provider: 'face_gen',
+        modelKind: 'face_gen',
+        guidanceScale: 7.5,
+        numInferenceSteps: 41,
         enableSafetyChecker: false,
       };
     }

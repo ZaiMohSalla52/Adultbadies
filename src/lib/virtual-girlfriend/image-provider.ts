@@ -105,6 +105,7 @@ export const generateChatImageFromReferenceFaceGen = (input: {
 
 export const generateChatImageFromReferenceSdxl = (input: {
   prompt: string;
+  userMessage?: string;
   reference: PortraitReferenceImage;
   numInferenceSteps?: number;
   guidanceScale?: number;

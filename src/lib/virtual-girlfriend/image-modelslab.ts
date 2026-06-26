@@ -70,9 +70,13 @@ const isAdultChatSurface = (surface: 'preview' | 'canonical' | 'gallery' | 'chat
 
 const kontextModelForSurface = (
   surface: 'preview' | 'canonical' | 'gallery' | 'chat',
-  options?: { preferDevModel?: boolean },
+  options?: { preferDevModel?: boolean; forceDevModel?: boolean },
 ) => {
-  if (surface === 'chat' && (isAdultChatSurface(surface) || options?.preferDevModel)) {
+  // Kontext Pro is moderated — never route adult / uncensored chat through it.
+  if (
+    surface === 'chat'
+    && (options?.forceDevModel || isAdultChatSurface(surface) || options?.preferDevModel)
+  ) {
     return MODELSLAB_KONTEXT_DEV_MODEL;
   }
   return MODELSLAB_KONTEXT_PRO_MODEL;
@@ -235,7 +239,10 @@ const generateKontextFromReference = async (input: {
   skipDownload?: boolean;
 }): Promise<GeneratedImage> => {
   const surfaceParams = SURFACE_PARAMS[input.surface];
-  const model = kontextModelForSurface(input.surface, { preferDevModel: input.preferDevModel });
+  const model = kontextModelForSurface(input.surface, {
+    preferDevModel: input.preferDevModel,
+    forceDevModel: input.surface === 'chat' && input.kontextOptions?.enableSafetyChecker === false,
+  });
   const prompt = input.prompt;
   const initImage = await resolveReferenceInitImage(input);
 

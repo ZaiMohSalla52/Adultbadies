@@ -3,6 +3,7 @@ import {
   callModelsLabV6Images,
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';
+import { buildFaceGenExplicitPrompt } from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildModelsLabNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
@@ -75,6 +76,7 @@ const resolveReferenceInitImage = async (
 
 export const generateExplicitChatImageWithModelsLabSdxl = async (input: {
   prompt: string;
+  userMessage?: string;
   reference: { bytes: Buffer; mimeType: string } | { url: string };
   numInferenceSteps?: number;
   guidanceScale?: number;
@@ -85,12 +87,15 @@ export const generateExplicitChatImageWithModelsLabSdxl = async (input: {
   const initImage = await resolveReferenceInitImage(input.reference);
   const guidanceScale = input.guidanceScale ?? (input.highExposure ? 7.5 : 6.5);
   const numInferenceSteps = input.numInferenceSteps ?? (input.highExposure ? 36 : 32);
+  const explicitPrompt = input.userMessage?.trim()
+    ? buildFaceGenExplicitPrompt(input.userMessage.trim())
+    : input.prompt;
 
   const payload = await callModelsLabV6Images(
     'img2img',
     {
       model_id: MODELSLAB_SDXL_MODEL,
-      prompt: input.prompt,
+      prompt: explicitPrompt,
       negative_prompt: MODELSLAB_NEGATIVE_PROMPT,
       init_image: initImage,
       width,

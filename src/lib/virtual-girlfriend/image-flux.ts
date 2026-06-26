@@ -141,9 +141,13 @@ const isAdultChatSurface = (surface: 'preview' | 'canonical' | 'gallery' | 'chat
 
 const kontextModelForSurface = (
   surface: 'preview' | 'canonical' | 'gallery' | 'chat',
-  options?: { preferDevModel?: boolean },
+  options?: { preferDevModel?: boolean; forceDevModel?: boolean },
 ) => {
-  if (surface === 'chat' && (isAdultChatSurface(surface) || options?.preferDevModel)) {
+  // Kontext Pro blanks explicit content — never use it for adult chat surfaces.
+  if (
+    surface === 'chat'
+    && (options?.forceDevModel || isAdultChatSurface(surface) || options?.preferDevModel)
+  ) {
     return FLUX_KONTEXT_DEV_MODEL;
   }
   return FLUX_KONTEXT_MODEL;
@@ -200,7 +204,10 @@ const generateKontextFromReference = async (input: {
   preferDevModel?: boolean;
 }): Promise<GeneratedImage> => {
   const surfaceParams = SURFACE_PARAMS[input.surface];
-  const model = kontextModelForSurface(input.surface, { preferDevModel: input.preferDevModel });
+  const model = kontextModelForSurface(input.surface, {
+    preferDevModel: input.preferDevModel,
+    forceDevModel: input.surface === 'chat' && input.kontextOptions?.enableSafetyChecker === false,
+  });
   const prompt = input.withPreviewNegatives
     ? withNegatives(input.prompt, buildPreviewNegativePrompt())
     : input.prompt;

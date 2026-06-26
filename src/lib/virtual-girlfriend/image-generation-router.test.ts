@@ -77,4 +77,28 @@ describe('resolveChatGenerationRoute', () => {
     expect(route.modelKind).toBe('kontext_pro');
     expect(route.enableSafetyChecker).toBe(true);
   });
+
+  it('never routes explicit adult chat to kontext pro', () => {
+    const route = resolveChatGenerationRoute({
+      explicit: true,
+      requestedLook: true,
+      adultContentEnabled: true,
+      preferSdxl: true,
+    });
+    expect(route.modelKind).not.toBe('kontext_pro');
+    expect(route.enableSafetyChecker).toBe(false);
+  });
+
+  it('falls back explicit to face gen when SDXL disabled but ModelsLab preferred', () => {
+    const route = resolveChatGenerationRoute({
+      explicit: true,
+      requestedLook: true,
+      adultContentEnabled: true,
+      preferSdxl: false,
+      preferFaceGen: true,
+    });
+    expect(route.provider).toBe('face_gen');
+    expect(route.modelKind).toBe('face_gen');
+    expect(route.enableSafetyChecker).toBe(false);
+  });
 });

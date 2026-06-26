@@ -1190,19 +1190,43 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         ? { url: faceReference.deliveryUrl.trim() }
         : { bytes: reference.bytes, mimeType: reference.mimeType };
 
+    const generateExplicitWithFallback = async () => {
+      try {
+        return await generateChatImageFromReferenceSdxl({
+          prompt,
+          userMessage: input.userMessage?.trim(),
+          reference: faceGenReference,
+          numInferenceSteps: route.numInferenceSteps,
+          guidanceScale: route.guidanceScale,
+          highExposure: chatPromptInput.explicitExposureLevel
+            ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
+            : false,
+        });
+      } catch (sdxlError) {
+        if (!input.userMessage?.trim()) throw sdxlError;
+        logImageMachine(scope, 'sdxl_fallback_face_gen', {
+          reason: sdxlError instanceof Error ? sdxlError.message : 'sdxl_failed',
+        });
+        return generateChatImageFromReferenceFaceGen({
+          userMessage: input.userMessage!.trim(),
+          reference: faceGenReference,
+          wardrobeContext: wardrobeContextFromCompanion(input.companion),
+          numInferenceSteps: 41,
+        });
+      }
+    };
+
+    if (route.modelKind === 'kontext_pro' && (chatPromptInput.explicitIntent || chatPromptInput.requestedLook)) {
+      throw new VirtualGirlfriendImageMachineError(
+        'Censored Kontext Pro must not handle explicit or sexual chat images.',
+        'provider_error',
+        'provider_request',
+      );
+    }
+
     const generated =
       route.provider === 'sdxl'
-        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
-            generateChatImageFromReferenceSdxl({
-              prompt,
-              reference: faceGenReference,
-              numInferenceSteps: route.numInferenceSteps,
-              guidanceScale: route.guidanceScale,
-              highExposure: chatPromptInput.explicitExposureLevel
-                ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
-                : false,
-            }),
-          )
+        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateExplicitWithFallback)
         : route.provider === 'face_gen' && input.userMessage?.trim()
           ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
               generateChatImageFromReferenceFaceGen({
@@ -1223,7 +1247,10 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
                   numInferenceSteps: route.numInferenceSteps,
                   enableSafetyChecker: route.enableSafetyChecker,
                 },
-                preferDevModel: route.modelKind === 'kontext_dev',
+                preferDevModel:
+                  route.modelKind === 'kontext_dev'
+                  || Boolean(chatPromptInput.explicitIntent)
+                  || Boolean(chatPromptInput.requestedLook),
               }),
             );
 
