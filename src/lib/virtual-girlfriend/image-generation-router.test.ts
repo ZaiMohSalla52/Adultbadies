@@ -2,12 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
 
 describe('resolveChatGenerationRoute', () => {
-  it('routes explicit adult chat to SDXL when ModelsLab preferred', () => {
+  it('routes high-exposure explicit nude chat to Face Gen when ModelsLab preferred', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
       adultContentEnabled: true,
       highExposure: true,
+      preferFaceGen: true,
+      preferSdxl: true,
+    });
+    expect(route.provider).toBe('face_gen');
+    expect(route.modelKind).toBe('face_gen');
+    expect(route.enableSafetyChecker).toBe(false);
+    expect(route.numInferenceSteps).toBe(41);
+  });
+
+  it('routes explicit adult chat to SDXL when high exposure but Face Gen disabled', () => {
+    const route = resolveChatGenerationRoute({
+      explicit: true,
+      requestedLook: true,
+      adultContentEnabled: true,
+      highExposure: true,
+      preferFaceGen: false,
       preferSdxl: true,
     });
     expect(route.provider).toBe('sdxl');
@@ -30,13 +46,14 @@ describe('resolveChatGenerationRoute', () => {
     expect(route.guidanceScale).toBeGreaterThan(5);
   });
 
-  it('falls back to kontext dev for explicit when SDXL disabled', () => {
+  it('falls back to kontext dev for explicit when SDXL and Face Gen disabled', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
       adultContentEnabled: true,
       highExposure: true,
       preferSdxl: false,
+      preferFaceGen: false,
     });
     expect(route.provider).toBe('flux_kontext');
     expect(route.modelKind).toBe('kontext_dev');
@@ -94,6 +111,7 @@ describe('resolveChatGenerationRoute', () => {
       explicit: true,
       requestedLook: true,
       adultContentEnabled: true,
+      highExposure: false,
       preferSdxl: false,
       preferFaceGen: true,
     });

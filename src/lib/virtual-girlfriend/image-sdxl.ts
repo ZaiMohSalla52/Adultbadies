@@ -103,7 +103,8 @@ export const generateExplicitChatImageWithModelsLabSdxl = async (input: {
       samples: chatParams.num_images,
       num_inference_steps: numInferenceSteps,
       guidance: guidanceScale,
-      strength: input.highExposure ? 0.62 : 0.58,
+      // Low strength kept the canonical clothed portrait — not enough denoise for nudity.
+      strength: input.highExposure ? 0.78 : 0.68,
       safety_checker: 'no',
       enhance_prompt: false,
     },

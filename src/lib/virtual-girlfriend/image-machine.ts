@@ -1228,6 +1228,40 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         ? { url: faceReference.deliveryUrl.trim() }
         : { bytes: reference.bytes, mimeType: reference.mimeType };
 
+    const highExposure = chatPromptInput.explicitExposureLevel
+      ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
+      : false;
+
+    const generateFaceGenWithFallback = async () => {
+      if (!input.userMessage?.trim()) {
+        throw new VirtualGirlfriendImageMachineError(
+          'Face Gen explicit chat requires a user message.',
+          'provider_error',
+          'provider_request',
+        );
+      }
+      try {
+        return await generateChatImageFromReferenceFaceGen({
+          userMessage: input.userMessage!.trim(),
+          reference: faceGenReference,
+          wardrobeContext: wardrobeContextFromCompanion(input.companion),
+          numInferenceSteps: route.numInferenceSteps,
+        });
+      } catch (faceGenError) {
+        logImageMachine(scope, 'face_gen_fallback_sdxl', {
+          reason: faceGenError instanceof Error ? faceGenError.message : 'face_gen_failed',
+        });
+        return generateChatImageFromReferenceSdxl({
+          prompt,
+          userMessage: input.userMessage!.trim(),
+          reference: faceGenReference,
+          numInferenceSteps: route.numInferenceSteps,
+          guidanceScale: route.guidanceScale,
+          highExposure,
+        });
+      }
+    };
+
     const generateExplicitWithFallback = async () => {
       try {
         return await generateChatImageFromReferenceSdxl({
@@ -1236,9 +1270,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
           reference: faceGenReference,
           numInferenceSteps: route.numInferenceSteps,
           guidanceScale: route.guidanceScale,
-          highExposure: chatPromptInput.explicitExposureLevel
-            ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
-            : false,
+          highExposure,
         });
       } catch (sdxlError) {
         if (!input.userMessage?.trim()) throw sdxlError;
@@ -1266,14 +1298,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       route.provider === 'sdxl'
         ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateExplicitWithFallback)
         : route.provider === 'face_gen' && input.userMessage?.trim()
-          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
-              generateChatImageFromReferenceFaceGen({
-                userMessage: input.userMessage!.trim(),
-                reference: faceGenReference,
-                wardrobeContext: wardrobeContextFromCompanion(input.companion),
-                numInferenceSteps: route.numInferenceSteps,
-              }),
-            )
+          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateFaceGenWithFallback)
           : await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
               runProviderGeneration({
                 scope,
