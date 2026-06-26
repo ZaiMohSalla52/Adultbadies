@@ -110,7 +110,7 @@ const toNormalizedProfile = (profile: Record<string, unknown>): NormalizedProfil
     eyeColor: normalizeText(profile.eyeColor),
     skinTone: normalizeText(profile.skinTone),
     styleVibe: normalizeText(profile.styleVibe),
-    figure: normalizeText(profile.figure),
+    figure: normalizeText(profile.figure ?? profile.bodyType),
     occupation: normalizeText(profile.occupation),
     personality: normalizeText(profile.personality),
     sexuality: normalizeText(profile.sexuality),
@@ -160,9 +160,12 @@ type WeightedComparableField =
   | 'selectedPortraitPrompt'
   | 'selectedPortraitImageKey';
 
+/** Shared demographics alone (e.g. another Latina woman age 24) must not block portrait generation. */
+const GENERIC_DEMOGRAPHIC_FIELDS = new Set(['sex', 'ageBand', 'origin']);
+
 const weightedStructuredSimilarity = (candidate: NormalizedProfile, existing: NormalizedProfile) => {
   const fieldWeights: Array<{ key: WeightedComparableField; weight: number; category: 'appearance' | 'vibe' | 'profile'; highSignal?: boolean }> = [
-    { key: 'sex', weight: 0.3, category: 'appearance' },
+    { key: 'sex', weight: 0.05, category: 'appearance' },
     { key: 'ageBand', weight: 0.75, category: 'appearance', highSignal: true },
     { key: 'origin', weight: 0.8, category: 'appearance', highSignal: true },
     { key: 'hairColor', weight: 0.8, category: 'appearance', highSignal: true },
@@ -220,11 +223,34 @@ const weightedStructuredSimilarity = (candidate: NormalizedProfile, existing: No
   }
 
   const score = totalWeight > 0 ? overlapWeight / totalWeight : 0;
+  const distinctiveMatches = contributors.filter(
+    (field) => field.score >= 0.86 && !GENERIC_DEMOGRAPHIC_FIELDS.has(field.field),
+  );
+
   return {
     score,
     highSignalMatchWeight,
+    comparedFieldCount: contributors.length,
+    distinctiveMatchCount: distinctiveMatches.length,
     topFields: contributors.sort((a, b) => b.score - a.score).slice(0, 5),
+    actionableFields: distinctiveMatches.sort((a, b) => b.score - a.score).slice(0, 5),
   };
+};
+
+const hasStructuredProfileOverlap = (input: {
+  nameSimilarity: number;
+  structured: ReturnType<typeof weightedStructuredSimilarity>;
+}) => {
+  const { nameSimilarity, structured } = input;
+
+  // Demographics-only overlap (sex + age band + origin) is expected when users make multiple companions.
+  if (structured.distinctiveMatchCount < 2) return false;
+
+  if (structured.score >= 0.88 && structured.distinctiveMatchCount >= 3) return true;
+  if (structured.score >= 0.84 && structured.highSignalMatchWeight >= 4.1) return true;
+  if (nameSimilarity >= 0.92 && structured.score >= 0.78 && structured.distinctiveMatchCount >= 2) return true;
+
+  return false;
 };
 
 const nameSimilarityScore = (candidate: NormalizedProfile, existing: NormalizedProfile) => {
@@ -245,7 +271,7 @@ const toConflictGuidance = (reasons: string[], topFields: DistinctnessConflict['
     guidance.add('Try a more distinct name.');
   }
   if (topFields.some((field) => field.category === 'appearance')) {
-    guidance.add('Try changing appearance choices or pick a different portrait.');
+    guidance.add('Change hair, eyes, body type, or style — shared sex/age/ethnicity alone is fine.');
   }
   if (topFields.some((field) => field.category === 'vibe')) {
     guidance.add('Try changing relationship vibe, tone, or aesthetic.');
@@ -283,17 +309,23 @@ export const findDistinctnessConflict = (input: {
       reasons.push('surname_family_pattern_risk');
     }
 
-    if (structured.score >= 0.9 || (structured.score >= 0.84 && structured.highSignalMatchWeight >= 4.1) || (nameSimilarity >= 0.92 && structured.score >= 0.72)) {
+    if (hasStructuredProfileOverlap({ nameSimilarity, structured })) {
       reasons.push('structured_profile_overlap');
     }
 
     if (!reasons.length) continue;
 
-    const topFields = structured.topFields.map((field) => ({
-      field: field.field,
-      score: Number(field.score.toFixed(3)),
-      category: field.category,
-    }));
+    const mapConflictFields = (fields: typeof structured.topFields) =>
+      fields.map((field) => ({
+        field: field.field,
+        score: Number(field.score.toFixed(3)),
+        category: field.category,
+      }));
+
+    const topFields =
+      structured.actionableFields.length > 0
+        ? mapConflictFields(structured.actionableFields)
+        : mapConflictFields(structured.topFields);
 
     const conflict: DistinctnessConflict = {
       companionId: companion.id,

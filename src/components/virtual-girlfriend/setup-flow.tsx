@@ -1324,7 +1324,10 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           {conflictHelp ? (
             <div className={styles.conflictBox}>
               <p>Too close to {conflictHelp.companionName ?? 'an existing companion'}.</p>
-              {conflictHelp.topFieldLabels?.length ? <p>Most overlapping areas: {conflictHelp.topFieldLabels.slice(0, 3).join(', ')}.</p> : null}
+              {conflictHelp.topFieldLabels?.length ? (
+                <p>Change these traits: {conflictHelp.topFieldLabels.slice(0, 3).join(', ')}.</p>
+              ) : null}
+              {conflictHelp.guidance?.length ? <p>{conflictHelp.guidance[0]}</p> : null}
             </div>
           ) : null}
 

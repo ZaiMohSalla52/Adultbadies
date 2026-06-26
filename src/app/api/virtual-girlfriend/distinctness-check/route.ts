@@ -112,11 +112,15 @@ export async function POST(request: NextRequest) {
   if (conflict && isCharacterDuplicateConflict(conflict)) {
     const conflictAreas = Array.from(new Set(conflict.topFields.map((field) => field.category)));
     const topFieldLabels = conflict.topFields.map((field) => CONFLICT_FIELD_LABELS[field.field] ?? field.field);
+    const changeHint =
+      topFieldLabels.length > 0
+        ? `Try changing ${topFieldLabels.slice(0, 3).join(', ')}.`
+        : 'Try changing hair, personality, occupation, or style.';
 
     return NextResponse.json(
       {
         ok: false,
-        message: `This profile is too close to ${conflict.companionName}. Change some traits before generating portraits.`,
+        message: `This profile is too close to ${conflict.companionName}. ${changeHint}`,
         conflict: {
           ...conflict,
           conflictAreas,

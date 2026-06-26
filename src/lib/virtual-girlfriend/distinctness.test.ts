@@ -89,6 +89,87 @@ describe('distinctness — name-only vs character duplicate', () => {
     expect(conflict).toBe(null);
   });
 
+  it('does not block when only generic demographics overlap (sex, age band, origin)', () => {
+    const mia = companion(
+      profile({
+        name: 'Mia Quinn',
+        sex: 'female',
+        age: 24,
+        origin: 'latina',
+        hairColor: 'dark brown',
+        hairLength: 'long',
+        eyeColor: 'brown',
+        figure: 'curvy',
+        personality: 'sultry_seductive',
+        occupation: 'model',
+        archetype: 'siren',
+      }),
+    );
+
+    const conflict = findDistinctnessConflict({
+      candidateProfile: profile({
+        name: 'Sofia Reyes',
+        sex: 'female',
+        age: 24,
+        origin: 'latina',
+        hairColor: 'blonde',
+        hairLength: 'short',
+        eyeColor: 'green',
+        figure: 'slim',
+        personality: 'playful_tease',
+        occupation: 'artist',
+        archetype: 'muse',
+      }),
+      existingCompanions: [mia],
+    });
+
+    expect(conflict).toBe(null);
+  });
+
+  it('blocks when distinctive appearance and vibe traits overlap', () => {
+    const mia = companion(
+      profile({
+        name: 'Mia Quinn',
+        sex: 'female',
+        age: 24,
+        origin: 'latina',
+        hairColor: 'dark brown',
+        hairLength: 'long',
+        eyeColor: 'brown',
+        figure: 'curvy',
+        personality: 'sultry_seductive',
+        occupation: 'model',
+        archetype: 'siren',
+        tone: 'flirty',
+        affectionStyle: 'warm',
+        visualAesthetic: 'glamorous',
+      }),
+    );
+
+    const conflict = findDistinctnessConflict({
+      candidateProfile: profile({
+        name: 'Luna Vale',
+        sex: 'female',
+        age: 24,
+        origin: 'latina',
+        hairColor: 'dark brown',
+        hairLength: 'long',
+        eyeColor: 'brown',
+        figure: 'curvy',
+        personality: 'sultry_seductive',
+        occupation: 'model',
+        archetype: 'siren',
+        tone: 'flirty',
+        affectionStyle: 'warm',
+        visualAesthetic: 'glamorous',
+      }),
+      existingCompanions: [mia],
+    });
+
+    expect(conflict).not.toBe(null);
+    expect(isCharacterDuplicateConflict(conflict!)).toBe(true);
+  });
+
   it('ignores a non-ready companion (timeout orphan) so retries are not blocked', () => {
     const sameTraits = profile({ name: 'Sofia Blake' });
     const orphan = { ...companion(sameTraits), generation_status: 'generating' as const };
