@@ -1,3 +1,4 @@
+import { VG_CHAT_HISTORY_WINDOW } from '@/lib/virtual-girlfriend/chat-config';
 import { VG_CHAT_MODEL } from '@/lib/virtual-girlfriend/llm-models';
 import {
   extractResponsesText,
@@ -129,7 +130,7 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
     imageAttached: false,
   });
 
-  const contextHistory = input.history.slice(-14);
+  const contextHistory = input.history.slice(-VG_CHAT_HISTORY_WINDOW);
   const extractor = new JsonReplyStreamExtractor();
   let intentEmitted = Boolean(heuristicIntent);
   let streamedReplyBuffer = '';

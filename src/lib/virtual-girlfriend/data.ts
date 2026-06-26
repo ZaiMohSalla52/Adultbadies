@@ -1,4 +1,11 @@
 import { env } from '@/lib/env';
+import { VG_CHAT_MEMORY_RETRIEVAL_LIMIT } from '@/lib/virtual-girlfriend/chat-config';
+import {
+  buildMemoryEmbeddingText,
+  cosineSimilarityVectors,
+  embedMemoryText,
+  memoryEmbeddingFromMetadata,
+} from '@/lib/virtual-girlfriend/memory-embeddings';
 import { repairCompanionImageDeliveryUrl } from '@/lib/storage/delivery-url';
 import { supabaseRest } from '@/lib/supabase/rest';
 import {
@@ -622,10 +629,57 @@ export const upsertVirtualGirlfriendMemory = async (
       confidence: clamp(input.candidate.confidence, 0, 1),
       metadata: input.candidate.metadata ?? {},
       archived: false,
+      embedding_status: 'pending',
       last_recalled_at: new Date().toISOString(),
     },
     searchParams: new URLSearchParams({ on_conflict: 'user_id,companion_id,memory_key' }),
     prefer: 'resolution=merge-duplicates,return=minimal',
+  });
+};
+
+export const getVirtualGirlfriendMemoriesByKeys = async (
+  token: string,
+  input: {
+    userId: string;
+    companionId: string;
+    keys: string[];
+  },
+): Promise<VirtualGirlfriendMemoryRecord[]> => {
+  const keys = input.keys.filter(Boolean);
+  if (!keys.length) return [];
+
+  return supabaseRest<VirtualGirlfriendMemoryRecord[]>('ai_memories', token, {
+    searchParams: new URLSearchParams({
+      select:
+        'id,user_id,companion_id,conversation_id,memory_key,memory_value,category,summary,source_role,importance,salience,confidence,metadata,archived,use_count,embedding_status,created_at,last_recalled_at,last_used_at',
+      user_id: `eq.${input.userId}`,
+      companion_id: `eq.${input.companionId}`,
+      memory_key: `in.(${keys.map((key) => `"${key.replace(/"/g, '\\"')}"`).join(',')})`,
+      limit: String(keys.length),
+    }),
+  });
+};
+
+export const updateVirtualGirlfriendMemoryEmbedding = async (
+  token: string,
+  input: {
+    memoryId: string;
+    userId: string;
+    metadata: Record<string, unknown>;
+    embeddingStatus: 'ready' | 'failed';
+  },
+) => {
+  await supabaseRest('ai_memories', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({
+      id: `eq.${input.memoryId}`,
+      user_id: `eq.${input.userId}`,
+    }),
+    body: {
+      metadata: input.metadata,
+      embedding_status: input.embeddingStatus,
+    },
+    prefer: 'return=minimal',
   });
 };
 
@@ -645,6 +699,39 @@ export const recordRecalledVirtualGirlfriendMemories = async (token: string, mem
   );
 };
 
+const scoreLexicalMemoryRelevance = (
+  memory: VirtualGirlfriendMemoryRecord,
+  queryTokens: Set<string>,
+  queryText: string,
+  now: number,
+) => {
+  const textTokens = tokenize(`${memory.memory_key} ${memory.memory_value} ${memory.summary ?? ''}`);
+  const overlap = textTokens.filter((token) => queryTokens.has(token)).length;
+  const relevance = queryTokens.size === 0 ? 0 : overlap / queryTokens.size;
+
+  const timestamp = new Date(memory.last_recalled_at ?? memory.created_at).getTime();
+  const ageDays = Math.max(0, (now - timestamp) / (1000 * 60 * 60 * 24));
+  const recency = 1 / (1 + ageDays / 7);
+
+  const categoryBoost =
+    memory.category === 'user_preference' && /(like|love|want|prefer|favorite)/i.test(queryText)
+      ? 0.12
+      : memory.category === 'emotional_signal' && /(feel|sad|happy|stressed|anxious|excited)/i.test(queryText)
+        ? 0.12
+        : memory.category === 'relationship_moment'
+          ? 0.08
+          : 0.04;
+
+  return (
+    memory.importance * 0.23 +
+    memory.salience * 0.2 +
+    memory.confidence * 0.17 +
+    recency * 0.2 +
+    relevance * 0.2 +
+    categoryBoost
+  );
+};
+
 export const retrieveRelevantVirtualGirlfriendMemories = async (
   token: string,
   input: {
@@ -660,40 +747,63 @@ export const retrieveRelevantVirtualGirlfriendMemories = async (
 
   const queryTokens = new Set(tokenize(input.queryText));
   const now = Date.now();
+  const maxItems = input.maxItems ?? VG_CHAT_MEMORY_RETRIEVAL_LIMIT;
+
+  let queryEmbedding: number[] | null = null;
+  const embeddedPool = pool.filter((memory) => memory.embedding_status === 'ready' && memoryEmbeddingFromMetadata(memory.metadata));
+  if (embeddedPool.length > 0 && input.queryText.trim().length >= 4 && env.TOGETHER_API_KEY?.trim()) {
+    try {
+      queryEmbedding = await embedMemoryText(input.queryText.trim());
+    } catch (error) {
+      console.warn('[virtual-girlfriend][memory] query embedding failed; lexical fallback', {
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   const scored = pool.map((memory) => {
-    const textTokens = tokenize(`${memory.memory_key} ${memory.memory_value} ${memory.summary ?? ''}`);
-    const overlap = textTokens.filter((token) => queryTokens.has(token)).length;
-    const relevance = queryTokens.size === 0 ? 0 : overlap / queryTokens.size;
+    const lexicalScore = scoreLexicalMemoryRelevance(memory, queryTokens, input.queryText, now);
+    const storedEmbedding = memoryEmbeddingFromMetadata(memory.metadata);
+    const vectorScore =
+      queryEmbedding && storedEmbedding
+        ? Math.max(0, cosineSimilarityVectors(queryEmbedding, storedEmbedding))
+        : 0;
 
-    const timestamp = new Date(memory.last_recalled_at ?? memory.created_at).getTime();
-    const ageDays = Math.max(0, (now - timestamp) / (1000 * 60 * 60 * 24));
-    const recency = 1 / (1 + ageDays / 7);
+    const blendedScore = queryEmbedding && storedEmbedding
+      ? lexicalScore * 0.45 + vectorScore * 5.5
+      : lexicalScore;
 
-    const categoryBoost =
-      memory.category === 'user_preference' && /(like|love|want|prefer|favorite)/i.test(input.queryText)
-        ? 0.12
-        : memory.category === 'emotional_signal' && /(feel|sad|happy|stressed|anxious|excited)/i.test(input.queryText)
-          ? 0.12
-          : memory.category === 'relationship_moment'
-            ? 0.08
-            : 0.04;
-
-    const score =
-      memory.importance * 0.23 +
-      memory.salience * 0.2 +
-      memory.confidence * 0.17 +
-      recency * 0.2 +
-      relevance * 0.2 +
-      categoryBoost;
-
-    return { memory, score };
+    return { memory, score: blendedScore, vectorScore };
   });
 
   return scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, input.maxItems ?? 8)
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      return right.vectorScore - left.vectorScore;
+    })
+    .slice(0, maxItems)
     .map((entry) => entry.memory);
+};
+
+export const listVirtualGirlfriendMemoriesPendingEmbedding = async (
+  token: string,
+  input: { userId?: string; limit?: number },
+): Promise<VirtualGirlfriendMemoryRecord[]> => {
+  const searchParams = new URLSearchParams({
+    select:
+      'id,user_id,companion_id,conversation_id,memory_key,memory_value,category,summary,source_role,importance,salience,confidence,metadata,archived,use_count,embedding_status,created_at,last_recalled_at,last_used_at',
+    archived: 'eq.false',
+    embedding_status: 'eq.pending',
+    order: 'created_at.asc',
+    limit: String(input.limit ?? 50),
+  });
+  if (input.userId) {
+    searchParams.set('user_id', `eq.${input.userId}`);
+  }
+
+  return supabaseRest<VirtualGirlfriendMemoryRecord[]>('ai_memories', token, {
+    searchParams,
+  });
 };
 
 

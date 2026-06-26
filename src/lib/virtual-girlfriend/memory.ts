@@ -1,4 +1,14 @@
-import { upsertVirtualGirlfriendMemory } from '@/lib/virtual-girlfriend/data';
+import {
+  getVirtualGirlfriendMemoriesByKeys,
+  upsertVirtualGirlfriendMemory,
+  updateVirtualGirlfriendMemoryEmbedding,
+} from '@/lib/virtual-girlfriend/data';
+import { extractLlmVirtualGirlfriendMemoryCandidates } from '@/lib/virtual-girlfriend/memory-extraction';
+import {
+  buildMemoryEmbeddingMetadata,
+  buildMemoryEmbeddingText,
+  embedMemoryText,
+} from '@/lib/virtual-girlfriend/memory-embeddings';
 import type { VirtualGirlfriendMemoryCandidate, VirtualGirlfriendMemoryCategory } from '@/lib/virtual-girlfriend/types';
 
 const normalizeKey = (value: string) =>
@@ -59,9 +69,11 @@ const extractPreference = (text: string) => {
 
 const extractFact = (text: string) => {
   const patterns = [
-    /\bi\s+work\s+as\s+([^.!?]{2,60})/i,
+    /\bi\s+work\s+as\s+(?:a\s+)?([^.!?]{2,60})/i,
     /\bi\s+live\s+in\s+([^.!?]{2,60})/i,
     /\bmy\s+name\s+is\s+([^.!?]{2,40})/i,
+    /\bi\s*(?:am|'m)\s+(\d{2})\s*(?:years?\s*old)?/i,
+    /\bi\s*(?:am|'m)\s+from\s+([^.!?]{2,60})/i,
   ];
 
   for (const pattern of patterns) {
@@ -107,7 +119,7 @@ const dedupeCandidates = (candidates: Array<VirtualGirlfriendMemoryCandidate | n
 
   for (const candidate of candidates) {
     if (!candidate) continue;
-    const key = `${candidate.category}:${candidate.key}:${candidate.value.toLowerCase()}`;
+    const key = `${candidate.category}:${candidate.key}`;
     if (!unique.has(key)) {
       unique.set(key, candidate);
     }
@@ -136,6 +148,58 @@ export const extractVirtualGirlfriendMemoryCandidates = (input: {
   ]);
 };
 
+export const extractAllVirtualGirlfriendMemoryCandidates = async (input: {
+  userMessage: string;
+  assistantMessage: string;
+}) => {
+  const [regexCandidates, llmCandidates] = await Promise.all([
+    Promise.resolve(extractVirtualGirlfriendMemoryCandidates(input)),
+    extractLlmVirtualGirlfriendMemoryCandidates(input),
+  ]);
+
+  return dedupeCandidates([...regexCandidates, ...llmCandidates]);
+};
+
+const embedPersistedMemory = async (input: {
+  token: string;
+  userId: string;
+  companionId: string;
+  candidate: VirtualGirlfriendMemoryCandidate;
+}) => {
+  try {
+    const [memory] = await getVirtualGirlfriendMemoriesByKeys(input.token, {
+      userId: input.userId,
+      companionId: input.companionId,
+      keys: [input.candidate.key],
+    });
+    if (!memory) return;
+
+    const vector = await embedMemoryText(
+      buildMemoryEmbeddingText({
+        memoryKey: memory.memory_key,
+        memoryValue: memory.memory_value,
+        summary: memory.summary,
+        category: memory.category,
+      }),
+    );
+
+    await updateVirtualGirlfriendMemoryEmbedding(input.token, {
+      memoryId: memory.id,
+      userId: input.userId,
+      metadata: {
+        ...(memory.metadata ?? {}),
+        ...buildMemoryEmbeddingMetadata(vector),
+      },
+      embeddingStatus: 'ready',
+    });
+  } catch (error) {
+    console.warn('[virtual-girlfriend][memory] embedding failed', {
+      key: input.candidate.key,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
 export const persistVirtualGirlfriendMemories = async (input: {
   token: string;
   userId: string;
@@ -143,7 +207,7 @@ export const persistVirtualGirlfriendMemories = async (input: {
   conversationId: string;
   candidates: VirtualGirlfriendMemoryCandidate[];
 }) => {
-  const usefulCandidates = input.candidates.slice(0, 4);
+  const usefulCandidates = input.candidates.slice(0, 6);
 
   await Promise.all(
     usefulCandidates.map((candidate) =>
@@ -151,6 +215,17 @@ export const persistVirtualGirlfriendMemories = async (input: {
         userId: input.userId,
         companionId: input.companionId,
         conversationId: input.conversationId,
+        candidate,
+      }),
+    ),
+  );
+
+  await Promise.all(
+    usefulCandidates.map((candidate) =>
+      embedPersistedMemory({
+        token: input.token,
+        userId: input.userId,
+        companionId: input.companionId,
         candidate,
       }),
     ),

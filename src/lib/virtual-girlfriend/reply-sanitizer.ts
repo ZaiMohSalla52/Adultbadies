@@ -36,12 +36,16 @@ export const containsForbiddenReplyLanguage = (text: string) =>
   FORBIDDEN_PATTERNS.some((pattern) => pattern.test(text));
 
 const META_ACTION_PATTERNS: RegExp[] = [
-  /\*smirks?\*/gi,
   /\*photosending\*/gi,
   /\*photo[\s-]?sending\*/gi,
-  /\*sends?(?:ing)?(?:\s+a)?\s+photo\*/gi,
-  /\*uploading(?:\s+photo)?\*/gi,
-  /\*attaching(?:\s+photo)?\*/gi,
+  /\*sends?(?:ing)?(?:\s+a)?\s+(?:photo|pic|image|selfie)\*/gi,
+  /\*uploading(?:\s+(?:photo|pic|image))?\*/gi,
+  /\*attaching(?:\s+(?:photo|pic|image))?\*/gi,
+  /\*(?:smirks?|grins?|winks?|blushes?|giggles?|laughs?|sighs?|moans?|purrs?)\*/gi,
+  /\*leans?(?:\s+(?:in|closer|forward))?\*/gi,
+  /\*bites?(?:\s+(?:her|his|my))?\s+lip\*/gi,
+  /\*types?(?:\s+back)?\*/gi,
+  /\*snaps?(?:\s+a)?\s+(?:photo|pic|selfie)\*/gi,
 ];
 
 const INTENT_METADATA_FIELDS = [
@@ -100,10 +104,18 @@ export const polishChatDisplayText = (text: string) => {
   }
   // **bold** or __bold__ → plain word
   cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/__([^_]+)__/g, '$1');
-  // stray single-asterisk emphasis *word* → word (keep short actions users might want elsewhere)
+  // Remaining short roleplay actions like *smiles softly*
+  cleaned = cleaned.replace(/\*[^*\n]{2,80}\*/g, '');
+  // stray single-asterisk emphasis *word* → word
   cleaned = cleaned.replace(/(?<!\*)\*([a-z][a-z\s]{0,24})\*(?!\*)/gi, '$1');
-  return cleaned.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
+  return cleaned.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').replace(/[ \t]{2,}/g, ' ').trim();
 };
+
+export const containsMetaActionLeak = (text: string) =>
+  META_ACTION_PATTERNS.some((pattern) => {
+    pattern.lastIndex = 0;
+    return pattern.test(text);
+  }) || /\*[^*\n]{2,80}\*/.test(text);
 
 const stripForbiddenSentences = (text: string) =>
   text

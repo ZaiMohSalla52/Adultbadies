@@ -19,7 +19,8 @@ import {
   retrieveRelevantVirtualGirlfriendMemories,
   touchVirtualGirlfriendConversation,
 } from '@/lib/virtual-girlfriend/data';
-import { extractVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
+import { VG_CHAT_MEMORY_RETRIEVAL_LIMIT } from '@/lib/virtual-girlfriend/chat-config';
+import { extractAllVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
 import { getUnlockedImageIds, spendChatMessagePoint } from '@/lib/points/data';
 import { applyChatImageLock } from '@/lib/virtual-girlfriend/chat-image-lock';
@@ -39,7 +40,7 @@ import {
 import { isOutfitPhotoRequest } from '@/lib/virtual-girlfriend/outfit-presets';
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
-import { containsForbiddenReplyLanguage } from '@/lib/virtual-girlfriend/reply-sanitizer';
+import { containsForbiddenReplyLanguage, containsMetaActionLeak } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { moderateVirtualGirlfriendImageRequest } from '@/lib/virtual-girlfriend/safety';
 import { maybeScheduleVirtualGirlfriendProactiveEvent } from '@/lib/virtual-girlfriend/proactive';
 import type { IntimateImageMoment } from '@/lib/virtual-girlfriend/intimacy';
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
       userId: auth.user.id,
       companionId: companion.id,
       queryText: message,
-      maxItems: 8,
+      maxItems: VG_CHAT_MEMORY_RETRIEVAL_LIMIT,
     }),
     getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
     getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
@@ -359,7 +360,7 @@ export async function POST(request: NextRequest) {
             }),
           ]);
 
-          const candidates = extractVirtualGirlfriendMemoryCandidates({
+          const candidates = await extractAllVirtualGirlfriendMemoryCandidates({
             userMessage: message,
             assistantMessage: turn.assistantText,
           });
@@ -492,6 +493,7 @@ export async function POST(request: NextRequest) {
 
         const traceFlags: string[] = [];
         if (containsForbiddenReplyLanguage(combinedContent)) traceFlags.push('forbidden_language_in_final_reply');
+        if (containsMetaActionLeak(combinedContent)) traceFlags.push('meta_action_leak');
         if (imageStarted && photoRequestedThisTurn && !streamAttachments.length && !imageMoment.teaseOnly) {
           traceFlags.push('photo_requested_without_attachment');
         }

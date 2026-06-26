@@ -336,6 +336,8 @@ export const VirtualGirlfriendChatClient = ({
     };
     let liveAttachments: VirtualGirlfriendMessageAttachment[] = [];
     let photoPending = false;
+    let receivedLiveTokens = false;
+    let liveReplyBuffer = '';
 
     const registerChatImage = (attachment: VirtualGirlfriendMessageAttachment) => {
       if (!attachment.imageId || !attachment.imageUrl) return;
@@ -438,6 +440,41 @@ export const VirtualGirlfriendChatClient = ({
       scrollToBottom();
     };
 
+    const appendLiveToken = (token: string) => {
+      receivedLiveTokens = true;
+      liveReplyBuffer += token;
+      const streamId = streamState.assistantId ?? `temp-assistant-${Date.now()}`;
+      streamState.assistantId = streamId;
+      const content = polishChatDisplayText(liveReplyBuffer);
+
+      setMessages((prev) => {
+        const existing = prev.find((message) => message.id === streamId);
+        if (existing) {
+          return prev.map((message) =>
+            message.id === streamId ? { ...message, content } : message,
+          );
+        }
+
+        return [
+          ...prev,
+          {
+            id: streamId,
+            role: 'assistant' as const,
+            content,
+            conversation_id: 'temp',
+            user_id: 'temp',
+            created_at: new Date().toISOString(),
+            moderation: {},
+            model: null,
+            token_count: null,
+            content_type: 'text' as const,
+            attachments: [],
+          },
+        ];
+      });
+      scrollToBottom();
+    };
+
     const revealAssistantReply = async (segments: string[], contentType: DonePayload['contentType']) => {
       const streamId = `temp-assistant-${Date.now()}`;
       streamState.assistantId = streamId;
@@ -495,12 +532,22 @@ export const VirtualGirlfriendChatClient = ({
           if (!line.trim()) continue;
           const event = JSON.parse(line) as StreamEvent;
 
+          if (event.type === 'token') {
+            appendLiveToken(event.payload.token);
+            continue;
+          }
+
           if (event.type === 'text_done') {
             const segments =
               event.payload.segments && event.payload.segments.length > 0
                 ? event.payload.segments
                 : [event.payload.content];
-            await revealAssistantReply(segments, event.payload.contentType);
+            if (receivedLiveTokens) {
+              const polishedSegments = segments.map((segment) => polishChatDisplayText(segment));
+              finalizeSegments(polishedSegments, event.payload.contentType);
+            } else {
+              await revealAssistantReply(segments, event.payload.contentType);
+            }
             photoPending = photoPending || Boolean(event.payload.photoPending);
             if (photoPending) {
               setAwaitingPhoto(true);

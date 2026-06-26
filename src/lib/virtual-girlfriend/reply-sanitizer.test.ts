@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   containsForbiddenReplyLanguage,
+  containsMetaActionLeak,
   polishChatDisplayText,
   sanitizeAssistantReply,
 } from '@/lib/virtual-girlfriend/reply-sanitizer';
@@ -26,6 +27,12 @@ describe('reply sanitizer', () => {
     });
     expect(cleaned.toLowerCase().includes('real-world')).toBe(false);
     expect(cleaned.length > 0).toBe(true);
+  });
+
+  it('detects meta action leaks used in phase0 chat audit', () => {
+    expect(containsMetaActionLeak('*photosending* hey')).toBe(true);
+    expect(containsMetaActionLeak('*leans in* tell me more')).toBe(true);
+    expect(containsMetaActionLeak('Hey babe, miss you.')).toBe(false);
   });
 
   it('strips photosending meta actions and markdown bold', () => {

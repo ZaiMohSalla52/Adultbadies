@@ -2,6 +2,7 @@ import {
   createVirtualGirlfriendProactiveEvent,
   getLatestDeliveredVirtualGirlfriendProactiveEvent,
   getLatestVirtualGirlfriendConversation,
+  getVirtualGirlfriendCompanionById,
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
   getVirtualGirlfriendCompanionImages,
@@ -147,6 +148,45 @@ export const processDueVirtualGirlfriendProactiveEvents = async (input: {
   }
 
   return { deliveredCount, skipped: null };
+};
+
+const proactiveEventSelect =
+  'id,user_id,companion_id,trigger_type,scheduled_at,delivery_status,delivered_at,delivered_message_id,context_snapshot,last_error,created_at,updated_at';
+
+export const processGlobalDueProactiveEvents = async (input?: { limit?: number; serviceToken?: string }) => {
+  const { adminSupabaseRest, requireServiceRoleKey } = await import('@/lib/virtual-girlfriend/phase0/admin-rest');
+  const token = input?.serviceToken ?? requireServiceRoleKey();
+  const limit = input?.limit ?? 12;
+
+  const dueEvents = await adminSupabaseRest<Array<VirtualGirlfriendProactiveEventRecord>>('ai_proactive_events', {
+    searchParams: new URLSearchParams({
+      select: proactiveEventSelect,
+      delivery_status: 'eq.pending',
+      scheduled_at: `lte.${new Date().toISOString()}`,
+      order: 'scheduled_at.asc',
+      limit: String(limit),
+    }),
+  });
+
+  if (!dueEvents.length) {
+    return { deliveredCount: 0, processed: 0 };
+  }
+
+  let deliveredCount = 0;
+
+  for (const event of dueEvents) {
+    const companion = await getVirtualGirlfriendCompanionById(token, event.user_id, event.companion_id);
+    if (!companion?.setup_completed) continue;
+
+    const result = await processDueVirtualGirlfriendProactiveEvents({
+      token,
+      userId: event.user_id,
+      companion,
+    });
+    deliveredCount += result.deliveredCount;
+  }
+
+  return { deliveredCount, processed: dueEvents.length };
 };
 
 const deliverSingleProactiveEvent = async (input: {
