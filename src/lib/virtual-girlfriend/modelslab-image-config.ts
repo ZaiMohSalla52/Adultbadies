@@ -1,10 +1,14 @@
 import { env } from '@/lib/env';
 
 /**
- * Default portrait text2img — ModelsLab `flux` (~10s, reliable in Phase 0 bake-off).
- * Override with MODELSLAB_PORTRAIT_MODEL (e.g. flux-realistic-portrait-v2-0 or Aurelium).
+ * Default portrait text2img — Aurelium (Phase 0 bake-off winner).
+ *
+ * Do NOT default to ModelsLab `flux` or fal Flux Pro for setup portraits: adult-leaning
+ * companion traits (seductive, lingerie) trigger black-card blanks on Flux hosts.
+ * Explicit/nude chat never uses this model — see image-generation-router (Kontext dev / Face Gen).
  */
-export const MODELSLAB_DEFAULT_PORTRAIT_MODEL = 'flux';
+export const MODELSLAB_DEFAULT_PORTRAIT_MODEL =
+  'aurelium-photorealistic-people-bysilas-v1-0-1771498462';
 
 /** Setup portrait picker — keep low to conserve ModelsLab credits. */
 export const PORTRAIT_PREVIEW_CANDIDATE_COUNT = 2;
@@ -20,9 +24,10 @@ export const resolveModelsLabPortraitModel = () =>
   env.MODELSLAB_FLUX_MODEL?.trim() ||
   MODELSLAB_DEFAULT_PORTRAIT_MODEL;
 
-/** Explicit chat img2img — defaults to Aurelium when unset (faster than Face Gen). */
+/** Softer explicit chat img2img — keep on Aurelium/SDXL, separate from portrait override. */
 export const resolveModelsLabSdxlModel = () =>
-  env.MODELSLAB_SDXL_MODEL?.trim() || resolveModelsLabPortraitModel();
+  env.MODELSLAB_SDXL_MODEL?.trim() ||
+  'aurelium-photorealistic-people-bysilas-v1-0-1771498462';
 
 export const isModelsLabRealisticPortraitModel = (modelId: string) =>
   /realistic-portrait|realism/i.test(modelId) && !/aurelium/i.test(modelId);
