@@ -23,7 +23,9 @@ export type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-ty
  */
 
 const FLUX_BASE_URL = env.FLUX_BASE_URL ?? 'https://fal.run';
-const FLUX_MODEL = env.FLUX_MODEL ?? 'fal-ai/flux/dev';
+/** Companion preview/canonical text2img — Pro reduces same-face collapse vs dev/LoRA portraits. */
+const FLUX_COMPANION_MODEL =
+  env.FLUX_COMPANION_MODEL?.trim() || env.FLUX_MODEL?.trim() || 'fal-ai/flux-pro/v1.1';
 const FLUX_KONTEXT_MODEL = env.FLUX_KONTEXT_MODEL ?? 'fal-ai/flux-pro/kontext';
 // Adult chat images use the open-weights Kontext [dev] variant: it honors
 // `enable_safety_checker: false` and has no separate hosted moderation gate, so
@@ -153,7 +155,7 @@ const falProviderOptions = (surface: 'preview' | 'canonical' | 'gallery' | 'chat
 export const generateCanonicalImageWithFlux = async (prompt: string): Promise<GeneratedImage> => {
   const canonicalParams = SURFACE_PARAMS.canonical;
   const response = await callFal(
-    FLUX_MODEL,
+    FLUX_COMPANION_MODEL,
     {
       prompt,
       image_size: resolveImageSize(canonicalParams.aspect_ratio),
@@ -163,7 +165,7 @@ export const generateCanonicalImageWithFlux = async (prompt: string): Promise<Ge
     'Flux image generation failed',
   );
 
-  return extractGeneratedImage(response, FLUX_MODEL);
+  return extractGeneratedImage(response, FLUX_COMPANION_MODEL);
 };
 
 export const generatePortraitPreviewImageWithFlux = async (
@@ -172,7 +174,7 @@ export const generatePortraitPreviewImageWithFlux = async (
 ): Promise<GeneratedImage> => {
   const previewParams = SURFACE_PARAMS.preview;
   const response = await callFal(
-    FLUX_MODEL,
+    FLUX_COMPANION_MODEL,
     {
       prompt: withNegatives(prompt, buildPreviewNegativePrompt()),
       image_size: resolveImageSize(previewParams.aspect_ratio),
@@ -183,7 +185,7 @@ export const generatePortraitPreviewImageWithFlux = async (
     'Flux portrait preview generation failed',
   );
 
-  return extractGeneratedImage(response, FLUX_MODEL);
+  return extractGeneratedImage(response, FLUX_COMPANION_MODEL);
 };
 
 const generateKontextFromReference = async (input: {

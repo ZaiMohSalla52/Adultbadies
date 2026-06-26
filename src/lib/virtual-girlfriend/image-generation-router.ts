@@ -1,17 +1,17 @@
 /*
  * Single routing policy for in-chat image generation.
  *
- * Adult Badies on ModelsLab routes ALL in-chat photos through Face Gen
- * (`/api/v6/image_editing/face_gen`) — uncensored, face-locked, and not subject
- * to Flux Kontext safety/refusal bias. Flux Kontext is retained only for
- * non-adult chat or when ModelsLab is unavailable.
+ * Explicit adult chat routes to SDXL img2img (face-locked, uncensored).
+ * Non-explicit requested-look adult chat can still use Face Gen on ModelsLab.
+ * Flux Kontext is retained for SFW passive chat and as an explicit fallback
+ * when ModelsLab SDXL is unavailable.
  */
 
-export type ChatGenerationProvider = 'face_gen' | 'flux_kontext';
+export type ChatGenerationProvider = 'sdxl' | 'face_gen' | 'flux_kontext';
 
 export type ChatGenerationRoute = {
   provider: ChatGenerationProvider;
-  modelKind: 'face_gen' | 'kontext_pro' | 'kontext_dev';
+  modelKind: 'sdxl' | 'face_gen' | 'kontext_pro' | 'kontext_dev';
   guidanceScale: number;
   numInferenceSteps: number;
   enableSafetyChecker: boolean;
@@ -23,8 +23,30 @@ export const resolveChatGenerationRoute = (input: {
   adultContentEnabled: boolean;
   highExposure?: boolean;
   preferFaceGen?: boolean;
+  preferSdxl?: boolean;
 }): ChatGenerationRoute => {
   const adultChat = input.adultContentEnabled && (input.explicit || input.requestedLook);
+
+  if (input.adultContentEnabled && input.explicit) {
+    if (input.preferSdxl ?? true) {
+      return {
+        provider: 'sdxl',
+        modelKind: 'sdxl',
+        guidanceScale: input.highExposure ? 7.5 : 6.5,
+        numInferenceSteps: input.highExposure ? 36 : 32,
+        enableSafetyChecker: false,
+      };
+    }
+
+    return {
+      provider: 'flux_kontext',
+      modelKind: 'kontext_dev',
+      guidanceScale: input.highExposure ? 7.5 : 6.5,
+      numInferenceSteps: input.highExposure ? 36 : 32,
+      enableSafetyChecker: false,
+    };
+  }
+
   const useFaceGen = adultChat && (input.preferFaceGen ?? true);
 
   if (useFaceGen) {
@@ -33,16 +55,6 @@ export const resolveChatGenerationRoute = (input: {
       modelKind: 'face_gen',
       guidanceScale: 7.5,
       numInferenceSteps: 41,
-      enableSafetyChecker: false,
-    };
-  }
-
-  if (input.adultContentEnabled && input.explicit) {
-    return {
-      provider: 'flux_kontext',
-      modelKind: 'kontext_dev',
-      guidanceScale: input.highExposure ? 7.5 : 6.5,
-      numInferenceSteps: input.highExposure ? 36 : 32,
       enableSafetyChecker: false,
     };
   }

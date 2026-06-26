@@ -62,7 +62,7 @@ const preloadPortraitUrl = (url: string) =>
       window.clearTimeout(timer);
       resolve(false);
     };
-    img.referrerPolicy = 'origin';
+    img.referrerPolicy = 'no-referrer';
     img.src = trimmed;
   });
 
@@ -103,7 +103,15 @@ const PortraitPhoto = ({
     }
   }, []);
 
-  if (failed) return null;
+  if (failed) {
+    return (
+      <div className={wrapClassName}>
+        <div className={styles.portraitPhotoError} role="status">
+          Failed to load
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={wrapClassName}>
@@ -115,7 +123,7 @@ const PortraitPhoto = ({
         className={`${imageClassName}${loaded ? ` ${styles.portraitPhotoLoaded}` : ''}`}
         loading="eager"
         decoding="async"
-        referrerPolicy="origin"
+        referrerPolicy="no-referrer"
         onLoad={() => setLoaded(true)}
         onError={() => {
           setFailed(true);
@@ -676,8 +684,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
       if (!response.ok || !body.candidates?.length) throw new Error(body.error ?? 'Unable to generate portraits now.');
 
       const validCandidates = await filterBrowserLoadableCandidates(filterPortraitCandidates(body.candidates));
-      if (validCandidates.length < 2) {
-        throw new Error('Portrait previews could not be displayed. Check image storage (Cloudinary) and tap Regenerate looks.');
+      if (validCandidates.length < 1) {
+        throw new Error('Portrait previews could not be displayed. Check image storage (R2 or Cloudinary) and tap Regenerate looks.');
       }
 
       setFailedPortraitIds(new Set());

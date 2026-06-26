@@ -355,11 +355,25 @@
   object-fit: cover;
   object-position: center top;
   display: block;
+  opacity: 0;
 }
 
 .portraitPhotoLoaded {
   opacity: 1;
   transition: opacity 220ms ease;
+}
+
+.portraitPhotoError {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: linear-gradient(145deg, rgba(255, 46, 99, 0.08), rgba(255, 255, 255, 0.03));
 }
 
 @keyframes portraitShimmer {

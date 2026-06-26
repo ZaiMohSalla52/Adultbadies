@@ -6,6 +6,7 @@ import {
   generateGalleryImageFromReference,
   generateChatImageFromReference,
   generateChatImageFromReferenceFaceGen,
+  generateChatImageFromReferenceSdxl,
   type GeneratedImage,
   type PortraitReferenceImage,
 } from '@/lib/virtual-girlfriend/image-provider';
@@ -219,6 +220,7 @@ export type VirtualGirlfriendChatMachineRequest = {
 export type VirtualGirlfriendPortraitPreviewRequest = {
   kind: 'portrait_preview';
   count?: number;
+  userId?: string;
   skinTone?: string;
   breastSize?: string;
   styleVibe?: string;
@@ -1173,6 +1175,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
         : false,
       preferFaceGen: resolveVgImageProvider() === 'modelslab',
+      preferSdxl: resolveVgImageProvider() === 'modelslab',
     });
     logImageMachine(scope, 'generation_route', {
       provider: route.provider,
@@ -1188,29 +1191,41 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         : { bytes: reference.bytes, mimeType: reference.mimeType };
 
     const generated =
-      route.provider === 'face_gen' && input.userMessage?.trim()
+      route.provider === 'sdxl'
         ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
-            generateChatImageFromReferenceFaceGen({
-              userMessage: input.userMessage!.trim(),
+            generateChatImageFromReferenceSdxl({
+              prompt,
               reference: faceGenReference,
-              wardrobeContext: wardrobeContextFromCompanion(input.companion),
               numInferenceSteps: route.numInferenceSteps,
+              guidanceScale: route.guidanceScale,
+              highExposure: chatPromptInput.explicitExposureLevel
+                ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
+                : false,
             }),
           )
-        : await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
-            runProviderGeneration({
-              scope,
-              mode: 'chat_from_reference',
-              prompt,
-              reference: { bytes: reference.bytes, mimeType: reference.mimeType },
-              kontextOptions: {
-                guidanceScale: route.guidanceScale,
+        : route.provider === 'face_gen' && input.userMessage?.trim()
+          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
+              generateChatImageFromReferenceFaceGen({
+                userMessage: input.userMessage!.trim(),
+                reference: faceGenReference,
+                wardrobeContext: wardrobeContextFromCompanion(input.companion),
                 numInferenceSteps: route.numInferenceSteps,
-                enableSafetyChecker: route.enableSafetyChecker,
-              },
-              preferDevModel: route.modelKind === 'kontext_dev',
-            }),
-          );
+              }),
+            )
+          : await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
+              runProviderGeneration({
+                scope,
+                mode: 'chat_from_reference',
+                prompt,
+                reference: { bytes: reference.bytes, mimeType: reference.mimeType },
+                kontextOptions: {
+                  guidanceScale: route.guidanceScale,
+                  numInferenceSteps: route.numInferenceSteps,
+                  enableSafetyChecker: route.enableSafetyChecker,
+                },
+                preferDevModel: route.modelKind === 'kontext_dev',
+              }),
+            );
 
     const chatImage = await buildImageRecord({
       token: input.token,
@@ -1276,8 +1291,34 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
   }
 };
 
-const portraitPreviewDeliveryUrl = (generated: GeneratedImage) =>
-  generated.temporaryUrl?.trim() || toDataUrl(generated.bytes, generated.mimeType);
+const portraitPreviewDeliveryUrl = (generated: GeneratedImage) => {
+  if (generated.bytes.byteLength > 0) {
+    return toDataUrl(generated.bytes, generated.mimeType);
+  }
+  return generated.temporaryUrl?.trim() || '';
+};
+
+const derivePortraitPreviewSeed = (input: VirtualGirlfriendPortraitPreviewRequest, index: number) => {
+  const fingerprint = JSON.stringify({
+    userId: input.userId ?? 'anonymous',
+    sex: input.sex,
+    origin: input.origin,
+    hairColor: input.hairColor,
+    hairLength: input.hairLength,
+    eyeColor: input.eyeColor,
+    bodyType: input.bodyType,
+    skinTone: input.skinTone,
+    breastSize: input.breastSize,
+    age: input.age,
+    styleVibe: input.styleVibe,
+    personality: input.personality,
+    occupation: input.occupation,
+    freeformDetails: input.freeformDetails,
+    index,
+  });
+  const hash = crypto.createHash('sha256').update(fingerprint).digest();
+  return hash.readUInt32BE(0) % 2_147_483_647;
+};
 
 export const runPortraitPreviewImageMachine = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
@@ -1292,7 +1333,7 @@ const generatePortraitPreviewCandidate = async (
   index: number,
 ): Promise<VirtualGirlfriendPortraitPreviewCandidate> => {
   const prompt = buildPreviewPrompt(input, index);
-  const seed = Math.floor(Math.random() * 2147483647);
+  const seed = derivePortraitPreviewSeed(input, index);
   const generated = await withRetries({
     attempts: 2,
     scope: 'portrait_preview',
@@ -1333,7 +1374,7 @@ const fallbackParallelGeneration = async (
       label: `Candidate ${successIndex + 1}`,
     }));
 
-  if (candidates.length < 2) {
+  if (candidates.length < 1) {
     throw new Error('Not enough portrait preview candidates generated successfully');
   }
 

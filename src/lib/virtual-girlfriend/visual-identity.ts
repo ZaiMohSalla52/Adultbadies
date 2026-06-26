@@ -159,14 +159,19 @@ const LIGHTING_BY_PERSONALITY: Record<string, string> = {
 };
 
 const FACE_SHAPE_BY_ARCHETYPE: Record<string, string> = {
+  'romantic muse': 'soft heart-shaped face, warm inviting eyes',
+  'sultry tease': 'defined cheekbones with alluring angular features',
+  'power partner': 'strong defined jawline, confident piercing gaze',
+  'fun buddy': 'bright approachable face with lively expressive eyes',
+  'intellectual equal': 'refined oval face, intelligent bright eyes',
   'girl next door': 'approachable oval face shape',
   'femme fatale': 'sharp defined angular face with strong cheekbones',
-  'intellectual': 'refined oval face, intelligent bright eyes',
+  intellectual: 'refined oval face, intelligent bright eyes',
   'free spirit': 'soft rounded face with expressive eyes',
-  'dominant': 'strong defined jawline, intense piercing gaze',
-  'submissive': 'soft delicate features, gentle rounded face',
-  'romantic': 'soft heart-shaped face, warm inviting eyes',
-  'playful': 'bright round face with mischievous sparkling eyes',
+  dominant: 'strong defined jawline, intense piercing gaze',
+  submissive: 'soft delicate features, gentle rounded face',
+  romantic: 'soft heart-shaped face, warm inviting eyes',
+  playful: 'bright round face with mischievous sparkling eyes',
 };
 
 const ACCESSORY_BY_STYLE: Record<string, string> = {

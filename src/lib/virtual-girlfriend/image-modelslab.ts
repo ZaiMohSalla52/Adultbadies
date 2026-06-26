@@ -202,7 +202,7 @@ export const generatePortraitPreviewImageWithModelsLab = async (
     PREVIEW_POLL,
   );
 
-  return extractGeneratedImage(payload, MODELSLAB_PORTRAIT_MODEL, '/v6/images/text2img', { skipDownload: true });
+  return extractGeneratedImage(payload, MODELSLAB_PORTRAIT_MODEL, '/v6/images/text2img');
 };
 
 const resolveReferenceInitImage = async (input: {

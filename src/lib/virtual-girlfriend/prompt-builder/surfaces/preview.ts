@@ -12,6 +12,8 @@ import {
   getPreviewExpression,
   getPreviewFramingVariant,
   getPreviewLightingVariant,
+  getPreviewSceneVariant,
+  EXPOSURE_LIGHTING_TAIL,
   PHOTO_REALISM_TAIL,
 } from '../primitives/composition';
 import { buildAllNegatives } from '../primitives/negatives';
@@ -112,6 +114,7 @@ export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: numb
     `${resolveSubjectStrict(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
     getPreviewFramingVariant(variantIndex),
+    getPreviewSceneVariant(variantIndex),
     getCompositionAnchor('preview'),
     getPreviewLightingVariant(variantIndex),
     getPreviewExpression(variantIndex),
@@ -123,6 +126,7 @@ export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: numb
     parts.push(`Additional details: ${input.freeformDetails.trim()}.`);
   }
 
+  parts.push(EXPOSURE_LIGHTING_TAIL);
   parts.push(PHOTO_REALISM_TAIL);
 
   parts.push(buildAllNegatives());

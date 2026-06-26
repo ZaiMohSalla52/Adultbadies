@@ -61,22 +61,23 @@ export async function POST(request: NextRequest) {
     // Preview-only: this does not persist companion images and is intentionally separate from canonical setup persistence.
     const result = await runPortraitPreviewImageMachine({
       kind: 'portrait_preview',
+      userId: auth.user.id,
       ...resolvedTraits,
       count: 3,
     });
 
     const delivered = await deliverPortraitPreviewCandidates(result.candidates, auth.user.id);
-    const hostedOnly = delivered.filter((candidate) => /^https?:\/\//i.test(candidate.imageDataUrl.trim()));
-    let candidates = await filterReachablePortraitPreviewCandidates(hostedOnly);
+    const hosted = delivered.filter((candidate) => /^https?:\/\//i.test(candidate.imageDataUrl.trim()));
+    let candidates = hosted.length > 0 ? await filterReachablePortraitPreviewCandidates(hosted) : [];
 
-    if (candidates.length < 2) {
+    if (candidates.length < 1) {
       const dataUrlFallback = delivered.filter((candidate) => /^data:image\//i.test(candidate.imageDataUrl.trim()));
-      if (dataUrlFallback.length >= 2) {
+      if (dataUrlFallback.length >= 1) {
         candidates = dataUrlFallback;
       }
     }
 
-    if (candidates.length < 2) {
+    if (candidates.length < 1) {
       return NextResponse.json(
         {
           error: isBrowserImageDeliveryConfigured()

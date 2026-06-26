@@ -1,3 +1,4 @@
+import { env } from '@/lib/env';
 import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
 import {
@@ -17,6 +18,7 @@ import {
   generateChatImageFromReferenceWithModelsLab,
   generateChatImageWithModelsLabFaceGen,
 } from '@/lib/virtual-girlfriend/image-modelslab';
+import { generateExplicitChatImageWithModelsLabSdxl } from '@/lib/virtual-girlfriend/image-sdxl';
 
 export type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
@@ -30,15 +32,22 @@ export type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-gir
 
 const isModelsLabImageProvider = () => resolveVgImageProvider() === 'modelslab';
 
+/** Companion text2img always prefers Flux Pro when fal is configured. */
+const useFluxForCompanionSurfaces = () => Boolean(env.FLUX_API_KEY?.trim());
+
 export const generateCanonicalImage = (prompt: string): Promise<GeneratedImage> =>
-  isModelsLabImageProvider()
-    ? generateCanonicalImageWithModelsLab(prompt)
-    : generateCanonicalImageWithFlux(prompt);
+  useFluxForCompanionSurfaces()
+    ? generateCanonicalImageWithFlux(prompt)
+    : isModelsLabImageProvider()
+      ? generateCanonicalImageWithModelsLab(prompt)
+      : generateCanonicalImageWithFlux(prompt);
 
 export const generatePortraitPreviewImage = (prompt: string, seed?: number): Promise<GeneratedImage> =>
-  isModelsLabImageProvider()
-    ? generatePortraitPreviewImageWithModelsLab(prompt, seed)
-    : generatePortraitPreviewImageWithFlux(prompt, seed);
+  useFluxForCompanionSurfaces()
+    ? generatePortraitPreviewImageWithFlux(prompt, seed)
+    : isModelsLabImageProvider()
+      ? generatePortraitPreviewImageWithModelsLab(prompt, seed)
+      : generatePortraitPreviewImageWithFlux(prompt, seed);
 
 export type PortraitReferenceImage =
   | { bytes: Buffer; mimeType: string }
@@ -92,6 +101,19 @@ export const generateChatImageFromReferenceFaceGen = (input: {
     throw new Error('Face Gen chat images require ModelsLab (MODELSLAB_API_KEY).');
   }
   return generateChatImageWithModelsLabFaceGen(input);
+};
+
+export const generateChatImageFromReferenceSdxl = (input: {
+  prompt: string;
+  reference: PortraitReferenceImage;
+  numInferenceSteps?: number;
+  guidanceScale?: number;
+  highExposure?: boolean;
+}): Promise<GeneratedImage> => {
+  if (!env.MODELSLAB_API_KEY?.trim()) {
+    throw new Error('SDXL explicit chat images require ModelsLab (MODELSLAB_API_KEY).');
+  }
+  return generateExplicitChatImageWithModelsLabSdxl(input);
 };
 
 /** @deprecated Use generateChatImageFromReferenceFaceGen */

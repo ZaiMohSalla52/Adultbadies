@@ -22,10 +22,13 @@ export const env = {
   MODELSLAB_KONTEXT_PRO_MODEL: process.env.MODELSLAB_KONTEXT_PRO_MODEL,
   MODELSLAB_KONTEXT_DEV_MODEL: process.env.MODELSLAB_KONTEXT_DEV_MODEL,
   MODELSLAB_FACE_GEN_MODEL: process.env.MODELSLAB_FACE_GEN_MODEL,
+  MODELSLAB_SDXL_MODEL: process.env.MODELSLAB_SDXL_MODEL,
   // Image generation: Flux via fal.ai (fallback when MODELSLAB_API_KEY unset).
   FLUX_API_KEY: process.env.FLUX_API_KEY,
   FLUX_BASE_URL: process.env.FLUX_BASE_URL,
   FLUX_MODEL: process.env.FLUX_MODEL,
+  /** Companion portrait/canonical text2img — defaults to Flux Pro for diversity. */
+  FLUX_COMPANION_MODEL: process.env.FLUX_COMPANION_MODEL,
   FLUX_KONTEXT_MODEL: process.env.FLUX_KONTEXT_MODEL,
   // Kontext model for adult chat images. Defaults to the open-weights
   // fal-ai/flux-kontext/dev, which honors enable_safety_checker:false and has no

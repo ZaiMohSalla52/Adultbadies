@@ -35,6 +35,14 @@ export const PREVIEW_EXPRESSIONS: string[] = [
   'Warm genuine smile, bright expressive eyes.',
   'Soft thoughtful look, slight natural head tilt, subtle allure.',
   'Calm candid expression, natural unposed authenticity.',
+  'Playful half-smile with bright eyes, candid charm.',
+  'Serene composed expression, quiet magnetic confidence.',
+  'Flirtatious knowing glance, relaxed lips, natural chemistry.',
+  'Bright open laugh, joyful candid energy.',
+  'Intense focused stare, subtle smolder, adult allure.',
+  'Gentle shy smile, soft vulnerable warmth.',
+  'Bold direct eye contact, self-assured sensual presence.',
+  'Dreamy off-camera gaze, cinematic romantic mood.',
 ];
 
 export const PREVIEW_LIGHTING_VARIANTS: string[] = [
@@ -42,6 +50,14 @@ export const PREVIEW_LIGHTING_VARIANTS: string[] = [
   'Cinematic warm side lighting, slight rim light on hair.',
   'Clean outdoor natural daylight, soft shadows.',
   'Warm indoor ambient light, intimate atmospheric glow.',
+  'Late-afternoon sun flare, honey-toned skin highlights.',
+  'Soft overcast daylight, even flattering skin tones.',
+  'Moody bar or lounge ambient light, rich warm shadows.',
+  'Bright café window light, crisp natural color.',
+  'Neon-accented urban night light, cinematic color contrast.',
+  'Cozy bedroom lamp glow, intimate low-key warmth.',
+  'Open-shade outdoor portrait light, clean detail.',
+  'Backlit golden hour rim light with soft fill on face.',
 ];
 
 export function getPreviewLightingVariant(variantIndex: number): string {
@@ -53,7 +69,34 @@ export const PREVIEW_FRAMING_VARIANTS: string[] = [
   'Upper chest and face, slight breathing room, natural crop.',
   'Tight face-forward portrait, eyes at upper third.',
   'Natural waist-up relaxed framing, slight environmental context.',
+  'Three-quarter angle portrait, natural shoulder turn, dimensional face.',
+  'Slightly off-center composition, candid documentary framing.',
+  'Environmental portrait with soft background context, subject still dominant.',
+  'Tight crop from collarbone up, intimate portrait energy.',
+  'Relaxed seated portrait framing, natural posture.',
+  'Standing portrait with subtle body language, confident stance.',
+  'Over-the-shoulder glance back toward camera, dynamic candid angle.',
+  'Mirror-adjacent selfie-style crop, authentic phone-photo feel.',
 ];
+
+export const PREVIEW_SCENE_VARIANTS: string[] = [
+  'Urban street background with soft bokeh.',
+  'Cozy apartment interior with warm decor blur.',
+  'Sunlit park or garden greenery in the background.',
+  'Modern café or restaurant ambiance behind the subject.',
+  'Rooftop or balcony cityscape softly out of focus.',
+  'Minimal bedroom or living-room setting, intimate and real.',
+  'Gym or studio backdrop with clean athletic context.',
+  'Bookstore or library shelves softly blurred behind.',
+  'Nightlife lounge atmosphere with warm accent lights.',
+  'Beach or waterfront natural scenery in soft focus.',
+  'Office or workspace hints in the background, professional context.',
+  'Art studio or creative space with textured backdrop.',
+];
+
+export function getPreviewSceneVariant(variantIndex: number): string {
+  return PREVIEW_SCENE_VARIANTS[variantIndex % PREVIEW_SCENE_VARIANTS.length];
+}
 
 export function getPreviewFramingVariant(variantIndex: number): string {
   return PREVIEW_FRAMING_VARIANTS[variantIndex % PREVIEW_FRAMING_VARIANTS.length];
