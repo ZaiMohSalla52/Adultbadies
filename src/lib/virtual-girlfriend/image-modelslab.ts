@@ -33,7 +33,7 @@ export type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-ty
  * Portrait preview / fallback canonical text2img → Aurelium (MODELSLAB_PORTRAIT_MODEL, safety_checker off)
  * Setup canonical from selected portrait → direct persist (image-machine, no API)
  * Gallery from canonical → flux-kontext-pro (v7 img2img)
- * Adult explicit chat → SDXL img2img; sexual requested-look → Face Gen
+ * Adult explicit chat → Face Gen first; img2img fallback for sexual requested-look / failures
  * Passive adult chat img2img fallback → flux-kontext-dev (v6, safety_checker off)
  */
 

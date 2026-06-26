@@ -1304,25 +1304,51 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         explicitHighExposure: highExposure,
       });
 
+    const tryKontextExplicit = () =>
+      withTimeout('kontext_explicit', MACHINE_TIMEOUT_MS.chatKontextAttempt, generateKontextExplicitAttempt);
+
+    const trySdxlExplicit = () =>
+      withTimeout('sdxl_generation', MACHINE_TIMEOUT_MS.chatSdxlAttempt, () =>
+        generateChatImageFromReferenceSdxl({
+          prompt,
+          userMessage: input.userMessage?.trim(),
+          reference: faceGenReference,
+          numInferenceSteps: route.numInferenceSteps,
+          guidanceScale: route.guidanceScale,
+          highExposure,
+        }),
+      );
+
+    const tryImg2ImgExplicit = () => (highExposure ? tryKontextExplicit() : trySdxlExplicit());
+
     const generateExplicitWithFallback = async () => {
-      const tryPrimary = async () => {
-        if (route.provider === 'flux_kontext' && route.modelKind === 'kontext_dev') {
-          return withTimeout('kontext_explicit', MACHINE_TIMEOUT_MS.chatKontextAttempt, generateKontextExplicitAttempt);
-        }
-        return withTimeout('sdxl_generation', MACHINE_TIMEOUT_MS.chatSdxlAttempt, () =>
-          generateChatImageFromReferenceSdxl({
-            prompt,
-            userMessage: input.userMessage?.trim(),
-            reference: faceGenReference,
-            numInferenceSteps: route.numInferenceSteps,
-            guidanceScale: route.guidanceScale,
-            highExposure,
-          }),
-        );
+      const tryFaceGenPrimary = async () => {
+        const result = await generateFaceGenFallback();
+        rejectPortraitClone(result, 'face_gen');
+        return result;
       };
 
+      if (route.provider === 'face_gen') {
+        try {
+          return await tryFaceGenPrimary();
+        } catch (primaryError) {
+          if (!input.userMessage?.trim()) throw primaryError;
+          logImageMachine(scope, 'explicit_face_gen_fallback_img2img', {
+            reason: primaryError instanceof Error ? primaryError.message : 'face_gen_primary_failed',
+            timedOut: primaryError instanceof Error && primaryError.message.includes('timeout'),
+            cloneRejected:
+              primaryError instanceof VirtualGirlfriendImageMachineError
+              && primaryError.message.includes('too similar'),
+            fallback: highExposure ? 'kontext_dev' : 'sdxl',
+          });
+          const result = await tryImg2ImgExplicit();
+          rejectPortraitClone(result, highExposure ? 'flux_kontext' : 'sdxl');
+          return result;
+        }
+      }
+
       try {
-        const result = await tryPrimary();
+        const result = await tryImg2ImgExplicit();
         rejectPortraitClone(result, route.provider);
         return result;
       } catch (primaryError) {
@@ -1335,7 +1361,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
             primaryError instanceof VirtualGirlfriendImageMachineError
             && primaryError.message.includes('too similar'),
         });
-        return generateFaceGenFallback();
+        return tryFaceGenPrimary();
       }
     };
 
@@ -1348,10 +1374,10 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     }
 
     const generated =
-      route.provider === 'face_gen' && input.userMessage?.trim()
-        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateFaceGenFallback)
-        : chatPromptInput.explicitIntent
-          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateExplicitWithFallback)
+      chatPromptInput.explicitIntent
+        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateExplicitWithFallback)
+        : route.provider === 'face_gen' && input.userMessage?.trim()
+          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateFaceGenFallback)
           : await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
               runProviderGeneration({
                 scope,

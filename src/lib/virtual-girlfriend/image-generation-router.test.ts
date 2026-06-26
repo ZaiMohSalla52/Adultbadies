@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
 
 describe('resolveChatGenerationRoute', () => {
-  it('routes high-exposure explicit nude chat to Kontext dev when ModelsLab preferred', () => {
+  it('routes high-exposure explicit nude chat to Face Gen when ModelsLab preferred', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
@@ -11,19 +11,34 @@ describe('resolveChatGenerationRoute', () => {
       preferFaceGen: true,
       preferSdxl: true,
     });
-    expect(route.provider).toBe('flux_kontext');
-    expect(route.modelKind).toBe('kontext_dev');
+    expect(route.provider).toBe('face_gen');
+    expect(route.modelKind).toBe('face_gen');
     expect(route.enableSafetyChecker).toBe(false);
-    expect(route.numInferenceSteps).toBe(32);
+    expect(route.numInferenceSteps).toBe(41);
   });
 
-  it('routes softer explicit adult chat to SDXL when enabled', () => {
+  it('routes softer explicit adult chat to Face Gen when ModelsLab preferred', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
       adultContentEnabled: true,
       highExposure: false,
       preferSdxl: true,
+      preferFaceGen: true,
+    });
+    expect(route.provider).toBe('face_gen');
+    expect(route.modelKind).toBe('face_gen');
+    expect(route.enableSafetyChecker).toBe(false);
+  });
+
+  it('routes softer explicit adult chat to SDXL when Face Gen disabled', () => {
+    const route = resolveChatGenerationRoute({
+      explicit: true,
+      requestedLook: true,
+      adultContentEnabled: true,
+      highExposure: false,
+      preferSdxl: true,
+      preferFaceGen: false,
     });
     expect(route.provider).toBe('sdxl');
     expect(route.modelKind).toBe('sdxl');
@@ -91,17 +106,17 @@ describe('resolveChatGenerationRoute', () => {
     expect(route.enableSafetyChecker).toBe(false);
   });
 
-  it('falls back explicit to face gen when SDXL disabled but ModelsLab preferred', () => {
+  it('routes explicit to Kontext dev when both Face Gen and SDXL disabled', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
       adultContentEnabled: true,
-      highExposure: false,
+      highExposure: true,
       preferSdxl: false,
-      preferFaceGen: true,
+      preferFaceGen: false,
     });
-    expect(route.provider).toBe('face_gen');
-    expect(route.modelKind).toBe('face_gen');
+    expect(route.provider).toBe('flux_kontext');
+    expect(route.modelKind).toBe('kontext_dev');
     expect(route.enableSafetyChecker).toBe(false);
   });
 });
