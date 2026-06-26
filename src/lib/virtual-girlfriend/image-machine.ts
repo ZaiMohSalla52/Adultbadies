@@ -650,7 +650,7 @@ const buildImageRecord = async (input: {
         });
         if (!delivery?.deliveryUrl?.trim()) {
           throw new Error(
-            'No public image delivery configured. Set CLOUDINARY_* (recommended) or R2_PUBLIC_BASE_URL env vars.',
+            'No public image delivery configured. Set R2_PUBLIC_BASE_URL (pub-*.r2.dev) or CLOUDINARY_* env vars.',
           );
         }
         return delivery;

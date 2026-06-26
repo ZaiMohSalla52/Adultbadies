@@ -36,9 +36,33 @@ describe('publishBrowserImage delivery priority', () => {
     vi.clearAllMocks();
   });
 
-  it('prefers Cloudinary when configured', async () => {
+  it('prefers R2 public when configured', async () => {
     vi.mocked(isCloudinaryConfigured).mockReturnValue(true);
     vi.mocked(isR2PublicDeliveryConfigured).mockReturnValue(true);
+    vi.mocked(uploadToR2).mockResolvedValue({
+      provider: 'cloudflare_r2',
+      key: 'portrait-previews/u1/s1-1.png',
+      bucket: 'bucket',
+    });
+
+    const result = await publishBrowserImage({
+      bytes: Buffer.from('png-bytes'),
+      mimeType: 'image/png',
+      storageKey: 'portrait-previews/u1/s1-1.png',
+      cloudinaryFolderPath: 'portrait-previews/u1',
+      cloudinaryPublicId: 's1-1',
+    });
+
+    expect(result?.provider).toBe('cloudflare_r2');
+    expect(result?.deliveryUrl).toContain('r2.example');
+    expect(uploadToR2).toHaveBeenCalledTimes(1);
+    expect(uploadToCloudinary).not.toHaveBeenCalled();
+  });
+
+  it('falls back to Cloudinary when R2 fails', async () => {
+    vi.mocked(isCloudinaryConfigured).mockReturnValue(true);
+    vi.mocked(isR2PublicDeliveryConfigured).mockReturnValue(true);
+    vi.mocked(uploadToR2).mockRejectedValue(new Error('r2 down'));
     vi.mocked(uploadToCloudinary).mockResolvedValue({
       provider: 'cloudinary',
       deliveryUrl: 'https://res.cloudinary.com/demo/image/upload/v1/portrait.png',
@@ -51,34 +75,10 @@ describe('publishBrowserImage delivery priority', () => {
       bytes: Buffer.from('png-bytes'),
       mimeType: 'image/png',
       storageKey: 'portrait-previews/u1/s1-1.png',
-      cloudinaryFolderPath: 'portrait-previews/u1',
-      cloudinaryPublicId: 's1-1',
     });
 
     expect(result?.provider).toBe('cloudinary');
-    expect(result?.deliveryUrl).toContain('cloudinary.com');
-    expect(uploadToCloudinary).toHaveBeenCalledTimes(1);
-    expect(uploadToR2).not.toHaveBeenCalled();
-  });
-
-  it('falls back to R2 when Cloudinary fails', async () => {
-    vi.mocked(isCloudinaryConfigured).mockReturnValue(true);
-    vi.mocked(isR2PublicDeliveryConfigured).mockReturnValue(true);
-    vi.mocked(uploadToCloudinary).mockRejectedValue(new Error('cloudinary down'));
-    vi.mocked(uploadToR2).mockResolvedValue({
-      provider: 'cloudflare_r2',
-      key: 'portrait-previews/u1/s1-1.png',
-      bucket: 'bucket',
-    });
-
-    const result = await publishBrowserImage({
-      bytes: Buffer.from('png-bytes'),
-      mimeType: 'image/png',
-      storageKey: 'portrait-previews/u1/s1-1.png',
-    });
-
-    expect(result?.provider).toBe('cloudflare_r2');
-    expect(uploadToCloudinary).toHaveBeenCalledTimes(1);
     expect(uploadToR2).toHaveBeenCalledTimes(1);
+    expect(uploadToCloudinary).toHaveBeenCalledTimes(1);
   });
 });

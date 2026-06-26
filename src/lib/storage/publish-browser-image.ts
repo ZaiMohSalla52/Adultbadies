@@ -25,7 +25,7 @@ const extensionFromMimeType = (mimeType: string) => {
 
 /**
  * Upload bytes and return a browser-loadable HTTPS URL.
- * Cloudinary first (reliable CDN/img tags), then R2 public, then ModelsLab temp URL.
+ * R2 public first (source-of-truth bucket), then Cloudinary, then ModelsLab temp URL.
  */
 export const publishBrowserImage = async (input: {
   bytes: Buffer;
@@ -34,6 +34,26 @@ export const publishBrowserImage = async (input: {
   cloudinaryFolderPath?: string;
   cloudinaryPublicId?: string;
 }): Promise<BrowserImageDelivery | null> => {
+  if (isR2PublicDeliveryConfigured()) {
+    try {
+      await uploadToR2({
+        key: input.storageKey,
+        body: input.bytes,
+        contentType: input.mimeType,
+      });
+      return {
+        deliveryUrl: buildR2PublicUrl(input.storageKey),
+        provider: 'cloudflare_r2',
+        publicId: input.storageKey,
+      };
+    } catch (error) {
+      console.warn('[publish-browser-image] R2 public delivery upload failed; trying Cloudinary fallback', {
+        storageKey: input.storageKey,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   if (isCloudinaryConfigured()) {
     try {
       const uploaded = await uploadToCloudinary({
@@ -50,27 +70,7 @@ export const publishBrowserImage = async (input: {
         height: uploaded.height,
       };
     } catch (error) {
-      console.warn('[publish-browser-image] Cloudinary upload failed; trying R2 fallback', {
-        storageKey: input.storageKey,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  if (isR2PublicDeliveryConfigured()) {
-    try {
-      await uploadToR2({
-        key: input.storageKey,
-        body: input.bytes,
-        contentType: input.mimeType,
-      });
-      return {
-        deliveryUrl: buildR2PublicUrl(input.storageKey),
-        provider: 'cloudflare_r2',
-        publicId: input.storageKey,
-      };
-    } catch (error) {
-      console.warn('[publish-browser-image] R2 public delivery upload failed', {
+      console.warn('[publish-browser-image] Cloudinary upload failed', {
         storageKey: input.storageKey,
         error: error instanceof Error ? error.message : String(error),
       });
