@@ -3,10 +3,17 @@ import { VG_FAST_MODEL } from '@/lib/virtual-girlfriend/llm-models';
 import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend/llm-provider';
 import {
   createVisualProfile,
+  getLatestVisualProfileForCompanion,
   listVirtualGirlfriendCompanions,
   setCanonicalReferenceImageForVisualProfile,
 } from '@/lib/virtual-girlfriend/data';
 import { wardrobeDirectionForStyle } from '@/lib/virtual-girlfriend/companion-wardrobe';
+import {
+  buildFaceDnaIdentityInvariants,
+  buildFaceDnaLine,
+  buildFaceDnaTokens,
+  collectSiblingDistinctnessCues,
+} from '@/lib/virtual-girlfriend/identity-face-dna';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import {
   runRegenerateCanonicalOnlyImageMachine,
@@ -48,6 +55,7 @@ type BuildIdentityInput = {
   companionName: string;
   persona: PersonaProfile;
   existingCompanionSignatures?: string[];
+  existingSiblingOverlapCues?: string[];
 };
 
 const hasSemanticValue = (value: string | null | undefined) => Boolean(value && value.trim());
@@ -161,22 +169,6 @@ const LIGHTING_BY_PERSONALITY: Record<string, string> = {
   bubbly_energetic: 'bright vibrant sunny natural lighting',
 };
 
-const FACE_SHAPE_BY_ARCHETYPE: Record<string, string> = {
-  'romantic muse': 'soft heart-shaped face, warm inviting eyes',
-  'sultry tease': 'defined cheekbones with alluring angular features',
-  'power partner': 'strong defined jawline, confident piercing gaze',
-  'fun buddy': 'bright approachable face with lively expressive eyes',
-  'intellectual equal': 'refined oval face, intelligent bright eyes',
-  'girl next door': 'approachable oval face shape',
-  'femme fatale': 'sharp defined angular face with strong cheekbones',
-  intellectual: 'refined oval face, intelligent bright eyes',
-  'free spirit': 'soft rounded face with expressive eyes',
-  dominant: 'strong defined jawline, intense piercing gaze',
-  submissive: 'soft delicate features, gentle rounded face',
-  romantic: 'soft heart-shaped face, warm inviting eyes',
-  playful: 'bright round face with mischievous sparkling eyes',
-};
-
 const ACCESSORY_BY_STYLE: Record<string, string> = {
   casual: 'simple stud earrings or delicate necklace',
   elegant: 'pearl earrings or dainty gold jewelry',
@@ -206,9 +198,20 @@ const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisua
     ?? wardrobeDirectionForStyle(resolvedStyle, input.sex)
     ?? 'stylish figure-flattering outfit with confident sensual energy';
   const lightingMood = LIGHTING_BY_PERSONALITY[resolvedPersonality] ?? 'warm cinematic natural lighting with shallow depth of field';
-  const faceShape = FACE_SHAPE_BY_ARCHETYPE[resolvedArchetype] ?? 'symmetrical face with expressive eyes and defined features';
+  const faceDnaInput = {
+    userId: input.companionName,
+    sex: input.sex ?? 'female',
+    origin: resolvedOrigin,
+    age: input.age && Number.isFinite(input.age) ? input.age : 26,
+    hairColor: resolvedHairColor,
+    eyeColor: resolvedEyeColor,
+    variantIndex: 0,
+  };
+  const faceDnaInvariants = buildFaceDnaIdentityInvariants(faceDnaInput);
+  const faceDnaTokens = buildFaceDnaTokens(faceDnaInput);
   const accessory = ACCESSORY_BY_STYLE[resolvedStyle] ?? 'minimal tasteful accessories';
   const occupationCue = resolvedOccupation ? `${resolvedOccupation} lifestyle visual cues` : null;
+  const siblingOverlap = (input.existingSiblingOverlapCues ?? []).slice(0, 8);
 
   return {
     continuityAnchors: [
@@ -217,6 +220,8 @@ const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisua
       `${resolvedEyeColor} eyes`,
       `${resolvedSkinTone} skin tone`,
       `${resolvedBody} build`,
+      buildFaceDnaLine(faceDnaInput),
+      ...faceDnaTokens.slice(0, 3),
       ...input.persona.visualPromptDNA.styleAnchors,
     ].filter(Boolean),
     coreLookDescriptors: [
@@ -235,14 +240,14 @@ const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisua
     cameraCompositionPreferences: ['medium close-up to waist-up', 'shallow depth of field bokeh background', 'natural perspective no fisheye'],
     realismPolishLevel: 'hyper-realistic candid photography, film grain texture, natural imperfections',
     negativeConstraints: ['harsh flash photography', 'overexposed blown-out skin', 'plastic airbrushed look', 'studio white background'],
-    negativeOverlapCues: [],
+    negativeOverlapCues: siblingOverlap,
     identityInvariants: {
       ageBand: ageRange,
-      faceShape,
-      eyeShapeColor: `${resolvedEyeColor} eyes with natural lashes`,
-      browCharacter: `well-defined ${resolvedHairColor.includes('blonde') || resolvedHairColor.includes('platinum') ? 'light' : 'dark'} brows`,
-      noseProfile: 'defined natural nose profile consistent across angles',
-      lipShape: `full natural lips, ${resolvedPersonality === 'playful_tease' || resolvedPersonality === 'confident_bold' ? 'slightly bold' : 'natural'} lip shape`,
+      faceShape: faceDnaInvariants.faceShape,
+      eyeShapeColor: faceDnaInvariants.eyeShapeColor,
+      browCharacter: faceDnaInvariants.browCharacter,
+      noseProfile: faceDnaInvariants.noseProfile,
+      lipShape: faceDnaInvariants.lipShape,
       skinToneBand: resolvedSkinTone,
       hairSignature: `${resolvedHairColor} ${resolvedHairLength} hair, consistent style`,
       bodyPresentation: `${resolvedBody} figure`,
@@ -328,6 +333,7 @@ Input profile:
 ${appearanceLines ? `${appearanceLines}\n` : ''}- Persona visual DNA coreLook: ${input.persona.visualPromptDNA.coreLook}
 - Persona style anchors: ${input.persona.visualPromptDNA.styleAnchors.join(', ')}
 - Existing sibling signatures to avoid overlap: ${(input.existingCompanionSignatures ?? []).join(' || ') || 'none'}
+- Existing sibling overlap cues to avoid: ${(input.existingSiblingOverlapCues ?? []).join(' || ') || 'none'}
 
 Rules:
 - Preserve one highly distinctive stable identity across all generated outputs.
@@ -350,7 +356,17 @@ Rules:
     });
 
     const parsed = JSON.parse(extractResponsesText(response)) as VirtualGirlfriendVisualIdentityPack;
-    return sanitizePack(parsed, fallback);
+    const pack = sanitizePack(parsed, fallback);
+    const mergedOverlap = Array.from(
+      new Set([
+        ...(pack.negativeOverlapCues ?? []),
+        ...(input.existingSiblingOverlapCues ?? []),
+      ].map((cue) => cue.trim()).filter(Boolean)),
+    ).slice(0, 12);
+    return {
+      ...pack,
+      negativeOverlapCues: mergedOverlap,
+    };
   } catch {
     return fallback;
   }
@@ -411,13 +427,18 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
   const semanticSetup = resolveVisualIdentitySemanticInput({ companion: input.companion, fallback: input.setup });
 
   const allCompanions = await listVirtualGirlfriendCompanions(input.token, input.userId);
-  const siblingCompanionSignatures = allCompanions
-    .filter((companion) => companion.id !== input.companion.id)
-    .slice(0, 8)
-    .map((companion) => {
-      const tags = companion.profile_tags?.slice(0, 4).join(', ') || 'no-tags';
-      return `${companion.name}|${companion.archetype ?? 'n/a'}|${companion.visual_aesthetic ?? 'n/a'}|${tags}`;
-    });
+  const siblings = allCompanions.filter((companion) => companion.id !== input.companion.id).slice(0, 8);
+  const siblingCompanionSignatures = siblings.map((companion) => {
+    const tags = companion.profile_tags?.slice(0, 4).join(', ') || 'no-tags';
+    return `${companion.name}|${companion.archetype ?? 'n/a'}|${companion.visual_aesthetic ?? 'n/a'}|${tags}`;
+  });
+  const siblingProfiles = await Promise.all(
+    siblings.map((companion) =>
+      getLatestVisualProfileForCompanion(input.token, input.userId, companion.id)),
+  );
+  const existingSiblingOverlapCues = collectSiblingDistinctnessCues(
+    siblingProfiles.map((profile) => profile?.identity_pack ?? null),
+  );
 
   const identityPack = await buildVisualIdentityPack({
     origin: semanticSetup.origin,
@@ -443,6 +464,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     companionName: semanticSetup.name,
     persona: input.companion.persona_profile,
     existingCompanionSignatures: siblingCompanionSignatures,
+    existingSiblingOverlapCues,
   });
 
   const visualProfile = await createVisualProfile(input.token, {

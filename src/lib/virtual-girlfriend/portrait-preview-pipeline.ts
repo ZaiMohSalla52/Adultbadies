@@ -1,4 +1,5 @@
 import type { VirtualGirlfriendPortraitPreviewCandidate } from '@/lib/virtual-girlfriend/image-machine';
+import type { SiblingCanonicalReference } from '@/lib/virtual-girlfriend/portrait-distinctness-gate';
 import { runPortraitPreviewImageMachine } from '@/lib/virtual-girlfriend/image-machine';
 import {
   deliverPortraitPreviewCandidates,
@@ -13,6 +14,7 @@ export type PortraitPreviewPipelineInput = PreviewTraits & {
   companionId?: string;
   setupDraftKey?: string;
   negativeOverlapCues?: string[];
+  siblingCanonicalReferences?: SiblingCanonicalReference[];
 };
 
 export type PortraitPreviewPipelineOutcome = {

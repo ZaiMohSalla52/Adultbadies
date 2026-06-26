@@ -104,6 +104,28 @@ export const formatFaceDnaLine = (tokens: string[]): string => {
 export const buildFaceDnaLine = (input: FaceDnaInput): string =>
   formatFaceDnaLine(buildFaceDnaTokens(input));
 
+export const buildFaceDnaIdentityInvariants = (input: FaceDnaInput) => {
+  const tokens = buildFaceDnaTokens(input);
+  return {
+    faceShape: tokens[0]!,
+    noseProfile: tokens[2]!,
+    lipShape: tokens[3]!,
+    browCharacter: tokens[4]!,
+    eyeShapeColor: tokens[6]!,
+  };
+};
+
+export const formatFaceDnaInvariantLine = (input: FaceDnaInput): string => {
+  const invariants = buildFaceDnaIdentityInvariants(input);
+  const parts = Object.values(invariants).filter(Boolean);
+  if (!parts.length) return '';
+  return `Identity invariants: ${parts.join(', ')}.`;
+};
+
+/** Stable text key for text-only distinctness checks before a companion id exists. */
+export const buildDistinctnessFaceDnaKey = (input: FaceDnaInput): string =>
+  buildFaceDnaTokens(input).join('|').toLowerCase();
+
 export const formatNegativeOverlapLine = (cues: string[] | undefined): string | null => {
   const unique = Array.from(new Set((cues ?? []).map((cue) => cue.trim()).filter(Boolean))).slice(0, 8);
   if (!unique.length) return null;

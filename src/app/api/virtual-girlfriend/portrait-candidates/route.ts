@@ -4,6 +4,7 @@ import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import { isBrowserImageDeliveryConfigured } from '@/lib/storage/publish-browser-image';
 import {
+  getCanonicalReferenceImageForCompanion,
   getLatestVisualProfileForCompanion,
   listVirtualGirlfriendCompanions,
 } from '@/lib/virtual-girlfriend/data';
@@ -94,12 +95,30 @@ export async function POST(request: NextRequest) {
     const negativeOverlapCues = collectSiblingDistinctnessCues(
       siblingProfiles.map((profile) => profile?.identity_pack ?? null),
     );
+    const siblingCanonicalReferences = (
+      await Promise.all(
+        siblings.slice(0, 8).map(async (companion) => {
+          const image = await getCanonicalReferenceImageForCompanion(
+            auth.accessToken,
+            auth.user.id,
+            companion.id,
+          );
+          if (!image?.delivery_url?.trim()) return null;
+          return {
+            companionId: companion.id,
+            deliveryUrl: image.delivery_url.trim(),
+            mimeType: image.origin_mime_type,
+          };
+        }),
+      )
+    ).filter((reference): reference is NonNullable<typeof reference> => reference !== null);
 
     // Preview-only: this does not persist companion images and is intentionally separate from canonical setup persistence.
     const pipeline = await runPortraitPreviewPipeline({
       userId: auth.user.id,
       setupDraftKey,
       negativeOverlapCues,
+      siblingCanonicalReferences,
       ...resolvedTraits,
       count: PORTRAIT_PREVIEW_CANDIDATE_COUNT,
     });

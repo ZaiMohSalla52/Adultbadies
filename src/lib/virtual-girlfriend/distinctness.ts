@@ -1,3 +1,4 @@
+import { buildDistinctnessFaceDnaKey } from '@/lib/virtual-girlfriend/identity-face-dna';
 import type { VirtualGirlfriendCompanionRecord, VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
 
 type NormalizedProfile = {
@@ -25,6 +26,7 @@ type NormalizedProfile = {
   freeformDetails: string;
   selectedPortraitPrompt: string;
   selectedPortraitImageKey: string;
+  faceDnaKey: string;
 };
 
 export type DistinctnessConflict = {
@@ -95,6 +97,19 @@ const deriveNameParts = (name: string) => {
   };
 };
 
+const toFaceDnaKey = (profile: Record<string, unknown>, name: string) => {
+  const age = Number.parseInt(String(profile.age ?? '').replace(/[^0-9]/g, ''), 10);
+  return buildDistinctnessFaceDnaKey({
+    userId: name,
+    sex: String(profile.sex ?? 'female'),
+    origin: String(profile.origin ?? 'mixed'),
+    age: Number.isFinite(age) && age > 0 ? age : 26,
+    hairColor: String(profile.hairColor ?? 'dark brown'),
+    eyeColor: String(profile.eyeColor ?? 'brown'),
+    variantIndex: 0,
+  });
+};
+
 const toNormalizedProfile = (profile: Record<string, unknown>): NormalizedProfile => {
   const { name, nameKey, firstName, surname } = deriveNameParts(String(profile.name ?? ''));
   return {
@@ -122,6 +137,7 @@ const toNormalizedProfile = (profile: Record<string, unknown>): NormalizedProfil
     freeformDetails: normalizeText(profile.freeformDetails),
     selectedPortraitPrompt: normalizeText(profile.selectedPortraitPrompt),
     selectedPortraitImageKey: normalizePortraitImageKey(profile.selectedPortraitImage),
+    faceDnaKey: toFaceDnaKey(profile, name),
   };
 };
 
@@ -158,7 +174,8 @@ type WeightedComparableField =
   | 'affectionStyle'
   | 'visualAesthetic'
   | 'selectedPortraitPrompt'
-  | 'selectedPortraitImageKey';
+  | 'selectedPortraitImageKey'
+  | 'faceDnaKey';
 
 /** Shared demographics alone (e.g. another Latina woman age 24) must not block portrait generation. */
 const GENERIC_DEMOGRAPHIC_FIELDS = new Set(['sex', 'ageBand', 'origin']);
@@ -176,6 +193,7 @@ const weightedStructuredSimilarity = (candidate: NormalizedProfile, existing: No
     { key: 'figure', weight: 0.65, category: 'appearance' },
     { key: 'selectedPortraitPrompt', weight: 1.0, category: 'appearance', highSignal: true },
     { key: 'selectedPortraitImageKey', weight: 0.9, category: 'appearance', highSignal: true },
+    { key: 'faceDnaKey', weight: 1.15, category: 'appearance', highSignal: true },
     { key: 'occupation', weight: 0.5, category: 'profile' },
     { key: 'personality', weight: 0.7, category: 'profile', highSignal: true },
     { key: 'sexuality', weight: 0.45, category: 'profile' },

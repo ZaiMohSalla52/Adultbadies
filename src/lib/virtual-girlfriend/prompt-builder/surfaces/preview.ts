@@ -36,6 +36,7 @@ export interface PreviewPromptInput {
   occupation?: string;
   freeformDetails?: string;
   faceDnaLine?: string;
+  faceDnaInvariantLine?: string;
   negativeOverlapCues?: string[];
 }
 
@@ -123,6 +124,7 @@ export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: numb
     `${resolveSubjectStrict(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
     input.faceDnaLine?.trim() ? input.faceDnaLine.trim() : null,
+    input.faceDnaInvariantLine?.trim() ? input.faceDnaInvariantLine.trim() : null,
     getPreviewFramingVariant(variantIndex),
     getPreviewSceneVariant(variantIndex),
     getCompositionAnchor('preview'),

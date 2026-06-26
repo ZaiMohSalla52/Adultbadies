@@ -32,7 +32,16 @@ import {
   type ChatPromptInput,
 } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/chat';
 import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
-import { buildFaceDnaLine } from '@/lib/virtual-girlfriend/identity-face-dna';
+import { buildFaceDnaLine, formatFaceDnaInvariantLine } from '@/lib/virtual-girlfriend/identity-face-dna';
+import {
+  fingerprintPortraitPreviewDataUrl,
+  isNearDuplicatePortraitFingerprint,
+  loadSiblingCanonicalFingerprints,
+  maxFingerprintSimilarity,
+  PORTRAIT_DISTINCTNESS_MAX_RETRIES,
+  type SiblingCanonicalReference,
+} from '@/lib/virtual-girlfriend/portrait-distinctness-gate';
+import type { ImageFingerprint } from '@/lib/virtual-girlfriend/phase0/image-fingerprint';
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
 import { detectExplicitImageIntent, isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
 import {
@@ -246,6 +255,7 @@ export type VirtualGirlfriendPortraitPreviewRequest = {
   companionId?: string;
   setupDraftKey?: string;
   negativeOverlapCues?: string[];
+  siblingCanonicalReferences?: SiblingCanonicalReference[];
   skinTone?: string;
   breastSize?: string;
   styleVibe?: string;
@@ -1518,7 +1528,7 @@ const generatePortraitPreviewCandidate = async (
   index: number,
   attemptOffset = 0,
 ): Promise<VirtualGirlfriendPortraitPreviewCandidate> => {
-  const faceDnaLine = buildFaceDnaLine({
+  const faceDnaInput = {
     userId: input.userId,
     companionId: input.companionId,
     setupDraftKey: input.setupDraftKey,
@@ -1528,11 +1538,14 @@ const generatePortraitPreviewCandidate = async (
     hairColor: input.hairColor,
     eyeColor: input.eyeColor,
     variantIndex: index,
-  });
+  };
+  const faceDnaLine = buildFaceDnaLine(faceDnaInput);
+  const faceDnaInvariantLine = formatFaceDnaInvariantLine(faceDnaInput);
   const prompt = buildPreviewPrompt(
     {
       ...input,
       faceDnaLine,
+      faceDnaInvariantLine,
       negativeOverlapCues: input.negativeOverlapCues,
     },
     index,
@@ -1565,76 +1578,104 @@ const generatePortraitPreviewCandidate = async (
 /** Serial generation — avoids parallel credit burn when ModelsLab is slow or failing. */
 const PORTRAIT_PREVIEW_CONCURRENCY = 1;
 
-const runPortraitPreviewTasksWithConcurrency = async (
-  tasks: Array<() => Promise<VirtualGirlfriendPortraitPreviewCandidate>>,
-  concurrency: number,
+const generateDistinctPortraitSlot = async (
+  input: VirtualGirlfriendPortraitPreviewRequest,
+  index: number,
+  referenceFingerprints: ImageFingerprint[],
 ) => {
-  const settled: PromiseSettledResult<VirtualGirlfriendPortraitPreviewCandidate>[] = [];
-  let nextTaskIndex = 0;
+  let bestFallback: {
+    candidate: VirtualGirlfriendPortraitPreviewCandidate;
+    fingerprint: ImageFingerprint;
+    similarity: number;
+  } | null = null;
 
-  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
-    while (nextTaskIndex < tasks.length) {
-      const taskIndex = nextTaskIndex;
-      nextTaskIndex += 1;
-      try {
-        settled[taskIndex] = { status: 'fulfilled', value: await tasks[taskIndex]() };
-      } catch (reason) {
-        settled[taskIndex] = { status: 'rejected', reason };
-      }
+  for (let attempt = 0; attempt < PORTRAIT_DISTINCTNESS_MAX_RETRIES; attempt += 1) {
+    const candidate = await generatePortraitPreviewCandidate(
+      input,
+      index,
+      attempt + index * PORTRAIT_DISTINCTNESS_MAX_RETRIES,
+    );
+    const fingerprint = fingerprintPortraitPreviewDataUrl(candidate.imageDataUrl);
+    if (!fingerprint) {
+      return { candidate, fingerprint: null, distinct: true };
     }
-  });
 
-  await Promise.all(workers);
-  return settled;
+    const similarity = maxFingerprintSimilarity(fingerprint, referenceFingerprints);
+    const distinct = !isNearDuplicatePortraitFingerprint(fingerprint, referenceFingerprints);
+    if (distinct) {
+      return { candidate, fingerprint, distinct: true };
+    }
+
+    if (!bestFallback || similarity < bestFallback.similarity) {
+      bestFallback = { candidate, fingerprint, similarity };
+    }
+  }
+
+  if (bestFallback) {
+    logImageMachine('portrait_preview', 'distinctness_fallback', {
+      index,
+      similarity: Number(bestFallback.similarity.toFixed(4)),
+    });
+    return {
+      candidate: bestFallback.candidate,
+      fingerprint: bestFallback.fingerprint,
+      distinct: false,
+    };
+  }
+
+  throw new Error('Portrait preview candidate could not be generated.');
 };
-
-const summarizePortraitPreviewFailures = (
-  settled: PromiseSettledResult<VirtualGirlfriendPortraitPreviewCandidate>[],
-) =>
-  settled
-    .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-    .map((result) => (result.reason instanceof Error ? result.reason.message : String(result.reason)));
 
 const fallbackParallelGeneration = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
   count: number,
 ): Promise<VirtualGirlfriendPortraitPreviewCandidate[]> => {
   const target = Math.min(Math.max(count, 2), 4);
-  const maxAttempts = target;
-  const tasks = Array.from({ length: maxAttempts }, (_, index) => () =>
-    generatePortraitPreviewCandidate(input, index, Math.floor(index / target)));
+  const siblingFingerprints = input.siblingCanonicalReferences?.length
+    ? await loadSiblingCanonicalFingerprints(input.siblingCanonicalReferences)
+    : [];
+  const referenceFingerprints: ImageFingerprint[] = [...siblingFingerprints];
 
   logImageMachine('portrait_preview', 'generation_start', {
     target,
-    maxAttempts,
+    siblingReferences: input.siblingCanonicalReferences?.length ?? 0,
+    siblingFingerprints: siblingFingerprints.length,
     concurrency: PORTRAIT_PREVIEW_CONCURRENCY,
     provider: resolveVgImageProvider(),
     portraitModel: resolveModelsLabPortraitModel(),
   });
 
-  const settled = await runPortraitPreviewTasksWithConcurrency(tasks, PORTRAIT_PREVIEW_CONCURRENCY);
+  const candidates: VirtualGirlfriendPortraitPreviewCandidate[] = [];
 
-  const candidates = settled
-    .filter((result): result is PromiseFulfilledResult<VirtualGirlfriendPortraitPreviewCandidate> => result.status === 'fulfilled')
-    .map((result, successIndex) => ({
-      ...result.value,
-      id: `candidate-${successIndex + 1}`,
-      label: `Candidate ${successIndex + 1}`,
-    }));
+  for (let index = 0; index < target; index += 1) {
+    try {
+      const slot = await generateDistinctPortraitSlot(input, index, referenceFingerprints);
+      const normalized = {
+        ...slot.candidate,
+        id: `candidate-${index + 1}`,
+        label: `Candidate ${index + 1}`,
+      };
+      candidates.push(normalized);
+      if (slot.fingerprint) {
+        referenceFingerprints.push(slot.fingerprint);
+      }
+    } catch (error) {
+      logImageMachine('portrait_preview', 'slot_failure', {
+        index,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   if (candidates.length < 1) {
-    const failures = summarizePortraitPreviewFailures(settled);
-    logImageMachine('portrait_preview', 'generation_failed', {
-      attempts: maxAttempts,
-      failures: failures.slice(0, 5),
-    });
-    const detail = failures[0] ?? 'unknown_error';
-    throw new Error(`Not enough portrait preview candidates generated successfully (${detail})`);
+    logImageMachine('portrait_preview', 'generation_failed', { target });
+    throw new Error('Not enough portrait preview candidates generated successfully.');
   }
 
   logImageMachine('portrait_preview', 'generation_success', {
     requested: target,
     generated: candidates.length,
+    distinctnessGated: siblingFingerprints.length > 0,
   });
 
   return candidates.slice(0, target);
