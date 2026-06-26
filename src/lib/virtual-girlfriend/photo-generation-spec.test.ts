@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import {
+  resolveFaceGenExplicitParams,
+  resolvePhotoGenerationSpec,
+} from '@/lib/virtual-girlfriend/photo-generation-spec';
 
 describe('resolvePhotoGenerationSpec', () => {
   it('matches bikini requests by keyword without exact preset message', () => {
@@ -21,6 +24,23 @@ describe('resolvePhotoGenerationSpec', () => {
     expect(spec.explicit).toBe(true);
     expect(spec.exposureLevel).toBe('butt_focus');
     expect(spec.sceneDirective.toLowerCase()).toContain('buttocks');
+  });
+
+  it('builds full-body Face Gen params for nude requests', () => {
+    const params = resolveFaceGenExplicitParams('send me a nude photo of you', { sex: 'female' });
+    expect(params.width).toBe(512);
+    expect(params.height).toBe(768);
+    expect(params.sScale).toBeLessThan(0.8);
+    expect(params.prompt.toLowerCase()).toContain('head to toe');
+    expect(params.prompt.toLowerCase()).toContain('nipples');
+    expect(params.negativePrompt.toLowerCase()).toContain('headshot only');
+    expect(params.negativePrompt.toLowerCase()).toContain('crop top');
+  });
+
+  it('builds chest-visible Face Gen params for topless requests', () => {
+    const params = resolveFaceGenExplicitParams('show me your tits', { sex: 'female' });
+    expect(params.prompt.toLowerCase()).toContain('nipples fully visible');
+    expect(params.sScale).toBeGreaterThan(0.7);
   });
 
   it('uses style-aware wardrobe for surprise requests', () => {

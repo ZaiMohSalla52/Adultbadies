@@ -8,7 +8,14 @@ import {
   type ModelsLabApiResponse,
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';
-import { buildFaceGenChatPrompt } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
+import {
+  buildFaceGenChatPrompt,
+  FACE_GEN_BASE_NEGATIVE_PROMPT,
+  FACE_GEN_MAX_HEIGHT,
+  FACE_GEN_MAX_WIDTH,
+  resolveFaceGenExplicitParams,
+} from '@/lib/virtual-girlfriend/photo-generation-spec';
 import type { WardrobeContext } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import {
@@ -42,8 +49,7 @@ const MODELSLAB_KONTEXT_PRO_MODEL =
   env.MODELSLAB_KONTEXT_PRO_MODEL ?? MODELSLAB_DEFAULT_KONTEXT_PRO_MODEL;
 const MODELSLAB_KONTEXT_DEV_MODEL = env.MODELSLAB_KONTEXT_DEV_MODEL ?? 'flux-kontext-dev';
 const MODELSLAB_FACE_GEN_MODEL = env.MODELSLAB_FACE_GEN_MODEL ?? 'ai-avatar-generatorface-gen';
-const FACE_GEN_NEGATIVE_PROMPT =
-  'drawing, cartoon, anime, big nose, long nose, fat, ugly, bad anatomy, worst quality, low quality, blurry, censored, black bar, mosaic, watermark, text, logo, bra, shirt covering chest when topless requested, jeans covering ass when bare ass requested, panties covering when explicit rear requested';
+const FACE_GEN_SFW_NEGATIVE_PROMPT = `${FACE_GEN_BASE_NEGATIVE_PROMPT}, bra, shirt, jeans`;
 const MODELSLAB_NEGATIVE_PROMPT = buildModelsLabNegativePrompt();
 
 const PREVIEW_POLL = { maxAttempts: 45, intervalMs: 1_500 } as const;
@@ -365,14 +371,26 @@ export const generateChatImageWithModelsLabFaceGen = async (input: {
   numInferenceSteps?: number;
 }): Promise<GeneratedImage> => {
   const faceImage = await resolveFaceImageUrl(input.reference);
-  const prompt = buildFaceGenChatPrompt(input.userMessage, input.wardrobeContext);
+  const wardrobeContext = input.wardrobeContext ?? {};
+  const explicit = detectExplicitImageIntent(input.userMessage);
+  const explicitParams = explicit
+    ? resolveFaceGenExplicitParams(input.userMessage, wardrobeContext)
+    : null;
+  const prompt =
+    explicitParams?.prompt ?? buildFaceGenChatPrompt(input.userMessage, wardrobeContext);
+
   const payload = await callModelsLabFaceGen(
     {
       model_id: MODELSLAB_FACE_GEN_MODEL,
       face_image: faceImage,
       prompt,
       style: 'realistic',
-      negative_prompt: FACE_GEN_NEGATIVE_PROMPT,
+      negative_prompt: explicitParams?.negativePrompt ?? FACE_GEN_SFW_NEGATIVE_PROMPT,
+      width: explicitParams?.width ?? FACE_GEN_MAX_WIDTH,
+      height: explicitParams?.height ?? FACE_GEN_MAX_HEIGHT,
+      s_scale: explicitParams?.sScale ?? 0.85,
+      guidance_scale: explicitParams?.guidanceScale ?? 7.5,
+      safety_checker: false,
       num_inference_steps: input.numInferenceSteps ?? 41,
     },
     'ModelsLab Face Gen explicit chat generation failed',

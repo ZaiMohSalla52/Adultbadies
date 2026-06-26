@@ -121,26 +121,99 @@ const buildExplicitDirective = (message: string) => {
   ].join(' ');
 };
 
-/** Compact prompt for ModelsLab Face Gen — matches playground style, not Kontext essay prompts. */
-export const buildFaceGenExplicitPrompt = (message: string) => {
+/** Face Gen defaults — API caps width at 512 and height at 768. */
+export const FACE_GEN_MAX_WIDTH = 512;
+export const FACE_GEN_MAX_HEIGHT = 768;
+
+export const FACE_GEN_BASE_NEGATIVE_PROMPT =
+  'drawing, cartoon, anime, big nose, long nose, fat, ugly, bad anatomy, worst quality, low quality, blurry, censored, black bar, mosaic, watermark, text, logo';
+
+export const FACE_GEN_CROP_NEGATIVE_PROMPT =
+  'headshot only, face only, bust shot, cropped at chest, cropped at shoulders, cut off body, missing legs, legs out of frame, lower body out of frame, portrait close-up only, no full body, shoulders only';
+
+export type FaceGenExplicitParams = {
+  prompt: string;
+  negativePrompt: string;
+  width: number;
+  height: number;
+  sScale: number;
+  guidanceScale: number;
+};
+
+const resolveFaceGenSubject = (context: WardrobeContext) =>
+  context.sex?.trim().toLowerCase() === 'male' ? 'man' : 'woman';
+
+/** Face Gen API params — composition-first prompts; lower s_scale frees body from face lock. */
+export const resolveFaceGenExplicitParams = (
+  message: string,
+  context: WardrobeContext = {},
+): FaceGenExplicitParams => {
   const exposure = parseExplicitExposure(message);
   const forcedPose = resolveExplicitPoseFromMessage(message);
-  const parts = [
-    exposure.kontextEditInstruction,
-    exposure.wardrobeInstruction,
-    `Framing: ${exposure.framing}.`,
-    forcedPose ? `Pose: ${forcedPose}.` : null,
-    `User request: "${message.trim()}".`,
-    'Photorealistic adult photography, uncensored, same woman as reference face.',
-  ];
-  return parts.filter(Boolean).join(' ');
+  const subject = resolveFaceGenSubject(context);
+  const trimmed = message.trim();
+
+  let compositionLead: string;
+  let sScale: number;
+
+  switch (exposure.level) {
+    case 'full_nude':
+      compositionLead = forcedPose
+        ? `Mirror selfie of a fully nude adult ${subject}, naked body visible from face down through hips and thighs, no clothing anywhere, nipples visible.`
+        : `Full-length photograph of a fully nude adult ${subject}, entire naked body visible head to toe in frame, standing facing camera, breasts with nipples visible, uncensored.`;
+      sScale = 0.68;
+      break;
+    case 'topless':
+      compositionLead = `Three-quarter photograph of adult ${subject}, topless with bare breasts and nipples fully visible, no bra no shirt no crop top.`;
+      sScale = 0.78;
+      break;
+    case 'butt_focus':
+      compositionLead = `Rear-view photograph of nude adult ${subject}, bare buttocks fully visible, no jeans no pants, over-shoulder glance at camera.`;
+      sScale = 0.72;
+      break;
+    case 'genital_focus':
+      compositionLead = `Full-body nude photograph of adult ${subject}, explicit lower-body framing with spread legs, no underwear blocking view.`;
+      sScale = 0.7;
+      break;
+    default:
+      compositionLead = `Adult explicit photograph of ${subject}, ${exposure.wardrobeInstruction}`;
+      sScale = 0.75;
+  }
+
+  const prompt = [
+    compositionLead,
+    forcedPose && !compositionLead.toLowerCase().includes('selfie') ? forcedPose : null,
+    `User request: "${trimmed}".`,
+    'Photorealistic uncensored adult photography, same face as reference.',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const negativePrompt = [
+    FACE_GEN_BASE_NEGATIVE_PROMPT,
+    FACE_GEN_CROP_NEGATIVE_PROMPT,
+    'clothed, dressed, shirt, bra, crop top, jeans, pants, underwear, covered chest, covered breasts',
+  ].join(', ');
+
+  return {
+    prompt,
+    negativePrompt,
+    width: FACE_GEN_MAX_WIDTH,
+    height: FACE_GEN_MAX_HEIGHT,
+    sScale,
+    guidanceScale: 7.5,
+  };
 };
+
+/** Compact prompt for ModelsLab Face Gen — matches playground style, not Kontext essay prompts. */
+export const buildFaceGenExplicitPrompt = (message: string, context: WardrobeContext = {}) =>
+  resolveFaceGenExplicitParams(message, context).prompt;
 
 /** Face Gen prompt for any in-chat photo (explicit or outfit/scene). */
 export const buildFaceGenChatPrompt = (message: string, context: WardrobeContext = {}) => {
   const spec = resolvePhotoGenerationSpec(message, context);
   if (spec.explicit) {
-    return buildFaceGenExplicitPrompt(message);
+    return buildFaceGenExplicitPrompt(message, context);
   }
 
   const trimmed = message.trim();
