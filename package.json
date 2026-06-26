@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:portrait-integration": "PORTRAIT_PREVIEW_INTEGRATION=1 vitest run src/lib/virtual-girlfriend/portrait-preview.integration.test.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

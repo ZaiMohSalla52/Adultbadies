@@ -38,12 +38,16 @@ export const isReachablePortraitPreviewUrl = async (url: string) => {
   if (!isHostedUrl(trimmed)) return false;
 
   try {
-    const response = await fetch(trimmed, {
+    const rangeResponse = await fetch(trimmed, {
       method: 'GET',
       headers: { Range: 'bytes=0-1023' },
       cache: 'no-store',
     });
-    return response.ok || response.status === 206;
+    if (rangeResponse.ok || rangeResponse.status === 206) return true;
+
+    // Some storage/CDN fronts reject Range but still serve the object.
+    const headResponse = await fetch(trimmed, { method: 'HEAD', cache: 'no-store' });
+    return headResponse.ok;
   } catch {
     return false;
   }
@@ -92,11 +96,11 @@ export const deliverPortraitPreviewCandidates = async (
       if (!bytes) return candidate;
 
       if (!isUsablePortraitImageBytes(bytes)) {
-        console.warn('[portrait-preview] rejected blank portrait candidate', {
+        console.warn('[portrait-preview] blank portrait bytes detected; keeping provider candidate', {
           userId,
           candidateId: candidate.id,
         });
-        return null;
+        return isHostedUrl(candidate.imageDataUrl) ? candidate : null;
       }
 
       try {

@@ -2,13 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import { isBrowserImageDeliveryConfigured } from '@/lib/storage/publish-browser-image';
-import { runPortraitPreviewImageMachine } from '@/lib/virtual-girlfriend/image-machine';
-import {
-  deliverPortraitPreviewCandidates,
-  filterReachablePortraitPreviewCandidates,
-} from '@/lib/virtual-girlfriend/portrait-preview-delivery';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
+import { assertModelsLabApiKey } from '@/lib/virtual-girlfriend/modelslab-client';
 import { resolveModelsLabPortraitModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import { runPortraitPreviewPipeline } from '@/lib/virtual-girlfriend/portrait-preview-pipeline';
 import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
 
 // Portrait preview generates several candidate images; raise the function
@@ -60,32 +57,33 @@ export async function POST(request: NextRequest) {
       freeformDetails: body.freeformDetails,
     });
 
+    const provider = resolveVgImageProvider();
+    const portraitModel = resolveModelsLabPortraitModel();
+
+    if (provider === 'modelslab') {
+      assertModelsLabApiKey();
+    }
+
     console.info('[virtual-girlfriend] portrait candidate generation start', {
       userId: auth.user.id,
-      provider: resolveVgImageProvider(),
-      portraitModel: resolveModelsLabPortraitModel(),
+      provider,
+      portraitModel,
+      deliveryConfigured: isBrowserImageDeliveryConfigured(),
     });
 
     // Preview-only: this does not persist companion images and is intentionally separate from canonical setup persistence.
-    const result = await runPortraitPreviewImageMachine({
-      kind: 'portrait_preview',
+    const pipeline = await runPortraitPreviewPipeline({
       userId: auth.user.id,
       ...resolvedTraits,
       count: 3,
     });
 
-    const delivered = await deliverPortraitPreviewCandidates(result.candidates, auth.user.id);
-    const hosted = delivered.filter((candidate) => /^https?:\/\//i.test(candidate.imageDataUrl.trim()));
-    let candidates = hosted.length > 0 ? await filterReachablePortraitPreviewCandidates(hosted) : [];
+    console.info('[virtual-girlfriend] portrait candidate pipeline outcome', {
+      userId: auth.user.id,
+      ...pipeline.stages,
+    });
 
-    if (candidates.length < 1) {
-      const dataUrlFallback = delivered.filter((candidate) => /^data:image\//i.test(candidate.imageDataUrl.trim()));
-      if (dataUrlFallback.length >= 1) {
-        candidates = dataUrlFallback;
-      }
-    }
-
-    if (candidates.length < 1) {
+    if (!pipeline.ok || pipeline.candidates.length < 1) {
       return NextResponse.json(
         {
           error: isBrowserImageDeliveryConfigured()
@@ -96,16 +94,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ ok: true, candidates: candidates.slice(0, 3) });
+    return NextResponse.json({ ok: true, candidates: pipeline.candidates });
   } catch (error) {
     console.error('[virtual-girlfriend] portrait candidate generation failed', error);
     const message = error instanceof Error ? error.message : 'Unable to generate portrait candidates right now.';
     const timedOut = /timeout|timed out|FUNCTION_INVOCATION_TIMEOUT/i.test(message);
+    const missingKey = /MODELSLAB_API_KEY is not configured/i.test(message);
+    const missingFlux = /FLUX_API_KEY is not configured/i.test(message);
     return NextResponse.json(
       {
-        error: timedOut
-          ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
-          : 'Unable to generate portrait candidates right now.',
+        error: missingKey
+          ? 'Portrait generation is not configured (MODELSLAB_API_KEY missing on server).'
+          : missingFlux
+            ? 'Portrait generation provider mismatch (VG_IMAGE_PROVIDER=flux but FLUX_API_KEY missing).'
+            : timedOut
+              ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
+              : 'Unable to generate portrait candidates right now.',
       },
       { status: timedOut ? 504 : 500 },
     );
