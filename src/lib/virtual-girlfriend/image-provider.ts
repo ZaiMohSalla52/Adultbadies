@@ -57,6 +57,7 @@ export const generateChatImageFromReference = (input: {
   referenceMimeType: string;
   kontextOptions?: KontextGenerationOptions;
   preferDevModel?: boolean;
+  explicitHighExposure?: boolean;
 }): Promise<GeneratedImage> =>
   isModelsLabImageProvider()
     ? generateChatImageFromReferenceWithModelsLab(input)

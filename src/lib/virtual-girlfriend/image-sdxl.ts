@@ -9,7 +9,7 @@ import {
   AURELIUM_PORTRAIT_NEGATIVE_PROMPT,
   isAureliumPortraitModel,
 } from '@/lib/virtual-girlfriend/modelslab-aurelium-template';
-import { buildModelsLabNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
+import { buildExplicitModelsLabNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
 
@@ -102,15 +102,14 @@ export const generateExplicitChatImageWithModelsLabSdxl = async (input: {
       prompt: explicitPrompt,
       negative_prompt: isAureliumPortraitModel(MODELSLAB_SDXL_MODEL)
         ? AURELIUM_PORTRAIT_NEGATIVE_PROMPT
-        : buildModelsLabNegativePrompt(),
+        : buildExplicitModelsLabNegativePrompt(),
       init_image: initImage,
       width,
       height,
       samples: chatParams.num_images,
       num_inference_steps: numInferenceSteps,
       guidance: guidanceScale,
-      // Low strength kept the canonical clothed portrait — not enough denoise for nudity.
-      strength: input.highExposure ? 0.78 : 0.68,
+      strength: input.highExposure ? 0.9 : 0.75,
       safety_checker: 'no',
       enhance_prompt: false,
     },

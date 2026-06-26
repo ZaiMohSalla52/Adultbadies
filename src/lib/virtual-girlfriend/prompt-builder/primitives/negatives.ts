@@ -100,3 +100,13 @@ export function buildChatNegativePrompt(input: { allowAdultContent?: boolean } =
     : ['composition', 'content', 'exposure'];
   return buildNegatives(categories);
 }
+
+/** ModelsLab negative field for explicit img2img — must not block nudity. */
+export function buildExplicitModelsLabNegativePrompt(): string {
+  const styleBlock =
+    'anime, cartoon, illustration, manga, CGI, 3d render, digital art, painted, stylized art, doll, plastic skin, watermark, text, logo';
+  const qualityBlock =
+    'worst quality, low quality, blurry, distorted, bad anatomy, deformed, disfigured, extra limbs, bad hands, bad face, clothed, dressed, shirt, bra, pants, jeans, covered chest';
+  const compositionBlock = buildNegatives(['composition', 'exposure']).replace(/\bno /g, '');
+  return [styleBlock, qualityBlock, compositionBlock].join(', ');
+}

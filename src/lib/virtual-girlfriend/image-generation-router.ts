@@ -5,8 +5,9 @@
  * safe images even with enable_safety_checker:false. It must NEVER handle
  * explicit or sexual in-chat requests.
  *
- * Explicit adult chat → SDXL/Aurelium img2img first (faster; high denoise strength)
- * SDXL failure / timeout → Face Gen fallback (slower, best face-locked nude scenes)
+ * Explicit nude/topless (high exposure) → Kontext dev img2img (uncensored scene change)
+ * Softer explicit → SDXL/Aurelium img2img
+ * Clone / timeout / failure → Face Gen fallback
  * Sexual requested-look → Face Gen on ModelsLab (uncensored, face-locked)
  * Flux-only explicit fallback → Kontext [dev] with safety checker OFF
  * Passive SFW chat only → Kontext Pro (safety on)
@@ -33,14 +34,24 @@ export const resolveChatGenerationRoute = (input: {
   const adultChat = input.adultContentEnabled && (input.explicit || input.requestedLook);
 
   if (input.adultContentEnabled && input.explicit) {
-    // SDXL/Aurelium img2img is ~2–3× faster than Face Gen under ModelsLab queue load.
-    // High denoise strength (image-sdxl.ts) avoids the clothed-portrait clone bug.
+    // Aurelium/SDXL img2img often returns the clothed canonical unchanged for nude asks.
+    // Kontext dev rewrites the scene from the reference with safety off (~60–90s).
+    if (input.highExposure) {
+      return {
+        provider: 'flux_kontext',
+        modelKind: 'kontext_dev',
+        guidanceScale: 7,
+        numInferenceSteps: 32,
+        enableSafetyChecker: false,
+      };
+    }
+
     if (input.preferSdxl ?? true) {
       return {
         provider: 'sdxl',
         modelKind: 'sdxl',
-        guidanceScale: input.highExposure ? 7.5 : 6.5,
-        numInferenceSteps: input.highExposure ? 36 : 32,
+        guidanceScale: 6.5,
+        numInferenceSteps: 32,
         enableSafetyChecker: false,
       };
     }

@@ -137,9 +137,14 @@ const buildModelsLabText2ImgRequest = (input: {
 const strengthForKontext = (input: {
   surface: 'gallery' | 'chat';
   guidanceScale?: number;
+  explicitHighExposure?: boolean;
 }) => {
   if (input.surface === 'gallery') {
     return 0.42;
+  }
+
+  if (input.explicitHighExposure) {
+    return 0.84;
   }
 
   const guidance = input.guidanceScale ?? 5;
@@ -273,6 +278,7 @@ const generateKontextFromReference = async (input: {
   errorLabel: string;
   kontextOptions?: KontextGenerationOptions;
   preferDevModel?: boolean;
+  explicitHighExposure?: boolean;
 }): Promise<GeneratedImage> => {
   const surfaceParams = SURFACE_PARAMS[input.surface];
   const model = kontextModelForSurface(input.surface, {
@@ -300,7 +306,11 @@ const generateKontextFromReference = async (input: {
         samples: surfaceParams.num_images,
         num_inference_steps: numInferenceSteps,
         guidance: guidanceScale ?? 5,
-        strength: strengthForKontext({ surface: input.surface, guidanceScale }),
+        strength: strengthForKontext({
+          surface: input.surface,
+          guidanceScale,
+          explicitHighExposure: input.explicitHighExposure,
+        }),
         safety_checker: safetyChecker ? 'yes' : 'no',
         ...(input.seed !== undefined ? { seed: input.seed } : {}),
       },
@@ -381,6 +391,7 @@ export const generateChatImageFromReferenceWithModelsLab = async (input: {
   referenceMimeType: string;
   kontextOptions?: KontextGenerationOptions;
   preferDevModel?: boolean;
+  explicitHighExposure?: boolean;
 }): Promise<GeneratedImage> =>
   generateKontextFromReference({
     prompt: input.prompt,
@@ -389,5 +400,6 @@ export const generateChatImageFromReferenceWithModelsLab = async (input: {
     surface: 'chat',
     kontextOptions: input.kontextOptions,
     preferDevModel: input.preferDevModel,
+    explicitHighExposure: input.explicitHighExposure,
     errorLabel: 'ModelsLab reference chat generation failed',
   });

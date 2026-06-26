@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
 
 describe('resolveChatGenerationRoute', () => {
-  it('routes high-exposure explicit nude chat to SDXL first when ModelsLab preferred', () => {
+  it('routes high-exposure explicit nude chat to Kontext dev when ModelsLab preferred', () => {
     const route = resolveChatGenerationRoute({
       explicit: true,
       requestedLook: true,
@@ -11,10 +11,10 @@ describe('resolveChatGenerationRoute', () => {
       preferFaceGen: true,
       preferSdxl: true,
     });
-    expect(route.provider).toBe('sdxl');
-    expect(route.modelKind).toBe('sdxl');
+    expect(route.provider).toBe('flux_kontext');
+    expect(route.modelKind).toBe('kontext_dev');
     expect(route.enableSafetyChecker).toBe(false);
-    expect(route.numInferenceSteps).toBe(36);
+    expect(route.numInferenceSteps).toBe(32);
   });
 
   it('routes softer explicit adult chat to SDXL when enabled', () => {

@@ -36,8 +36,9 @@ import {
 } from '@/lib/virtual-girlfriend/chat-image-bootstrap';
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
+import { isNearCloneOfReference } from '@/lib/virtual-girlfriend/image-clone-detection';
 import { isHighExposureExplicit } from '@/lib/virtual-girlfriend/explicit-exposure';
-import { resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import { buildFaceGenExplicitPrompt, resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import {
@@ -74,6 +75,8 @@ const MACHINE_TIMEOUT_MS = {
   portraitPreviewRequest: 120_000,
   /** In-chat photos (Face Gen poll + SDXL fallback + delivery) — Vercel maxDuration 300. */
   chatProviderRequest: 270_000,
+  /** Kontext dev explicit img2img before Face Gen fallback. */
+  chatKontextAttempt: 90_000,
   /** SDXL/Aurelium img2img attempt before Face Gen fallback. */
   chatSdxlAttempt: 90_000,
   /** Face Gen fallback only — ModelsLab queue often exceeds 2 minutes. */
@@ -551,6 +554,7 @@ const runProviderGeneration = async (input: {
     enableSafetyChecker?: boolean;
   };
   preferDevModel?: boolean;
+  explicitHighExposure?: boolean;
 }) => {
   logImageMachine(input.scope, 'provider_call_start', { mode: input.mode });
   const run = async () => {
@@ -586,6 +590,7 @@ const runProviderGeneration = async (input: {
         ? {
             ...(input.kontextOptions ? { kontextOptions: input.kontextOptions } : {}),
             ...(input.preferDevModel ? { preferDevModel: input.preferDevModel } : {}),
+            ...(input.explicitHighExposure ? { explicitHighExposure: input.explicitHighExposure } : {}),
           }
         : {}),
     }));
@@ -1237,6 +1242,32 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
       : false;
 
+    const explicitUserPrompt =
+      input.userMessage?.trim() && chatPromptInput.explicitIntent
+        ? buildFaceGenExplicitPrompt(input.userMessage.trim())
+        : prompt;
+
+    const rejectPortraitClone = (generated: GeneratedImage, label: string) => {
+      if (!chatPromptInput.explicitIntent) return;
+      const refUrl = faceReference.deliveryUrl.trim();
+      if (generated.temporaryUrl?.trim() === refUrl) {
+        throw new VirtualGirlfriendImageMachineError(
+          `${label} returned the reference image unchanged.`,
+          'provider_error',
+          'provider_request',
+          true,
+        );
+      }
+      if (generated.bytes.byteLength && isNearCloneOfReference(reference.bytes, generated.bytes)) {
+        throw new VirtualGirlfriendImageMachineError(
+          `${label} output too similar to clothed reference.`,
+          'provider_error',
+          'provider_request',
+          true,
+        );
+      }
+    };
+
     const generateFaceGenFallback = async () => {
       if (!input.userMessage?.trim()) {
         throw new VirtualGirlfriendImageMachineError(
@@ -1255,9 +1286,27 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       );
     };
 
+    const generateKontextExplicitAttempt = () =>
+      runProviderGeneration({
+        scope,
+        mode: 'chat_from_reference',
+        prompt: explicitUserPrompt,
+        reference: { bytes: reference.bytes, mimeType: reference.mimeType },
+        kontextOptions: {
+          guidanceScale: route.guidanceScale,
+          numInferenceSteps: route.numInferenceSteps,
+          enableSafetyChecker: route.enableSafetyChecker,
+        },
+        preferDevModel: true,
+        explicitHighExposure: highExposure,
+      });
+
     const generateExplicitWithFallback = async () => {
-      try {
-        return await withTimeout('sdxl_generation', MACHINE_TIMEOUT_MS.chatSdxlAttempt, () =>
+      const tryPrimary = async () => {
+        if (route.provider === 'flux_kontext' && route.modelKind === 'kontext_dev') {
+          return withTimeout('kontext_explicit', MACHINE_TIMEOUT_MS.chatKontextAttempt, generateKontextExplicitAttempt);
+        }
+        return withTimeout('sdxl_generation', MACHINE_TIMEOUT_MS.chatSdxlAttempt, () =>
           generateChatImageFromReferenceSdxl({
             prompt,
             userMessage: input.userMessage?.trim(),
@@ -1267,11 +1316,21 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
             highExposure,
           }),
         );
-      } catch (sdxlError) {
-        if (!input.userMessage?.trim()) throw sdxlError;
-        logImageMachine(scope, 'sdxl_fallback_face_gen', {
-          reason: sdxlError instanceof Error ? sdxlError.message : 'sdxl_failed',
-          timedOut: sdxlError instanceof Error && sdxlError.message.includes('timeout'),
+      };
+
+      try {
+        const result = await tryPrimary();
+        rejectPortraitClone(result, route.provider);
+        return result;
+      } catch (primaryError) {
+        if (!input.userMessage?.trim()) throw primaryError;
+        logImageMachine(scope, 'explicit_primary_fallback_face_gen', {
+          provider: route.provider,
+          reason: primaryError instanceof Error ? primaryError.message : 'explicit_primary_failed',
+          timedOut: primaryError instanceof Error && primaryError.message.includes('timeout'),
+          cloneRejected:
+            primaryError instanceof VirtualGirlfriendImageMachineError
+            && primaryError.message.includes('too similar'),
         });
         return generateFaceGenFallback();
       }
@@ -1286,10 +1345,10 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     }
 
     const generated =
-      route.provider === 'sdxl'
-        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateExplicitWithFallback)
-        : route.provider === 'face_gen' && input.userMessage?.trim()
-          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateFaceGenFallback)
+      route.provider === 'face_gen' && input.userMessage?.trim()
+        ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateFaceGenFallback)
+        : chatPromptInput.explicitIntent
+          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateExplicitWithFallback)
           : await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
               runProviderGeneration({
                 scope,
@@ -1303,7 +1362,6 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
                 },
                 preferDevModel:
                   route.modelKind === 'kontext_dev'
-                  || Boolean(chatPromptInput.explicitIntent)
                   || Boolean(chatPromptInput.requestedLook),
               }),
             );
@@ -1313,7 +1371,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       userId: input.userId,
       companionId: input.companion.id,
       visualProfileId: visualContext.visualProfileId,
-      promptHash: sha(`${visualContext.promptHashSeed}:chat:${input.category}:${prompt}`),
+      promptHash: sha(`${visualContext.promptHashSeed}:chat:${input.category}:${explicitUserPrompt}`),
       capture: {
         kind: 'gallery',
         variantIndex: randomChatVariantIndex(),
@@ -1333,7 +1391,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         chatCategory: input.category,
         source: 'chat-image-machine',
       },
-      promptText: prompt,
+      promptText: chatPromptInput.explicitIntent ? explicitUserPrompt : prompt,
       promptVersion: chatPromptVersion,
       surfaceType: 'chat',
       scope,
