@@ -15,6 +15,7 @@ import {
   applyModelsLabPortraitPrompt,
   resolveModelsLabPortraitModel,
 } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import { buildModelsLabNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
@@ -148,6 +149,13 @@ const extractGeneratedImage = async (
   }
 
   const downloaded = await downloadModelsLabImage(temporaryUrl);
+
+  if (
+    endpoint.includes('text2img')
+    && !isUsablePortraitImageBytes(downloaded.bytes)
+  ) {
+    throw new Error('ModelsLab portrait generation returned a blank or near-black image.');
+  }
 
   return {
     bytes: downloaded.bytes,

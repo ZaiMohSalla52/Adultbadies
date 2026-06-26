@@ -1369,6 +1369,10 @@ const generatePortraitPreviewCandidate = async (
     run: () =>
       withTimeout('provider_generation', 45_000, () => generatePortraitPreviewImage(prompt, seed)),
   });
+  if (!generated.bytes.byteLength) {
+    throw new Error('Portrait preview provider returned empty image bytes.');
+  }
+
   const imageDataUrl = portraitPreviewDeliveryUrl(generated);
   if (!imageDataUrl.trim()) {
     throw new Error('Portrait preview provider returned an empty image.');

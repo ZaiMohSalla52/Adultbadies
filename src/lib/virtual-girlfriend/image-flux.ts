@@ -1,5 +1,6 @@
 import { env } from '@/lib/env';
 import { isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
+import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import { buildPreviewNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
@@ -26,6 +27,11 @@ const FLUX_BASE_URL = env.FLUX_BASE_URL ?? 'https://fal.run';
 /** Companion preview/canonical text2img — Pro reduces same-face collapse vs dev/LoRA portraits. */
 const FLUX_COMPANION_MODEL =
   env.FLUX_COMPANION_MODEL?.trim() || env.FLUX_MODEL?.trim() || 'fal-ai/flux-pro/v1.1';
+const FLUX_COMPANION_SAFETY_TOLERANCE = (() => {
+  const parsed = Number(env.FLUX_COMPANION_SAFETY_TOLERANCE ?? '5');
+  if (!Number.isFinite(parsed)) return 5;
+  return Math.min(6, Math.max(1, Math.floor(parsed)));
+})();
 const FLUX_KONTEXT_MODEL = env.FLUX_KONTEXT_MODEL ?? 'fal-ai/flux-pro/kontext';
 // Adult chat images use the open-weights Kontext [dev] variant: it honors
 // `enable_safety_checker: false` and has no separate hosted moderation gate, so
@@ -72,6 +78,7 @@ type FalImageResult = {
     height?: number;
     content_type?: string;
   }>;
+  has_nsfw_concepts?: boolean[];
   seed?: number;
   request_id?: string;
 };
@@ -96,6 +103,7 @@ const callFal = async (model: string, body: Record<string, unknown>, errorLabel:
 const extractGeneratedImage = async (
   response: Response,
   model: string,
+  options?: { rejectBlankPortrait?: boolean },
 ): Promise<GeneratedImage> => {
   const payload = (await response.json()) as FalImageResult;
   const generated = payload.images?.[0];
@@ -104,15 +112,24 @@ const extractGeneratedImage = async (
     throw new Error('Flux image generation returned no image URL.');
   }
 
+  if (payload.has_nsfw_concepts?.[0]) {
+    throw new Error('Flux image generation was moderated (has_nsfw_concepts=true).');
+  }
+
   const imageResponse = await fetch(temporaryUrl);
   if (!imageResponse.ok) {
     throw new Error(`Flux temporary image download failed (${imageResponse.status}).`);
   }
 
   const arrayBuffer = await imageResponse.arrayBuffer();
+  const bytes = Buffer.from(arrayBuffer);
+
+  if (options?.rejectBlankPortrait && !isUsablePortraitImageBytes(bytes)) {
+    throw new Error('Flux image generation returned a blank or near-black portrait.');
+  }
 
   return {
-    bytes: Buffer.from(arrayBuffer),
+    bytes,
     mimeType: generated.content_type ?? imageResponse.headers.get('content-type') ?? 'image/png',
     width: generated.width ?? null,
     height: generated.height ?? null,
@@ -156,20 +173,29 @@ const kontextModelForSurface = (
 const falProviderOptions = (surface: 'preview' | 'canonical' | 'gallery' | 'chat') =>
   isAdultChatSurface(surface) ? { enable_safety_checker: false } : {};
 
+const companionFluxProBody = (input: {
+  prompt: string;
+  aspectRatio: string;
+  seed?: number;
+}) => ({
+  prompt: input.prompt,
+  image_size: resolveImageSize(input.aspectRatio),
+  num_images: 1,
+  output_format: 'png',
+  // Default safety_tolerance is 2 on Flux Pro and blanks adult-leaning portraits to black.
+  safety_tolerance: FLUX_COMPANION_SAFETY_TOLERANCE,
+  ...(input.seed !== undefined ? { seed: input.seed } : {}),
+});
+
 export const generateCanonicalImageWithFlux = async (prompt: string): Promise<GeneratedImage> => {
   const canonicalParams = SURFACE_PARAMS.canonical;
   const response = await callFal(
     FLUX_COMPANION_MODEL,
-    {
-      prompt,
-      image_size: resolveImageSize(canonicalParams.aspect_ratio),
-      num_images: canonicalParams.num_images,
-      output_format: 'png',
-    },
+    companionFluxProBody({ prompt, aspectRatio: canonicalParams.aspect_ratio }),
     'Flux image generation failed',
   );
 
-  return extractGeneratedImage(response, FLUX_COMPANION_MODEL);
+  return extractGeneratedImage(response, FLUX_COMPANION_MODEL, { rejectBlankPortrait: true });
 };
 
 export const generatePortraitPreviewImageWithFlux = async (
@@ -179,17 +205,11 @@ export const generatePortraitPreviewImageWithFlux = async (
   const previewParams = SURFACE_PARAMS.preview;
   const response = await callFal(
     FLUX_COMPANION_MODEL,
-    {
-      prompt: withNegatives(prompt, buildPreviewNegativePrompt()),
-      image_size: resolveImageSize(previewParams.aspect_ratio),
-      num_images: previewParams.num_images,
-      output_format: 'png',
-      ...(seed !== undefined ? { seed } : {}),
-    },
+    companionFluxProBody({ prompt, aspectRatio: previewParams.aspect_ratio, seed }),
     'Flux portrait preview generation failed',
   );
 
-  return extractGeneratedImage(response, FLUX_COMPANION_MODEL);
+  return extractGeneratedImage(response, FLUX_COMPANION_MODEL, { rejectBlankPortrait: true });
 };
 
 const generateKontextFromReference = async (input: {

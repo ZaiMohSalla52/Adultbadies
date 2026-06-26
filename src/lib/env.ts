@@ -29,6 +29,8 @@ export const env = {
   FLUX_MODEL: process.env.FLUX_MODEL,
   /** Companion portrait/canonical text2img — defaults to Flux Pro for diversity. */
   FLUX_COMPANION_MODEL: process.env.FLUX_COMPANION_MODEL,
+  /** Flux Pro safety_tolerance 1–6; higher is more permissive (default 5 for adult portraits). */
+  FLUX_COMPANION_SAFETY_TOLERANCE: process.env.FLUX_COMPANION_SAFETY_TOLERANCE,
   FLUX_KONTEXT_MODEL: process.env.FLUX_KONTEXT_MODEL,
   // Kontext model for adult chat images. Defaults to the open-weights
   // fal-ai/flux-kontext/dev, which honors enable_safety_checker:false and has no

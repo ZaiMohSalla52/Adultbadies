@@ -355,11 +355,9 @@
   object-fit: cover;
   object-position: center top;
   display: block;
-  opacity: 0;
 }
 
 .portraitPhotoLoaded {
-  opacity: 1;
   transition: opacity 220ms ease;
 }
 
