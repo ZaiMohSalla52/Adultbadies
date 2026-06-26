@@ -72,8 +72,10 @@ const MACHINE_TIMEOUT_MS = {
   providerRequest: 60_000,
   /** Aurelium text2img on ModelsLab can poll 30–90s under load. */
   portraitPreviewRequest: 120_000,
-  /** In-chat photos (Face Gen / Kontext) — aligned with Vercel Pro maxDuration 300. */
-  chatProviderRequest: 120_000,
+  /** In-chat photos (Face Gen poll + SDXL fallback + delivery) — Vercel maxDuration 300. */
+  chatProviderRequest: 270_000,
+  /** Face Gen alone before SDXL fallback; ModelsLab can queue 90–150s under load. */
+  chatFaceGenAttempt: 150_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;
@@ -1241,15 +1243,18 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
         );
       }
       try {
-        return await generateChatImageFromReferenceFaceGen({
-          userMessage: input.userMessage!.trim(),
-          reference: faceGenReference,
-          wardrobeContext: wardrobeContextFromCompanion(input.companion),
-          numInferenceSteps: route.numInferenceSteps,
-        });
+        return await withTimeout('face_gen_generation', MACHINE_TIMEOUT_MS.chatFaceGenAttempt, () =>
+          generateChatImageFromReferenceFaceGen({
+            userMessage: input.userMessage!.trim(),
+            reference: faceGenReference,
+            wardrobeContext: wardrobeContextFromCompanion(input.companion),
+            numInferenceSteps: route.numInferenceSteps,
+          }),
+        );
       } catch (faceGenError) {
         logImageMachine(scope, 'face_gen_fallback_sdxl', {
           reason: faceGenError instanceof Error ? faceGenError.message : 'face_gen_failed',
+          timedOut: faceGenError instanceof Error && faceGenError.message.includes('timeout'),
         });
         return generateChatImageFromReferenceSdxl({
           prompt,
