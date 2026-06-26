@@ -44,36 +44,14 @@ const isUsablePortraitUrl = (value: string | null | undefined) => {
 const filterPortraitCandidates = (candidates: PortraitCandidate[]) =>
   candidates.filter((candidate) => isUsablePortraitUrl(candidate.imageDataUrl));
 
-const preloadPortraitUrl = (url: string) =>
-  new Promise<boolean>((resolve) => {
-    const trimmed = url.trim();
-    if (!trimmed) {
-      resolve(false);
-      return;
-    }
-
-    const img = new window.Image();
-    const timer = window.setTimeout(() => resolve(false), 12_000);
-    img.onload = () => {
-      window.clearTimeout(timer);
-      resolve(true);
-    };
-    img.onerror = () => {
-      window.clearTimeout(timer);
-      resolve(false);
-    };
-    img.referrerPolicy = 'no-referrer';
-    img.src = trimmed;
-  });
-
-const filterBrowserLoadableCandidates = async (candidates: PortraitCandidate[]) => {
-  const checks = await Promise.all(
-    candidates.map(async (candidate) => ({
-      candidate,
-      ok: await preloadPortraitUrl(candidate.imageDataUrl),
-    })),
-  );
-  return checks.filter((entry) => entry.ok).map((entry) => entry.candidate);
+const describePortraitFetchError = (error: unknown) => {
+  if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
+    return 'Portrait request timed out or lost connection. Wait a moment, then tap Regenerate looks.';
+  }
+  if (error instanceof Error && /failed to fetch/i.test(error.message)) {
+    return 'Portrait request timed out or lost connection. Wait a moment, then tap Regenerate looks.';
+  }
+  return error instanceof Error ? error.message : 'Portrait generation failed.';
 };
 
 const PortraitPhoto = ({
@@ -683,9 +661,9 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
       const body = await readJsonResponse<{ candidates?: PortraitCandidate[]; error?: string }>(response);
       if (!response.ok || !body.candidates?.length) throw new Error(body.error ?? 'Unable to generate portraits now.');
 
-      const validCandidates = await filterBrowserLoadableCandidates(filterPortraitCandidates(body.candidates));
+      const validCandidates = filterPortraitCandidates(body.candidates);
       if (validCandidates.length < 1) {
-        throw new Error('Portrait previews could not be displayed. Check Cloudinary (or R2) image delivery and tap Regenerate looks.');
+        throw new Error('Portrait previews could not be displayed. Tap Regenerate looks to try again.');
       }
 
       setFailedPortraitIds(new Set());
@@ -705,7 +683,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         }));
       }
     } catch (candidateError) {
-      setError(candidateError instanceof Error ? candidateError.message : 'Portrait generation failed.');
+      setError(describePortraitFetchError(candidateError));
     } finally {
       portraitGenInFlight.current = false;
       setPortraitsLoading(false);

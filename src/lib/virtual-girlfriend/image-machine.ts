@@ -11,7 +11,10 @@ import {
 } from '@/lib/virtual-girlfriend/image-provider';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
-import { resolveModelsLabPortraitModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import {
+  PORTRAIT_PREVIEW_CANDIDATE_COUNT,
+  resolveModelsLabPortraitModel,
+} from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
   buildCanonicalPrompt,
   canonicalPromptVersion,
@@ -1462,7 +1465,7 @@ const derivePortraitPreviewSeed = (input: VirtualGirlfriendPortraitPreviewReques
 export const runPortraitPreviewImageMachine = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
 ): Promise<VirtualGirlfriendPortraitPreviewResult> => {
-  const count = Math.min(Math.max(input.count ?? 3, 2), 4);
+  const count = Math.min(Math.max(input.count ?? PORTRAIT_PREVIEW_CANDIDATE_COUNT, 2), 4);
   const candidates = await fallbackParallelGeneration(input, count);
   return { kind: 'portrait_preview', status: 'ready', candidates };
 };
@@ -1475,7 +1478,7 @@ const generatePortraitPreviewCandidate = async (
   const prompt = buildPreviewPrompt(input, index);
   const seed = (derivePortraitPreviewSeed(input, index) + attemptOffset) % 2_147_483_647;
   const generated = await withRetries({
-    attempts: 3,
+    attempts: MACHINE_RETRY_ATTEMPTS.providerRequest,
     scope: 'portrait_preview',
     stage: 'provider_request',
     reason: 'provider_error',
@@ -1497,7 +1500,8 @@ const generatePortraitPreviewCandidate = async (
   };
 };
 
-const PORTRAIT_PREVIEW_CONCURRENCY = 2;
+/** Serial generation — avoids parallel credit burn when ModelsLab is slow or failing. */
+const PORTRAIT_PREVIEW_CONCURRENCY = 1;
 
 const runPortraitPreviewTasksWithConcurrency = async (
   tasks: Array<() => Promise<VirtualGirlfriendPortraitPreviewCandidate>>,
@@ -1534,7 +1538,7 @@ const fallbackParallelGeneration = async (
   count: number,
 ): Promise<VirtualGirlfriendPortraitPreviewCandidate[]> => {
   const target = Math.min(Math.max(count, 2), 4);
-  const maxAttempts = target + 3;
+  const maxAttempts = target;
   const tasks = Array.from({ length: maxAttempts }, (_, index) => () =>
     generatePortraitPreviewCandidate(input, index, Math.floor(index / target)));
 

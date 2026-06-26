@@ -91,7 +91,9 @@ export function buildModelsLabNegativePrompt(): string {
     'anime, cartoon, illustration, manga, cel shading, CGI, 3d render, digital art, painted, stylized art, doll, plastic skin, video game character, animated, airbrushed fantasy portrait';
   const qualityBlock =
     'worst quality, low quality, blurry, distorted, bad anatomy, deformed, disfigured, extra limbs, bad hands, bad face, watermark, text, logo';
-  return [styleBlock, qualityBlock, buildAllNegatives().replace(/\bno /g, '')].join(', ');
+  const ageBlock =
+    'wrinkles, aged skin, elderly face, old face, sagging skin, crow feet, deep wrinkles, weathered skin';
+  return [styleBlock, qualityBlock, ageBlock, buildAllNegatives().replace(/\bno /g, '')].join(', ');
 }
 
 export function buildChatNegativePrompt(input: { allowAdultContent?: boolean } = {}): string {

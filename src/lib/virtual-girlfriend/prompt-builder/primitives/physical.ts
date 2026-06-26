@@ -117,13 +117,18 @@ export const resolvePhysicalTraitLine = (traits: {
   const bodyTypeDescriptor = resolveBodyType(traits.bodyType);
   const breastDescriptor = isFemale ? resolveBreastSizeDescriptor(traits.breastSize) : null;
 
+  const ageCue =
+    traits.age <= 28
+      ? `young adult, approximately ${traits.age} years old, youthful smooth skin`
+      : `approximately ${traits.age} years old`;
+
   return [
     originDescriptor,
     hairDescriptor,
     `${traits.eyeColor} eyes`,
     `${bodyTypeDescriptor} build`,
     breastDescriptor,
-    `approximately ${traits.age} years old`,
+    ageCue,
   ]
     .filter(Boolean)
     .join(', ');

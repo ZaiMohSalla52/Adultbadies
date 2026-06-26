@@ -8,7 +8,7 @@ export const AURELIUM_QUALITY_SUFFIX =
 
 /** Playground negative — underage guard + anatomy/quality (separate API field). */
 export const AURELIUM_PORTRAIT_NEGATIVE_PROMPT =
-  'anime (child:1.5), ((((underage)))), ((((child)))), (((kid))), (((preteen))), (teen:1.5), ugly, tiling, poorly drawn hands, poorly drawn feet, poorly drawn face, out of frame, extra limbs, disfigured, deformed, body out of frame, bad anatomy, watermark, signature, cut off, low contrast, underexposed, overexposed, bad art, beginner, amateur, distorted face, blurry, draft, grainy';
+  'anime (child:1.5), ((((underage)))), ((((child)))), (((kid))), (((preteen))), (teen:1.5), wrinkles, aged skin, elderly face, sagging skin, crow feet, ugly, tiling, poorly drawn hands, poorly drawn feet, poorly drawn face, out of frame, extra limbs, disfigured, deformed, body out of frame, bad anatomy, watermark, signature, cut off, low contrast, underexposed, overexposed, bad art, beginner, amateur, distorted face, blurry, draft, grainy';
 
 /** Shorter tail for Kontext gallery img2img prompts. */
 export const AURELIUM_GALLERY_QUALITY_SUFFIX =

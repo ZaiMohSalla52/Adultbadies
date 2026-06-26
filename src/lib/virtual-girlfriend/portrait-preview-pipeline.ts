@@ -4,6 +4,7 @@ import {
   deliverPortraitPreviewCandidates,
   filterReachablePortraitPreviewCandidates,
 } from '@/lib/virtual-girlfriend/portrait-preview-delivery';
+import { PORTRAIT_PREVIEW_CANDIDATE_COUNT } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import type { PreviewTraits } from '@/lib/virtual-girlfriend/types/traits';
 
 export type PortraitPreviewPipelineInput = PreviewTraits & {
@@ -39,7 +40,7 @@ export const runPortraitPreviewPipeline = async (
     kind: 'portrait_preview',
     userId,
     ...traits,
-    count: count ?? 3,
+    count: count ?? PORTRAIT_PREVIEW_CANDIDATE_COUNT,
   });
 
   const generated = result.candidates;
@@ -62,7 +63,7 @@ export const runPortraitPreviewPipeline = async (
     candidates = pool.filter((candidate) => isDataUrlPreview(candidate.imageDataUrl));
   }
 
-  const returned = candidates.slice(0, count ?? 3);
+  const returned = candidates.slice(0, count ?? PORTRAIT_PREVIEW_CANDIDATE_COUNT);
 
   return {
     ok: returned.length > 0,

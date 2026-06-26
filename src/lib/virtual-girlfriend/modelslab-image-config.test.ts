@@ -6,7 +6,7 @@ import {
 } from '@/lib/virtual-girlfriend/modelslab-image-config';
 
 describe('modelslab-image-config', () => {
-  it('defaults portrait model to Aurelium photoreal checkpoint', () => {
+  it('defaults portrait model to Flux checkpoint', () => {
     const priorPortrait = process.env.MODELSLAB_PORTRAIT_MODEL;
     const priorFlux = process.env.MODELSLAB_FLUX_MODEL;
     delete process.env.MODELSLAB_PORTRAIT_MODEL;
@@ -20,8 +20,16 @@ describe('modelslab-image-config', () => {
     else process.env.MODELSLAB_FLUX_MODEL = priorFlux;
   });
 
-  it('leaves Aurelium prompts unchanged (no R3alisticF LoRA trigger)', () => {
+  it('leaves Flux prompts unchanged (no R3alisticF LoRA trigger)', () => {
     const prompt = applyModelsLabPortraitPrompt('portrait of a woman', MODELSLAB_DEFAULT_PORTRAIT_MODEL);
+    expect(prompt).toBe('portrait of a woman');
+  });
+
+  it('leaves Aurelium prompts unchanged (no R3alisticF LoRA trigger)', () => {
+    const prompt = applyModelsLabPortraitPrompt(
+      'portrait of a woman',
+      'aurelium-photorealistic-people-bysilas-v1-0-1771498462',
+    );
     expect(prompt).toBe('portrait of a woman');
   });
 

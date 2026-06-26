@@ -4,7 +4,10 @@ import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import { isBrowserImageDeliveryConfigured } from '@/lib/storage/publish-browser-image';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
 import { assertModelsLabApiKey } from '@/lib/virtual-girlfriend/modelslab-client';
-import { resolveModelsLabPortraitModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import {
+  PORTRAIT_PREVIEW_CANDIDATE_COUNT,
+  resolveModelsLabPortraitModel,
+} from '@/lib/virtual-girlfriend/modelslab-image-config';
 import { runPortraitPreviewPipeline } from '@/lib/virtual-girlfriend/portrait-preview-pipeline';
 import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
 
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest) {
     const pipeline = await runPortraitPreviewPipeline({
       userId: auth.user.id,
       ...resolvedTraits,
-      count: 3,
+      count: PORTRAIT_PREVIEW_CANDIDATE_COUNT,
     });
 
     console.info('[virtual-girlfriend] portrait candidate pipeline outcome', {

@@ -1,8 +1,13 @@
 import { env } from '@/lib/env';
 
-/** Phase 0 bake-off winner — photoreal portraits without R3alisticF lookalike LoRA. */
-export const MODELSLAB_DEFAULT_PORTRAIT_MODEL =
-  'aurelium-photorealistic-people-bysilas-v1-0-1771498462';
+/**
+ * Default portrait text2img — ModelsLab `flux` (~10s, reliable in Phase 0 bake-off).
+ * Override with MODELSLAB_PORTRAIT_MODEL (e.g. flux-realistic-portrait-v2-0 or Aurelium).
+ */
+export const MODELSLAB_DEFAULT_PORTRAIT_MODEL = 'flux';
+
+/** Setup portrait picker — keep low to conserve ModelsLab credits. */
+export const PORTRAIT_PREVIEW_CANDIDATE_COUNT = 2;
 
 /** Gallery + identity-lock img2img (Phase 0b bake-off winner for scene variety). */
 export const MODELSLAB_DEFAULT_KONTEXT_PRO_MODEL = 'flux-kontext-pro';
