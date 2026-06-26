@@ -10,6 +10,7 @@ export type KontextGenerationOptions = {
   numInferenceSteps?: number;
   enableSafetyChecker?: boolean;
   resolutionMode?: string;
+  strength?: number;
 };
 
 export type GeneratedImage = {

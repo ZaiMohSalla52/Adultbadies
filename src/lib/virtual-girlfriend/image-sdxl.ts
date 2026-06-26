@@ -3,7 +3,11 @@ import {
   callModelsLabV6Images,
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';
-import { buildFaceGenExplicitPrompt } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import {
+  buildExplicitImg2ImgPrompt,
+  resolveExplicitImg2ImgStrength,
+} from '@/lib/virtual-girlfriend/photo-generation-spec';
+import type { ExplicitExposureLevel } from '@/lib/virtual-girlfriend/explicit-exposure';
 import { resolveModelsLabSdxlModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
   AURELIUM_PORTRAIT_NEGATIVE_PROMPT,
@@ -85,6 +89,7 @@ export const generateExplicitChatImageWithModelsLabSdxl = async (input: {
   numInferenceSteps?: number;
   guidanceScale?: number;
   highExposure?: boolean;
+  exposureLevel?: ExplicitExposureLevel | null;
 }): Promise<GeneratedImage> => {
   const chatParams = SURFACE_PARAMS.chat;
   const { width, height } = resolveDimensions(chatParams.aspect_ratio);
@@ -92,8 +97,13 @@ export const generateExplicitChatImageWithModelsLabSdxl = async (input: {
   const guidanceScale = input.guidanceScale ?? (input.highExposure ? 7.5 : 6.5);
   const numInferenceSteps = input.numInferenceSteps ?? (input.highExposure ? 36 : 32);
   const explicitPrompt = input.userMessage?.trim()
-    ? buildFaceGenExplicitPrompt(input.userMessage.trim())
+    ? buildExplicitImg2ImgPrompt(input.userMessage.trim())
     : input.prompt;
+  const strength = input.exposureLevel
+    ? resolveExplicitImg2ImgStrength(input.exposureLevel)
+    : input.highExposure
+      ? 0.9
+      : 0.75;
 
   const payload = await callModelsLabV6Images(
     'img2img',
@@ -109,7 +119,7 @@ export const generateExplicitChatImageWithModelsLabSdxl = async (input: {
       samples: chatParams.num_images,
       num_inference_steps: numInferenceSteps,
       guidance: guidanceScale,
-      strength: input.highExposure ? 0.9 : 0.75,
+      strength,
       safety_checker: 'no',
       enhance_prompt: false,
     },

@@ -144,13 +144,15 @@ const strengthForKontext = (input: {
   surface: 'gallery' | 'chat';
   guidanceScale?: number;
   explicitHighExposure?: boolean;
+  strength?: number;
 }) => {
+  if (input.strength !== undefined) return input.strength;
   if (input.surface === 'gallery') {
     return 0.42;
   }
 
   if (input.explicitHighExposure) {
-    return 0.84;
+    return 0.88;
   }
 
   const guidance = input.guidanceScale ?? 5;
@@ -316,6 +318,7 @@ const generateKontextFromReference = async (input: {
           surface: input.surface,
           guidanceScale,
           explicitHighExposure: input.explicitHighExposure,
+          strength: input.kontextOptions?.strength,
         }),
         safety_checker: safetyChecker ? 'yes' : 'no',
         ...(input.seed !== undefined ? { seed: input.seed } : {}),
@@ -369,14 +372,15 @@ export const generateChatImageWithModelsLabFaceGen = async (input: {
   reference: { bytes: Buffer; mimeType: string } | { url: string };
   wardrobeContext?: WardrobeContext;
   numInferenceSteps?: number;
-  wideFraming?: boolean;
+  wideFraming?: boolean | 'ultra';
 }): Promise<GeneratedImage> => {
   const faceImage = await resolveFaceImageUrl(input.reference);
   const wardrobeContext = input.wardrobeContext ?? {};
   const explicit = detectExplicitImageIntent(input.userMessage);
   const explicitParams = explicit
     ? resolveFaceGenExplicitParams(input.userMessage, wardrobeContext, {
-        wideFraming: input.wideFraming,
+        wideFraming: input.wideFraming === true,
+        ultraWideFraming: input.wideFraming === 'ultra',
       })
     : null;
   const prompt =

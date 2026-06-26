@@ -4,6 +4,8 @@ import {
   resolveExplicitPoseFromMessage,
   type ExplicitExposureLevel,
 } from '@/lib/virtual-girlfriend/explicit-exposure';
+
+export type { ExplicitExposureLevel };
 import {
   pickSurpriseWardrobeForCompanion,
   pickWardrobeForCompanion,
@@ -145,8 +147,10 @@ const resolveFaceGenSubject = (context: WardrobeContext) =>
   context.sex?.trim().toLowerCase() === 'male' ? 'man' : 'woman';
 
 export type FaceGenExplicitOptions = {
-  /** Second attempt after body-crop detection — zoom out further and loosen face lock. */
+  /** Second attempt — zoom out further and loosen face lock. */
   wideFraming?: boolean;
+  /** Third attempt for pose-heavy shots (rear view) — minimum face lock. */
+  ultraWideFraming?: boolean;
 };
 
 /** Face Gen API params — composition-first prompts; lower s_scale frees body from face lock. */
@@ -159,8 +163,13 @@ export const resolveFaceGenExplicitParams = (
   const forcedPose = resolveExplicitPoseFromMessage(message);
   const subject = resolveFaceGenSubject(context);
   const trimmed = message.trim();
-  const wide = options.wideFraming ?? false;
-  const wideLead = wide ? 'Extreme wide shot, camera pulled back, zoomed out, ' : 'Wide shot, zoomed out, ';
+  const ultra = options.ultraWideFraming ?? false;
+  const wide = ultra || (options.wideFraming ?? false);
+  const wideLead = ultra
+    ? 'Extreme wide shot, camera far back, zoomed out, '
+    : wide
+      ? 'Wide shot, camera pulled back, zoomed out, '
+      : 'Wide shot, zoomed out, ';
 
   let compositionLead: string;
   let sScale: number;
@@ -178,7 +187,7 @@ export const resolveFaceGenExplicitParams = (
       break;
     case 'butt_focus':
       compositionLead = `${wideLead}rear-view photograph of nude adult ${subject}, bare buttocks fully visible, legs and knees in frame down to feet, no jeans no pants, over-shoulder glance at camera.`;
-      sScale = wide ? 0.4 : 0.52;
+      sScale = ultra ? 0.28 : wide ? 0.38 : 0.52;
       break;
     case 'genital_focus':
       compositionLead = `${wideLead}full-body nude photograph of adult ${subject}, explicit lower-body framing with spread legs and feet visible, no underwear blocking view.`;
@@ -219,8 +228,59 @@ export const resolveFaceGenExplicitParams = (
 };
 
 /** Compact prompt for ModelsLab Face Gen — matches playground style, not Kontext essay prompts. */
-export const buildFaceGenExplicitPrompt = (message: string, context: WardrobeContext = {}) =>
-  resolveFaceGenExplicitParams(message, context).prompt;
+export const buildFaceGenExplicitPrompt = (
+  message: string,
+  context: WardrobeContext = {},
+  options?: FaceGenExplicitOptions,
+) => resolveFaceGenExplicitParams(message, context, options).prompt;
+
+/** Aggressive img2img prompt — forces pose/wardrobe change from front canonical references. */
+export const buildExplicitImg2ImgPrompt = (message: string, context: WardrobeContext = {}) => {
+  const exposure = parseExplicitExposure(message);
+  const forcedPose = resolveExplicitPoseFromMessage(message);
+  const subject = resolveFaceGenSubject(context);
+  const trimmed = message.trim();
+
+  const poseTransform =
+    exposure.level === 'butt_focus'
+      ? `Turn the ${subject} completely away from camera into a rear-view nude shot. Bare buttocks fully visible, thong aside or fully nude rear. No jeans, no pants, no underwear covering the ass. ${forcedPose ?? 'Flirtatious glance back over shoulder at camera.'}`
+      : exposure.level === 'genital_focus'
+        ? `Repose into explicit lower-body nude framing with spread legs. ${exposure.wardrobeInstruction}`
+        : exposure.level === 'full_nude'
+          ? `Fully nude entire body, no clothing anywhere. ${forcedPose ?? 'Standing facing camera.'}`
+          : exposure.kontextEditInstruction;
+
+  return [
+    'Transform the reference into a brand-new photo. Ignore reference pose, clothing, and framing entirely.',
+    poseTransform,
+    exposure.wardrobeInstruction,
+    `Framing: ${exposure.framing}.`,
+    forcedPose && exposure.level !== 'butt_focus' ? `Pose: ${forcedPose}.` : null,
+    `User request: "${trimmed}".`,
+    'Photorealistic uncensored adult photography. Same face identity when face is visible.',
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
+
+/** img2img strength — pose-heavy explicit shots need near-total reference override. */
+export const resolveExplicitImg2ImgStrength = (level: ExplicitExposureLevel | null | undefined) => {
+  switch (level) {
+    case 'butt_focus':
+      return 0.96;
+    case 'genital_focus':
+      return 0.94;
+    case 'full_nude':
+      return 0.9;
+    case 'topless':
+      return 0.86;
+    default:
+      return 0.84;
+  }
+};
+
+export const isPoseHeavyExplicitLevel = (level: ExplicitExposureLevel | null | undefined) =>
+  level === 'butt_focus' || level === 'genital_focus';
 
 /** Face Gen prompt for any in-chat photo (explicit or outfit/scene). */
 export const buildFaceGenChatPrompt = (message: string, context: WardrobeContext = {}) => {

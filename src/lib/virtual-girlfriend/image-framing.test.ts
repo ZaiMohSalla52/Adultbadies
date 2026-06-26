@@ -1,6 +1,10 @@
 import { deflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { decodePngRgba, isLikelyBodyCroppedAtBottom } from '@/lib/virtual-girlfriend/image-framing';
+import {
+  decodePngRgba,
+  isLikelyBodyCroppedAtBottom,
+  isLikelyClothedExplicitFallback,
+} from '@/lib/virtual-girlfriend/image-framing';
 
 const crc32 = (buffer: Buffer) => {
   let crc = 0xffffffff;
@@ -68,5 +72,10 @@ describe('image framing helpers', () => {
   it('does not flag dark floor-like bottom edges as body crops', () => {
     const png = buildSolidPng(16, 200, [30, 28, 26]);
     expect(isLikelyBodyCroppedAtBottom(png)).toBe(false);
+  });
+
+  it('flags denim-like lower halves on butt-focus fallbacks', () => {
+    const png = buildSolidPng(32, 240, [90, 130, 210]);
+    expect(isLikelyClothedExplicitFallback(png, 'butt_focus')).toBe(true);
   });
 });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildExplicitImg2ImgPrompt,
+  resolveExplicitImg2ImgStrength,
   resolveFaceGenExplicitParams,
   resolvePhotoGenerationSpec,
 } from '@/lib/virtual-girlfriend/photo-generation-spec';
@@ -57,8 +59,19 @@ describe('resolvePhotoGenerationSpec', () => {
     const normal = resolveFaceGenExplicitParams('show me your ass', { sex: 'female' });
     const wide = resolveFaceGenExplicitParams('show me your ass', { sex: 'female' }, { wideFraming: true });
     expect(wide.sScale).toBeLessThan(normal.sScale);
-    expect(wide.prompt.toLowerCase()).toContain('extreme wide shot');
+    expect(wide.prompt.toLowerCase()).toContain('wide shot');
     expect(wide.wideFraming).toBe(true);
+  });
+
+  it('builds rear-view img2img fallback prompt for ass requests', () => {
+    const prompt = buildExplicitImg2ImgPrompt('show me your ass', { sex: 'female' });
+    expect(prompt.toLowerCase()).toContain('rear-view');
+    expect(prompt.toLowerCase()).toContain('ignore reference pose');
+    expect(prompt.toLowerCase()).toContain('no jeans');
+  });
+
+  it('uses very high img2img strength for butt focus', () => {
+    expect(resolveExplicitImg2ImgStrength('butt_focus')).toBeGreaterThan(0.9);
   });
 
   it('uses style-aware wardrobe for surprise requests', () => {

@@ -110,6 +110,40 @@ const looksLikeSkinTone = (rgb: { r: number; g: number; b: number }) =>
  * Heuristic: bottom edge color matches mid-body skin tones → legs/feet likely cropped out.
  * Used to trigger a wide-framing Face Gen retry or Kontext fallback.
  */
+/** Detect img2img fallbacks that kept jeans/pants on a rear-view explicit request. */
+export const isLikelyClothedExplicitFallback = (
+  bytes: Buffer,
+  level: 'butt_focus' | 'genital_focus' | 'full_nude' | 'topless' | null | undefined,
+) => {
+  if (level !== 'butt_focus' && level !== 'genital_focus') return false;
+
+  // ModelsLab may return JPEG; skip pixel heuristics when not PNG.
+  if (bytes.length < 4 || bytes[0] !== 0x89 || bytes[1] !== 0x50) return false;
+
+  const image = decodePngRgba(bytes);
+  if (!image) return false;
+
+  const startY = Math.floor(image.height * 0.45);
+  const endY = image.height - 1;
+  let denimLike = 0;
+  let samples = 0;
+
+  for (let y = startY; y <= endY; y += Math.max(1, Math.floor((endY - startY) / 24))) {
+    const stride = image.width * 4;
+    const offset = y * stride;
+    for (let x = 0; x < image.width; x += Math.max(1, Math.floor(image.width / 12))) {
+      const idx = offset + x * 4;
+      const r = image.data[idx]!;
+      const g = image.data[idx + 1]!;
+      const b = image.data[idx + 2]!;
+      samples += 1;
+      if (b > r + 10 && b > g + 4 && b > 70) denimLike += 1;
+    }
+  }
+
+  return samples > 0 && denimLike / samples > 0.08;
+};
+
 export const isLikelyBodyCroppedAtBottom = (bytes: Buffer) => {
   const image = decodePngRgba(bytes);
   if (!image || image.height < 120) return false;

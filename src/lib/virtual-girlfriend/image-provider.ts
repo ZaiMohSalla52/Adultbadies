@@ -68,7 +68,7 @@ export const generateChatImageFromReferenceFaceGen = (input: {
   reference: PortraitReferenceImage;
   wardrobeContext?: import('@/lib/virtual-girlfriend/companion-wardrobe').WardrobeContext;
   numInferenceSteps?: number;
-  wideFraming?: boolean;
+  wideFraming?: boolean | 'ultra';
 }): Promise<GeneratedImage> => {
   if (!isModelsLabImageProvider()) {
     throw new Error('Face Gen chat images require ModelsLab (MODELSLAB_API_KEY).');
@@ -83,6 +83,7 @@ export const generateChatImageFromReferenceSdxl = (input: {
   numInferenceSteps?: number;
   guidanceScale?: number;
   highExposure?: boolean;
+  exposureLevel?: import('@/lib/virtual-girlfriend/explicit-exposure').ExplicitExposureLevel | null;
 }): Promise<GeneratedImage> => {
   if (!isModelsLabImageProvider()) {
     throw new Error('SDXL explicit chat images require ModelsLab (MODELSLAB_API_KEY).');

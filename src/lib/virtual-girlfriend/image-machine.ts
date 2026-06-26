@@ -40,9 +40,17 @@ import {
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { resolveChatGenerationRoute } from '@/lib/virtual-girlfriend/image-generation-router';
 import { isNearCloneOfReference } from '@/lib/virtual-girlfriend/image-clone-detection';
-import { isLikelyBodyCroppedAtBottom } from '@/lib/virtual-girlfriend/image-framing';
+import {
+  isLikelyBodyCroppedAtBottom,
+  isLikelyClothedExplicitFallback,
+} from '@/lib/virtual-girlfriend/image-framing';
 import { isHighExposureExplicit } from '@/lib/virtual-girlfriend/explicit-exposure';
-import { buildFaceGenExplicitPrompt, resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import {
+  buildExplicitImg2ImgPrompt,
+  isPoseHeavyExplicitLevel,
+  resolveExplicitImg2ImgStrength,
+  resolvePhotoGenerationSpec,
+} from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import {
@@ -84,7 +92,7 @@ const MACHINE_TIMEOUT_MS = {
   /** SDXL/Aurelium img2img attempt before Face Gen fallback. */
   chatSdxlAttempt: 90_000,
   /** Face Gen fallback only — ModelsLab queue often exceeds 2 minutes. */
-  chatFaceGenAttempt: 120_000,
+  chatFaceGenAttempt: 180_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;
@@ -1246,9 +1254,12 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
       : false;
 
+    const exposureLevel = chatPromptInput.explicitExposureLevel ?? null;
+    const poseHeavyExplicit = isPoseHeavyExplicitLevel(exposureLevel);
+
     const explicitUserPrompt =
       input.userMessage?.trim() && chatPromptInput.explicitIntent
-        ? buildFaceGenExplicitPrompt(input.userMessage.trim())
+        ? buildExplicitImg2ImgPrompt(input.userMessage.trim(), wardrobeContextFromCompanion(input.companion))
         : prompt;
 
     const rejectPortraitClone = (generated: GeneratedImage, label: string) => {
@@ -1273,9 +1284,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     };
 
     const needsFullBodyFraming =
-      chatPromptInput.explicitExposureLevel === 'full_nude'
-      || chatPromptInput.explicitExposureLevel === 'butt_focus'
-      || chatPromptInput.explicitExposureLevel === 'genital_focus';
+      exposureLevel === 'full_nude' || exposureLevel === 'genital_focus';
 
     const rejectBodyCrop = (generated: GeneratedImage, label: string) => {
       if (!needsFullBodyFraming || !generated.bytes.byteLength) return;
@@ -1289,7 +1298,19 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       }
     };
 
-    const generateFaceGenAttempt = (wideFraming = false) => {
+    const rejectClothedExplicitFallback = (generated: GeneratedImage, label: string) => {
+      if (!poseHeavyExplicit || !generated.bytes.byteLength) return;
+      if (isLikelyClothedExplicitFallback(generated.bytes, exposureLevel)) {
+        throw new VirtualGirlfriendImageMachineError(
+          `${label} kept clothed front pose instead of explicit rear/body request.`,
+          'provider_error',
+          'provider_request',
+          true,
+        );
+      }
+    };
+
+    const generateFaceGenAttempt = (wideFraming: boolean | 'ultra' = false) => {
       if (!input.userMessage?.trim()) {
         throw new VirtualGirlfriendImageMachineError(
           'Face Gen explicit chat requires a user message.',
@@ -1309,20 +1330,35 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     };
 
     const generateFaceGenFallback = async () => {
-      const primary = await generateFaceGenAttempt(false);
-      try {
-        rejectBodyCrop(primary, 'face_gen');
-        return primary;
-      } catch (cropError) {
-        logImageMachine(scope, 'explicit_face_gen_crop_retry', {
-          reason: cropError instanceof Error ? cropError.message : 'body_crop_detected',
-          wideFraming: true,
-        });
-        const wide = await generateFaceGenAttempt(true);
-        rejectBodyCrop(wide, 'face_gen_wide');
-        return wide;
+      const attempts: Array<boolean | 'ultra'> = poseHeavyExplicit
+        ? [false, true, 'ultra']
+        : [false, true];
+      let lastError: unknown;
+
+      for (let i = 0; i < attempts.length; i += 1) {
+        const framing = attempts[i]!;
+        try {
+          const result = await generateFaceGenAttempt(framing);
+          rejectBodyCrop(result, framing === false ? 'face_gen' : framing === true ? 'face_gen_wide' : 'face_gen_ultra');
+          return result;
+        } catch (error) {
+          lastError = error;
+          if (i < attempts.length - 1) {
+            logImageMachine(scope, 'explicit_face_gen_retry', {
+              attempt: i + 1,
+              nextFraming: attempts[i + 1],
+              reason: error instanceof Error ? error.message : 'face_gen_attempt_failed',
+            });
+          }
+        }
       }
+
+      throw lastError instanceof Error
+        ? lastError
+        : new VirtualGirlfriendImageMachineError('Face Gen explicit attempts exhausted.', 'provider_error', 'provider_request', true);
     };
+
+    const img2imgStrength = resolveExplicitImg2ImgStrength(exposureLevel);
 
     const generateKontextExplicitAttempt = () =>
       runProviderGeneration({
@@ -1334,6 +1370,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
           guidanceScale: route.guidanceScale,
           numInferenceSteps: route.numInferenceSteps,
           enableSafetyChecker: route.enableSafetyChecker,
+          strength: img2imgStrength,
         },
         preferDevModel: true,
         explicitHighExposure: highExposure,
@@ -1345,16 +1382,19 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
     const trySdxlExplicit = () =>
       withTimeout('sdxl_generation', MACHINE_TIMEOUT_MS.chatSdxlAttempt, () =>
         generateChatImageFromReferenceSdxl({
-          prompt,
+          prompt: explicitUserPrompt,
           userMessage: input.userMessage?.trim(),
           reference: faceGenReference,
           numInferenceSteps: route.numInferenceSteps,
           guidanceScale: route.guidanceScale,
           highExposure,
+          exposureLevel,
         }),
       );
 
-    const tryImg2ImgExplicit = () => (highExposure ? tryKontextExplicit() : trySdxlExplicit());
+    // Kontext cannot flip a front canonical into rear-view — pose-heavy shots use SDXL.
+    const tryImg2ImgExplicit = () =>
+      poseHeavyExplicit ? trySdxlExplicit() : highExposure ? tryKontextExplicit() : trySdxlExplicit();
 
     const generateExplicitWithFallback = async () => {
       const tryFaceGenPrimary = async () => {
@@ -1370,12 +1410,13 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
           const cropRejected =
             faceGenError instanceof VirtualGirlfriendImageMachineError
             && faceGenError.message.includes('cropped before legs');
-          if (!cropRejected || !highExposure) throw faceGenError;
+          if (!cropRejected || !highExposure || poseHeavyExplicit) throw faceGenError;
           logImageMachine(scope, 'explicit_face_gen_crop_fallback_kontext', {
             reason: faceGenError instanceof Error ? faceGenError.message : 'body_crop_exhausted',
           });
           const result = await tryKontextExplicit();
           rejectPortraitClone(result, 'flux_kontext');
+          rejectClothedExplicitFallback(result, 'flux_kontext');
           return result;
         }
       };
@@ -1391,10 +1432,13 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
             cloneRejected:
               primaryError instanceof VirtualGirlfriendImageMachineError
               && primaryError.message.includes('too similar'),
-            fallback: highExposure ? 'kontext_dev' : 'sdxl',
+            fallback: poseHeavyExplicit ? 'sdxl' : highExposure ? 'kontext_dev' : 'sdxl',
+            exposureLevel,
           });
           const result = await tryImg2ImgExplicit();
-          rejectPortraitClone(result, highExposure ? 'flux_kontext' : 'sdxl');
+          const fallbackLabel = poseHeavyExplicit ? 'sdxl' : highExposure ? 'flux_kontext' : 'sdxl';
+          rejectPortraitClone(result, fallbackLabel);
+          rejectClothedExplicitFallback(result, fallbackLabel);
           return result;
         }
       }
