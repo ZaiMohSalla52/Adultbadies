@@ -15,6 +15,10 @@ export const resolveModelsLabPortraitModel = () =>
   env.MODELSLAB_FLUX_MODEL?.trim() ||
   MODELSLAB_DEFAULT_PORTRAIT_MODEL;
 
+/** Explicit chat img2img — defaults to Aurelium when unset (faster than Face Gen). */
+export const resolveModelsLabSdxlModel = () =>
+  env.MODELSLAB_SDXL_MODEL?.trim() || resolveModelsLabPortraitModel();
+
 export const isModelsLabRealisticPortraitModel = (modelId: string) =>
   /realistic-portrait|realism/i.test(modelId) && !/aurelium/i.test(modelId);
 

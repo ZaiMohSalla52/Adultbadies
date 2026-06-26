@@ -4,6 +4,11 @@ import {
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';
 import { buildFaceGenExplicitPrompt } from '@/lib/virtual-girlfriend/photo-generation-spec';
+import { resolveModelsLabSdxlModel } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import {
+  AURELIUM_PORTRAIT_NEGATIVE_PROMPT,
+  isAureliumPortraitModel,
+} from '@/lib/virtual-girlfriend/modelslab-aurelium-template';
 import { buildModelsLabNegativePrompt } from '@/lib/virtual-girlfriend/prompt-builder/primitives/negatives';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
@@ -15,8 +20,7 @@ import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
  * explicit scenes stay face-locked without Flux Kontext pro's black-image gate.
  */
 
-const MODELSLAB_SDXL_MODEL = env.MODELSLAB_SDXL_MODEL ?? 'sdxl';
-const MODELSLAB_NEGATIVE_PROMPT = buildModelsLabNegativePrompt();
+const MODELSLAB_SDXL_MODEL = resolveModelsLabSdxlModel();
 
 const DIMENSIONS_BY_ASPECT: Record<string, { width: number; height: number }> = {
   '1x1': { width: 1024, height: 1024 },
@@ -96,7 +100,9 @@ export const generateExplicitChatImageWithModelsLabSdxl = async (input: {
     {
       model_id: MODELSLAB_SDXL_MODEL,
       prompt: explicitPrompt,
-      negative_prompt: MODELSLAB_NEGATIVE_PROMPT,
+      negative_prompt: isAureliumPortraitModel(MODELSLAB_SDXL_MODEL)
+        ? AURELIUM_PORTRAIT_NEGATIVE_PROMPT
+        : buildModelsLabNegativePrompt(),
       init_image: initImage,
       width,
       height,

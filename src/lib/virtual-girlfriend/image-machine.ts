@@ -74,8 +74,10 @@ const MACHINE_TIMEOUT_MS = {
   portraitPreviewRequest: 120_000,
   /** In-chat photos (Face Gen poll + SDXL fallback + delivery) — Vercel maxDuration 300. */
   chatProviderRequest: 270_000,
-  /** Face Gen alone before SDXL fallback; ModelsLab can queue 90–150s under load. */
-  chatFaceGenAttempt: 150_000,
+  /** SDXL/Aurelium img2img attempt before Face Gen fallback. */
+  chatSdxlAttempt: 90_000,
+  /** Face Gen fallback only — ModelsLab queue often exceeds 2 minutes. */
+  chatFaceGenAttempt: 120_000,
   download: 15_000,
   storageUpload: 20_000,
 } as const;
@@ -1235,7 +1237,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       ? isHighExposureExplicit(chatPromptInput.explicitExposureLevel)
       : false;
 
-    const generateFaceGenWithFallback = async () => {
+    const generateFaceGenFallback = async () => {
       if (!input.userMessage?.trim()) {
         throw new VirtualGirlfriendImageMachineError(
           'Face Gen explicit chat requires a user message.',
@@ -1243,52 +1245,35 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
           'provider_request',
         );
       }
-      try {
-        return await withTimeout('face_gen_generation', MACHINE_TIMEOUT_MS.chatFaceGenAttempt, () =>
-          generateChatImageFromReferenceFaceGen({
-            userMessage: input.userMessage!.trim(),
-            reference: faceGenReference,
-            wardrobeContext: wardrobeContextFromCompanion(input.companion),
-            numInferenceSteps: route.numInferenceSteps,
-          }),
-        );
-      } catch (faceGenError) {
-        logImageMachine(scope, 'face_gen_fallback_sdxl', {
-          reason: faceGenError instanceof Error ? faceGenError.message : 'face_gen_failed',
-          timedOut: faceGenError instanceof Error && faceGenError.message.includes('timeout'),
-        });
-        return generateChatImageFromReferenceSdxl({
-          prompt,
-          userMessage: input.userMessage!.trim(),
-          reference: faceGenReference,
-          numInferenceSteps: route.numInferenceSteps,
-          guidanceScale: route.guidanceScale,
-          highExposure,
-        });
-      }
-    };
-
-    const generateExplicitWithFallback = async () => {
-      try {
-        return await generateChatImageFromReferenceSdxl({
-          prompt,
-          userMessage: input.userMessage?.trim(),
-          reference: faceGenReference,
-          numInferenceSteps: route.numInferenceSteps,
-          guidanceScale: route.guidanceScale,
-          highExposure,
-        });
-      } catch (sdxlError) {
-        if (!input.userMessage?.trim()) throw sdxlError;
-        logImageMachine(scope, 'sdxl_fallback_face_gen', {
-          reason: sdxlError instanceof Error ? sdxlError.message : 'sdxl_failed',
-        });
-        return generateChatImageFromReferenceFaceGen({
+      return withTimeout('face_gen_generation', MACHINE_TIMEOUT_MS.chatFaceGenAttempt, () =>
+        generateChatImageFromReferenceFaceGen({
           userMessage: input.userMessage!.trim(),
           reference: faceGenReference,
           wardrobeContext: wardrobeContextFromCompanion(input.companion),
           numInferenceSteps: 41,
+        }),
+      );
+    };
+
+    const generateExplicitWithFallback = async () => {
+      try {
+        return await withTimeout('sdxl_generation', MACHINE_TIMEOUT_MS.chatSdxlAttempt, () =>
+          generateChatImageFromReferenceSdxl({
+            prompt,
+            userMessage: input.userMessage?.trim(),
+            reference: faceGenReference,
+            numInferenceSteps: route.numInferenceSteps,
+            guidanceScale: route.guidanceScale,
+            highExposure,
+          }),
+        );
+      } catch (sdxlError) {
+        if (!input.userMessage?.trim()) throw sdxlError;
+        logImageMachine(scope, 'sdxl_fallback_face_gen', {
+          reason: sdxlError instanceof Error ? sdxlError.message : 'sdxl_failed',
+          timedOut: sdxlError instanceof Error && sdxlError.message.includes('timeout'),
         });
+        return generateFaceGenFallback();
       }
     };
 
@@ -1304,7 +1289,7 @@ export const runChatImageMachine = async (input: VirtualGirlfriendChatMachineReq
       route.provider === 'sdxl'
         ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateExplicitWithFallback)
         : route.provider === 'face_gen' && input.userMessage?.trim()
-          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateFaceGenWithFallback)
+          ? await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, generateFaceGenFallback)
           : await withTimeout('provider_generation', MACHINE_TIMEOUT_MS.chatProviderRequest, () =>
               runProviderGeneration({
                 scope,

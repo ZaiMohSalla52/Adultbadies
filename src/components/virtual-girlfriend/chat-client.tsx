@@ -175,7 +175,7 @@ export const VirtualGirlfriendChatClient = ({
       setAwaitingPhoto(false);
       setCompanionActivity('idle');
       setError('Photo is taking longer than expected. Try asking again in a moment.');
-    }, 120_000);
+    }, 240_000);
 
     return () => window.clearTimeout(timeout);
   }, [awaitingPhoto]);
