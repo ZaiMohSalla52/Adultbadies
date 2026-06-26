@@ -40,8 +40,10 @@ import { isHighExposureExplicit } from '@/lib/virtual-girlfriend/explicit-exposu
 import { resolvePhotoGenerationSpec } from '@/lib/virtual-girlfriend/photo-generation-spec';
 import { buildRandomScene } from '@/lib/virtual-girlfriend/prompt-builder/utils/scene-randomizer';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
-import { isCloudinaryConfigured, uploadToCloudinary } from '@/lib/storage/cloudinary';
-import { buildR2PublicUrl, isR2PublicDeliveryConfigured, uploadToR2 } from '@/lib/storage/r2';
+import {
+  archiveBrowserImageToR2,
+  publishBrowserImage,
+} from '@/lib/storage/publish-browser-image';
 import { VIRTUAL_GIRLFRIEND_GALLERY_TARGET } from '@/lib/virtual-girlfriend/gallery';
 import {
   getVirtualGirlfriendCompanionById,
@@ -621,53 +623,50 @@ const buildImageRecord = async (input: {
 }) => {
   const key = `virtual-girlfriend-images/${input.userId}/${input.companionId}/${STYLE_VERSION}/${input.capture.kind}-${input.capture.variantIndex}-${Date.now()}.png`;
 
-  logImageMachine(input.scope, 'upload_start', { target: 'r2', key });
-  const r2 = await withRetries({
+  logImageMachine(input.scope, 'upload_start', { target: 'r2_archive_optional', key });
+  const r2Archive = await archiveBrowserImageToR2({
+    storageKey: key,
+    bytes: input.generated.bytes,
+    mimeType: input.generated.mimeType,
+  });
+  if (r2Archive) {
+    logImageMachine(input.scope, 'upload_success', { target: 'r2_archive', key: r2Archive.key });
+  }
+
+  logImageMachine(input.scope, 'upload_start', { target: 'browser_delivery', key });
+  const published = await withRetries({
     attempts: MACHINE_RETRY_ATTEMPTS.storageUpload,
     scope: input.scope,
     stage: 'storage_upload',
     reason: 'storage_error',
-    run: () => withTimeout('r2_upload', MACHINE_TIMEOUT_MS.storageUpload, () => uploadToR2({ key, body: input.generated.bytes, contentType: input.generated.mimeType })),
+    run: () =>
+      withTimeout('browser_delivery_upload', MACHINE_TIMEOUT_MS.storageUpload, async () => {
+        const delivery = await publishBrowserImage({
+          bytes: input.generated.bytes,
+          mimeType: input.generated.mimeType,
+          storageKey: key,
+          cloudinaryFolderPath: `${input.userId}/${input.companionId}`,
+          cloudinaryPublicId: `${STYLE_VERSION}-${input.capture.kind}-${input.capture.variantIndex}-${Date.now()}`,
+        });
+        if (!delivery?.deliveryUrl?.trim()) {
+          throw new Error(
+            'No public image delivery configured. Set CLOUDINARY_* (recommended) or R2_PUBLIC_BASE_URL env vars.',
+          );
+        }
+        return delivery;
+      }),
   });
 
-  logImageMachine(input.scope, 'upload_success', { target: 'r2', key: r2.key });
-
-  let deliveryProvider: string;
-  let deliveryPublicId: string;
-  let deliveryUrl: string;
-  let deliveryWidth: number | null | undefined = input.generated.width;
-  let deliveryHeight: number | null | undefined = input.generated.height;
-
-  if (isR2PublicDeliveryConfigured()) {
-    deliveryProvider = 'cloudflare_r2';
-    deliveryPublicId = r2.key;
-    deliveryUrl = buildR2PublicUrl(r2.key);
-    logImageMachine(input.scope, 'upload_success', { target: 'r2_public', key: r2.key });
-  } else if (isCloudinaryConfigured()) {
-    logImageMachine(input.scope, 'upload_start', { target: 'cloudinary' });
-    const cloudinary = await withRetries({
-      attempts: MACHINE_RETRY_ATTEMPTS.storageUpload,
-      scope: input.scope,
-      stage: 'storage_upload',
-      reason: 'storage_error',
-      run: () => withTimeout('cloudinary_upload', MACHINE_TIMEOUT_MS.storageUpload, () => uploadToCloudinary({
-        bytes: input.generated.bytes,
-        mimeType: input.generated.mimeType,
-        folderPath: `${input.userId}/${input.companionId}`,
-        publicId: `${STYLE_VERSION}-${input.capture.kind}-${input.capture.variantIndex}-${Date.now()}`,
-      })),
-    });
-    deliveryProvider = cloudinary.provider;
-    deliveryPublicId = cloudinary.publicId;
-    deliveryUrl = cloudinary.deliveryUrl;
-    deliveryWidth = cloudinary.width ?? input.generated.width;
-    deliveryHeight = cloudinary.height ?? input.generated.height;
-    logImageMachine(input.scope, 'upload_success', { target: 'cloudinary', publicId: cloudinary.publicId });
-  } else {
-    throw new Error(
-      'No public image delivery configured. Set R2_PUBLIC_BASE_URL (recommended) or CLOUDINARY_* env vars.',
-    );
-  }
+  const deliveryProvider = published.provider;
+  const deliveryPublicId = published.publicId;
+  const deliveryUrl = published.deliveryUrl;
+  const deliveryWidth = published.width ?? input.generated.width;
+  const deliveryHeight = published.height ?? input.generated.height;
+  logImageMachine(input.scope, 'upload_success', {
+    target: deliveryProvider,
+    publicId: deliveryPublicId,
+    archivedToR2: Boolean(r2Archive),
+  });
 
   const [inserted] = await insertCompanionImages(input.token, [{
     user_id: input.userId,
@@ -675,8 +674,8 @@ const buildImageRecord = async (input: {
     visual_profile_id: input.visualProfileId,
     image_kind: input.capture.kind,
     variant_index: input.capture.variantIndex,
-    origin_storage_provider: r2.provider,
-    origin_storage_key: r2.key,
+    origin_storage_provider: r2Archive?.provider ?? deliveryProvider,
+    origin_storage_key: r2Archive?.key ?? deliveryPublicId,
     origin_mime_type: input.generated.mimeType,
     origin_byte_size: input.generated.bytes.byteLength,
     delivery_provider: deliveryProvider,

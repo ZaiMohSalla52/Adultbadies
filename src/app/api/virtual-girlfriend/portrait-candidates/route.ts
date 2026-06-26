@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         {
           error: isBrowserImageDeliveryConfigured()
             ? 'Not enough portrait previews were generated. Please try again.'
-            : 'Portrait hosting is not configured. Set R2_PUBLIC_BASE_URL (recommended) or CLOUDINARY_* env vars.',
+            : 'Portrait hosting is not configured. Set CLOUDINARY_* (recommended) or R2_PUBLIC_BASE_URL env vars.',
         },
         { status: 500 },
       );

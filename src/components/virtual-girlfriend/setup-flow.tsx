@@ -685,7 +685,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
 
       const validCandidates = await filterBrowserLoadableCandidates(filterPortraitCandidates(body.candidates));
       if (validCandidates.length < 1) {
-        throw new Error('Portrait previews could not be displayed. Check image storage (R2 or Cloudinary) and tap Regenerate looks.');
+        throw new Error('Portrait previews could not be displayed. Check Cloudinary (or R2) image delivery and tap Regenerate looks.');
       }
 
       setFailedPortraitIds(new Set());
