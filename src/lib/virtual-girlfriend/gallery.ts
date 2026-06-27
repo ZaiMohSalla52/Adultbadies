@@ -13,7 +13,6 @@ const withRepairedDeliveryUrl = (
 export const VIRTUAL_GIRLFRIEND_MAX_IMAGES = 12;
 
 // Target gallery photos auto-generated per companion (excludes canonical).
-// Temporarily capped at 2 to conserve ModelsLab credits — raise when ready.
 export const VIRTUAL_GIRLFRIEND_GALLERY_TARGET = 2;
 
 const normalizeText = (value: unknown) =>

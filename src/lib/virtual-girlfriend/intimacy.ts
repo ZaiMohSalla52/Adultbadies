@@ -1,5 +1,5 @@
 import { detectExplicitImageIntent } from '@/lib/virtual-girlfriend/adult-content';
-import { classifyChatTurnIntent, type ChatTurnIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
+import { sanitizeIntent, type ChatTurnIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
 import { wardrobeContextFromCompanion } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import { buildHeuristicPhotoIntent, looksLikePhotoRequest } from '@/lib/virtual-girlfriend/photo-request';
 import type {
@@ -100,18 +100,18 @@ export const resolveImageMomentFromIntent = (input: {
   };
 };
 
-export const decideIntimateImageMoment = async (input: {
+export const decideIntimateImageMoment = (input: {
   companion: VirtualGirlfriendCompanionRecord;
   userMessage: string;
   history: VirtualGirlfriendMessageRecord[];
   isPremium: boolean;
   intent?: ChatTurnIntent;
-}): Promise<IntimateImageMoment> => {
+}): IntimateImageMoment => {
   const intent =
     input.intent
     ?? (looksLikePhotoRequest(input.userMessage)
       ? buildHeuristicPhotoIntent(input.userMessage, wardrobeContextFromCompanion(input.companion))
-      : await classifyChatTurnIntent(input));
+      : sanitizeIntent({}, input.userMessage));
   return resolveImageMomentFromIntent({
     intent,
     history: input.history,

@@ -29,7 +29,6 @@ export type Entitlements = {
     rewind: boolean;
     seeWhoLikedYou: boolean;
     virtualGirlfriendExpandedText: boolean;
-    virtualGirlfriendVoice: boolean;
   };
   limits: {
     swipesPerDay: number | null;

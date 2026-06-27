@@ -49,7 +49,6 @@ export const buildEntitlements = (
       rewind: hasPremium,
       seeWhoLikedYou: hasPremium,
       virtualGirlfriendExpandedText: hasPremium,
-      virtualGirlfriendVoice: hasPremium,
     },
     limits: {
       swipesPerDay: hasPremium ? null : FREE_DAILY_SWIPE_LIMIT,

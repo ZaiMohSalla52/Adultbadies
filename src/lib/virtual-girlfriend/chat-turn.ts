@@ -147,7 +147,7 @@ export const streamVirtualGirlfriendChatTurn = async (input: {
         {
           role: 'system',
           content: [
-            buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile, 'text'),
+            buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile),
             'Return ONE JSON object for this turn. Emit reply as the FIRST JSON field so the user sees text immediately, then fill intent fields.',
             'Classify user intent semantically from conversation meaning — never keyword lists.',
             'In reply: plain texting voice — no markdown (**bold**), no meta actions (*photosending*, *sends photo*, *smirks*). The app handles images silently; never narrate uploading or sending.',

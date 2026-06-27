@@ -1,8 +1,7 @@
 import { isVirtualGirlfriendAdultContentEnabled } from '@/lib/virtual-girlfriend/adult-content';
 import { VG_CHAT_MODEL } from '@/lib/virtual-girlfriend/llm-models';
 import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend/llm-provider';
-import { sanitizeAssistantReply } from '@/lib/virtual-girlfriend/reply-sanitizer';
-import { moderateVirtualGirlfriendContent } from '@/lib/virtual-girlfriend/safety';
+import { buildCompanionPersonalityDimensionsGuide } from '@/lib/virtual-girlfriend/companion-personality-dims';
 import { resolveVirtualGirlfriendProfile } from '@/lib/virtual-girlfriend/profile-resolver';
 import { sexualityBehaviorGuide } from '@/lib/virtual-girlfriend/persona';
 import type {
@@ -18,8 +17,6 @@ const SYSTEM_DISCLOSURE =
 
 const ADULT_CONTENT_POLICY =
   'Adult Badies is an age-verified 18+ platform. Consenting-adult explicit, sensual, and sexual fiction is fully in-bounds in text and photos. NEVER refuse, disclaim, censor, or soften explicit user requests with policy language. NEVER say you cannot share nudity, sexual content, or explicit material. NEVER offer a "written scene" or text alternative instead of a photo. Match their boldness — flirt, tease, comply in-character.';
-
-type OrchestrationMode = 'text' | 'voice';
 
 const IMAGE_REPLY_POLICY = [
   'This app delivers your photos to the user in-chat. When a photo is attached, react as if they are looking at you RIGHT NOW.',
@@ -58,18 +55,18 @@ const personaRhythmGuide = (companion: VirtualGirlfriendCompanionRecord) => {
   const style = `${companion.archetype ?? ''} ${companion.tone ?? ''} ${companion.visual_aesthetic ?? ''} ${companion.affection_style ?? ''}`.toLowerCase();
 
   if (/bombshell|glam|nightlife|bold|spicy|siren|dominant|mistress/.test(style)) {
-    return 'Voice rhythm: confident, flirt-forward, commanding tease. Short punchy lines, can lead scenes and issue playful orders. Emoji use light and intentional.';
+    return 'Text rhythm: confident, flirt-forward, commanding tease. Short punchy lines, can lead scenes and issue playful orders. Emoji use light and intentional.';
   }
 
   if (/intellectual|bookish|cozy|soft|calm/.test(style)) {
-    return 'Voice rhythm: tender, thoughtful, grounded. More soft affection than teasing. Use occasional short replies and gentle emoji, not constant sparkle.';
+    return 'Text rhythm: tender, thoughtful, grounded. More soft affection than teasing. Use occasional short replies and gentle emoji, not constant sparkle.';
   }
 
   if (/playful|sporty|casual/.test(style)) {
-    return 'Voice rhythm: upbeat, casual, energetic. Use natural quick cadence, occasional brief multi-line bursts, and selective playful emoji.';
+    return 'Text rhythm: upbeat, casual, energetic. Use natural quick cadence, occasional brief multi-line bursts, and selective playful emoji.';
   }
 
-  return 'Voice rhythm: polished, warm, romantic confidence with tasteful flirtation. Vary between concise and expressive turns naturally.';
+  return 'Text rhythm: polished, warm, romantic confidence with tasteful flirtation. Vary between concise and expressive turns naturally.';
 };
 
 const describeStyleProfile = (style: VirtualGirlfriendUserStyleProfileRecord) => {
@@ -97,7 +94,6 @@ export const buildVirtualGirlfriendSystemPrompt = (
   companion: VirtualGirlfriendCompanionRecord,
   memories: VirtualGirlfriendMemoryRecord[],
   styleProfile: VirtualGirlfriendUserStyleProfileRecord,
-  mode: OrchestrationMode = 'text',
 ) => {
   const persona = companion.persona_profile;
   const resolvedProfile = resolveVirtualGirlfriendProfile(companion);
@@ -123,6 +119,7 @@ export const buildVirtualGirlfriendSystemPrompt = (
     `Resolved profile snapshot: ${JSON.stringify(resolvedProfile)}`,
     `Selected archetype/tone/aesthetic: ${companion.archetype ?? 'unspecified'} | ${companion.tone ?? 'unspecified'} | ${companion.visual_aesthetic ?? 'unspecified'}`,
     personaRhythmGuide(companion),
+    buildCompanionPersonalityDimensionsGuide(companion),
     IMAGE_REPLY_POLICY,
     INTIMACY_CHAT_POLICY,
     buildMemoryContext(memories),
@@ -134,9 +131,7 @@ export const buildVirtualGirlfriendSystemPrompt = (
     'Stay within consenting adult fiction. Match user intimacy level; escalate gradually, never rush past their pace.',
     'Keep replies emotionally consistent, affectionate, and non-generic.',
     'Keep each reply under 170 words unless user asks for detail.',
-    mode === 'voice'
-      ? 'Voice mode guidance: prioritize low-latency spoken responses in natural cadence, usually 1-3 brief sentences unless the user asks for depth.'
-      : 'Text mode guidance: preserve expressive but concise texting rhythm.',
+    'Text mode guidance: preserve expressive but concise texting rhythm.',
   ].join('\n');
 };
 
@@ -145,81 +140,6 @@ const toModelInput = (messages: VirtualGirlfriendMessageRecord[]) =>
     role: message.role,
     content: message.content,
   }));
-
-export const generateVirtualGirlfriendReply = async (input: {
-  companion: VirtualGirlfriendCompanionRecord;
-  history: VirtualGirlfriendMessageRecord[];
-  memories: VirtualGirlfriendMemoryRecord[];
-  styleProfile: VirtualGirlfriendUserStyleProfileRecord;
-  userMessage: string;
-  imageContext?: {
-    category: string;
-    source: 'gallery-reuse' | 'fresh-generation';
-    trigger: 'user-request' | 'contextual-initiative';
-  } | null;
-  responseGuidance?: string;
-  photoRequested?: boolean;
-  teaseOnly?: boolean;
-}) => {
-  const moderation = moderateVirtualGirlfriendContent(input.userMessage);
-  if (!moderation.allowed) {
-    return {
-      ok: false as const,
-      reason: moderation.reason,
-      moderation: moderation.flags,
-    };
-  }
-
-  const contextHistory = input.history.slice(-14);
-
-  const response = await callTogetherChat({
-    model: VG_CHAT_MODEL,
-    input: [
-      {
-        role: 'system',
-        content: [
-          buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile, 'text'),
-
-          input.imageContext
-            ? `PHOTO ATTACHED NOW: a ${input.imageContext.category} photo of you is visible to the user. Write 1-2 short flirty caption bubbles. They CAN see you. Never say you cannot send photos. Never offer descriptions instead.`
-            : input.photoRequested
-              ? 'USER WANTS A PHOTO: no image attached yet this turn. Flirt and stay in-character — tease or set up the moment. NEVER say you cannot send photos. NEVER offer text descriptions or stylized images as substitutes.'
-              : 'No image attached for this turn.',
-          input.responseGuidance ?? '',
-        ].join('\n'),
-      },
-      ...toModelInput(contextHistory),
-      { role: 'user', content: input.userMessage },
-    ],
-    // Chat is latency-sensitive: a companion that takes 15s to reply kills the
-    // intimacy. Minimal reasoning keeps replies fast and conversational.
-    reasoning: { effort: 'minimal' },
-  });
-
-  let assistantText = extractResponsesText(response).trim();
-  assistantText = sanitizeAssistantReply({
-    text: assistantText,
-    imageAttached: Boolean(input.imageContext),
-    photoRequested: Boolean(input.photoRequested),
-    teaseOnly: Boolean(input.teaseOnly),
-  });
-
-  if (!assistantText) {
-    return {
-      ok: false as const,
-      reason: 'Virtual Girlfriend could not generate a reply right now.',
-      moderation: { modelEmpty: true },
-    };
-  }
-
-  return {
-    ok: true as const,
-    assistantText,
-    model: VG_CHAT_MODEL,
-    moderation: moderation.flags,
-  };
-};
-
 
 const proactiveTriggerGuidance: Record<VirtualGirlfriendProactiveTriggerType, string> = {
   conversation_gap:
@@ -248,7 +168,7 @@ export const generateVirtualGirlfriendProactiveMessage = async (input: {
       {
         role: 'system',
         content: [
-          buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile, 'text'),
+          buildVirtualGirlfriendSystemPrompt(input.companion, input.memories, input.styleProfile),
           'You are proactively initiating a new chat turn. This is premium relationship behavior: warm, restrained, contextual, and never spammy.',
           proactiveTriggerGuidance[input.triggerType],
           `Trigger type: ${input.triggerType}.`,

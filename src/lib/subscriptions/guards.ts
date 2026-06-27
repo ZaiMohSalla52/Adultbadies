@@ -4,8 +4,7 @@ type EntitledFeature =
   | 'unlimitedSwipes'
   | 'rewind'
   | 'seeWhoLikedYou'
-  | 'virtualGirlfriendExpandedText'
-  | 'virtualGirlfriendVoice';
+  | 'virtualGirlfriendExpandedText';
 
 export const requireEntitledFeature = async (
   token: string,

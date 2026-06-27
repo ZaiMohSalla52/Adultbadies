@@ -10,7 +10,7 @@ import type {
 
 export type { IntimateImageMoment } from '@/lib/virtual-girlfriend/intimacy';
 
-export const decideVirtualGirlfriendImageMoment = async (input: {
+export const decideVirtualGirlfriendImageMoment = (input: {
   companion: VirtualGirlfriendCompanionRecord;
   userMessage: string;
   history: VirtualGirlfriendMessageRecord[];
