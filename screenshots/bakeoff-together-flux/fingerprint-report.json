@@ -1,0 +1,67 @@
+{
+  "ranAt": "2026-06-27T07:20:41.151Z",
+  "portrait": {
+    "pairs": [
+      {
+        "a": "black",
+        "b": "caucasian",
+        "cosine": 0.8025,
+        "nearDuplicate": false
+      },
+      {
+        "a": "black",
+        "b": "asian",
+        "cosine": 0.6132,
+        "nearDuplicate": false
+      },
+      {
+        "a": "black",
+        "b": "latina_seductive",
+        "cosine": 0.7308,
+        "nearDuplicate": false
+      },
+      {
+        "a": "caucasian",
+        "b": "asian",
+        "cosine": 0.6577,
+        "nearDuplicate": false
+      },
+      {
+        "a": "caucasian",
+        "b": "latina_seductive",
+        "cosine": 0.7242,
+        "nearDuplicate": false
+      },
+      {
+        "a": "asian",
+        "b": "latina_seductive",
+        "cosine": 0.6429,
+        "nearDuplicate": false
+      }
+    ],
+    "pctNearDup": 0,
+    "blackProfiles": []
+  },
+  "gallery_kontext-max": [
+    {
+      "sceneId": "seductive_apartment",
+      "cosine": 0.8012,
+      "nearDuplicate": false,
+      "black": false
+    },
+    {
+      "sceneId": "rooftop_evening",
+      "cosine": 0.6528,
+      "nearDuplicate": false,
+      "black": false
+    }
+  ],
+  "gallery_flux2-pro-gallery": [
+    {
+      "sceneId": "rooftop_evening",
+      "cosine": 0.6767,
+      "nearDuplicate": false,
+      "black": false
+    }
+  ]
+}

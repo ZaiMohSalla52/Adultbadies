@@ -20,6 +20,8 @@
     "phase0:diversity-trio-fingerprint": "tsx scripts/phase0-diversity-trio-fingerprint.ts",
     "phase0:realvisxl-diversity-trio": "node scripts/phase0-realvisxl-diversity-trio.mjs",
     "phase0:realvisxl-diversity-compare": "tsx scripts/phase0-realvisxl-diversity-compare.ts",
+    "phase0:together-flux-bakeoff": "node scripts/phase0-together-flux-bakeoff.mjs",
+    "phase0:together-flux-fingerprint": "tsx scripts/phase0-together-flux-fingerprint.ts",
     "phase0:trace-summary": "tsx scripts/phase0-summarize-turn-traces.ts",
     "memory:embed-backfill": "tsx scripts/memory-embed-backfill.ts"
   },

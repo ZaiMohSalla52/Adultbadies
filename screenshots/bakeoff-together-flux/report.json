@@ -1,0 +1,127 @@
+{
+  "ranAt": "2026-06-27T07:13:45.652Z",
+  "purpose": "together_flux_portrait_gallery_bakeoff",
+  "models": {
+    "portrait": "black-forest-labs/FLUX.2-pro",
+    "galleryKontextMax": "black-forest-labs/FLUX.1-kontext-max",
+    "galleryFlux2Pro": "black-forest-labs/FLUX.2-pro"
+  },
+  "results": [
+    {
+      "ok": true,
+      "phase": "portrait",
+      "modelKey": "flux2-pro",
+      "modelId": "black-forest-labs/FLUX.2-pro",
+      "profileId": "black",
+      "seed": 11101,
+      "black": false,
+      "tiny": false,
+      "bytes": 72376,
+      "inferenceMs": 10466,
+      "file": "screenshots/bakeoff-together-flux/flux2pro_portrait_black_seed11101.jpg",
+      "sourceUrl": "https://api.together.ai/shrt/FowkvbLUofBikJLD"
+    },
+    {
+      "ok": true,
+      "phase": "portrait",
+      "modelKey": "flux2-pro",
+      "modelId": "black-forest-labs/FLUX.2-pro",
+      "profileId": "caucasian",
+      "seed": 22202,
+      "black": false,
+      "tiny": false,
+      "bytes": 105261,
+      "inferenceMs": 10248,
+      "file": "screenshots/bakeoff-together-flux/flux2pro_portrait_caucasian_seed22202.jpg",
+      "sourceUrl": "https://api.together.ai/shrt/zjEOEUH5PfGDcVkR"
+    },
+    {
+      "ok": true,
+      "phase": "portrait",
+      "modelKey": "flux2-pro",
+      "modelId": "black-forest-labs/FLUX.2-pro",
+      "profileId": "asian",
+      "seed": 33303,
+      "black": false,
+      "tiny": false,
+      "bytes": 81412,
+      "inferenceMs": 9331,
+      "file": "screenshots/bakeoff-together-flux/flux2pro_portrait_asian_seed33303.jpg",
+      "sourceUrl": "https://api.together.ai/shrt/y36RQnjyDaF9LntN"
+    },
+    {
+      "ok": true,
+      "phase": "portrait",
+      "modelKey": "flux2-pro",
+      "modelId": "black-forest-labs/FLUX.2-pro",
+      "profileId": "latina_seductive",
+      "seed": 30303,
+      "black": false,
+      "tiny": false,
+      "bytes": 93567,
+      "inferenceMs": 9689,
+      "file": "screenshots/bakeoff-together-flux/flux2pro_portrait_latina_seductive_seed30303.jpg",
+      "sourceUrl": "https://api.together.ai/shrt/3hXDHhKRaE01pbn3"
+    },
+    {
+      "ok": true,
+      "phase": "gallery",
+      "modelKey": "kontext-max",
+      "modelId": "black-forest-labs/FLUX.1-kontext-max",
+      "sceneId": "seductive_apartment",
+      "seed": 40404,
+      "black": false,
+      "tiny": false,
+      "bytes": 121592,
+      "inferenceMs": 9422,
+      "file": "screenshots/bakeoff-together-flux/kontextmax_gallery_seductive_apartment_seed40404.jpg",
+      "referenceUrl": "https://api.together.ai/shrt/zjEOEUH5PfGDcVkR"
+    },
+    {
+      "ok": false,
+      "phase": "gallery",
+      "modelKey": "flux2-pro-gallery",
+      "modelId": "black-forest-labs/FLUX.2-pro",
+      "sceneId": "seductive_apartment",
+      "seed": 40404,
+      "error": "flux2-pro/gallery/seductive_apartment: HTTP 400 — Invalid content detected. The generated content was flagged and rejected by Black Forest Labs's content moderation system."
+    },
+    {
+      "ok": true,
+      "phase": "gallery",
+      "modelKey": "kontext-max",
+      "modelId": "black-forest-labs/FLUX.1-kontext-max",
+      "sceneId": "rooftop_evening",
+      "seed": 50505,
+      "black": false,
+      "tiny": false,
+      "bytes": 83862,
+      "inferenceMs": 10189,
+      "file": "screenshots/bakeoff-together-flux/kontextmax_gallery_rooftop_evening_seed50505.jpg",
+      "referenceUrl": "https://api.together.ai/shrt/zjEOEUH5PfGDcVkR"
+    },
+    {
+      "ok": true,
+      "phase": "gallery",
+      "modelKey": "flux2-pro-gallery",
+      "modelId": "black-forest-labs/FLUX.2-pro",
+      "sceneId": "rooftop_evening",
+      "seed": 50505,
+      "black": false,
+      "tiny": false,
+      "bytes": 67475,
+      "inferenceMs": 12829,
+      "file": "screenshots/bakeoff-together-flux/flux2pro_gallery_rooftop_evening_seed50505.jpg",
+      "referenceUrl": "https://api.together.ai/shrt/zjEOEUH5PfGDcVkR"
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "ok": 7,
+    "failed": 1,
+    "blackCards": 0,
+    "tinyImages": 0,
+    "portraitOk": 4,
+    "galleryOk": 3
+  }
+}
