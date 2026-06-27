@@ -22,7 +22,7 @@ describe('preview-moderation', () => {
     expect(softened.toLowerCase()).toContain('magnetic adult presence');
   });
 
-  it('avoids bedroom framing for seductive setup previews', () => {
+  it('avoids Together moderation triggers in seductive setup previews', () => {
     const prompt = buildPreviewPrompt(
       {
         sex: 'female',
@@ -34,12 +34,17 @@ describe('preview-moderation', () => {
         age: 24,
         styleVibe: 'seductive',
         personality: 'sultry_seductive',
+        breastSize: 'large',
       },
       9,
     ).toLowerCase();
 
     expect(prompt).not.toContain('bedroom');
     expect(prompt).not.toContain('parted lips');
+    expect(prompt).not.toContain('youthful smooth skin');
+    expect(prompt).not.toContain('full bust');
+    expect(prompt).not.toContain('no nudity');
+    expect(prompt).toContain('natural skin texture');
     expect(prompt).toContain('adult glamour');
   });
 

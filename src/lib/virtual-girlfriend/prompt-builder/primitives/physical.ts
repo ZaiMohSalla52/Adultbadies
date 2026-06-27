@@ -100,6 +100,18 @@ export const resolveBodyType = (bodyType: string): string => {
 
 export const resolveHairDescriptor = (hairColor: string, hairLength: string): string => `${hairColor} ${hairLength} hair`;
 
+const resolveAgeCue = (traits: { sex: string; age: number }, mode: 'default' | 'together_preview') => {
+  const isFemale = traits.sex?.trim().toLowerCase() !== 'male';
+  if (mode === 'together_preview') {
+    const subject = isFemale ? 'adult woman' : 'adult man';
+    return `real ${subject}, approximately ${traits.age} years old, natural skin texture`;
+  }
+
+  return traits.age <= 28
+    ? `young adult, approximately ${traits.age} years old, youthful smooth skin`
+    : `approximately ${traits.age} years old`;
+};
+
 export const resolvePhysicalTraitLine = (traits: {
   sex: string;
   origin: string;
@@ -111,16 +123,11 @@ export const resolvePhysicalTraitLine = (traits: {
   skinTone?: string;
   breastSize?: string;
 }): string => {
-  const isFemale = traits.sex?.trim().toLowerCase() !== 'male';
   const originDescriptor = resolveStrongEthnicityLine(traits.sex, traits.origin, traits.skinTone);
   const hairDescriptor = resolveHairDescriptor(traits.hairColor, traits.hairLength);
   const bodyTypeDescriptor = resolveBodyType(traits.bodyType);
-  const breastDescriptor = isFemale ? resolveBreastSizeDescriptor(traits.breastSize) : null;
-
-  const ageCue =
-    traits.age <= 28
-      ? `young adult, approximately ${traits.age} years old, youthful smooth skin`
-      : `approximately ${traits.age} years old`;
+  const breastDescriptor =
+    traits.sex?.trim().toLowerCase() !== 'male' ? resolveBreastSizeDescriptor(traits.breastSize) : null;
 
   return [
     originDescriptor,
@@ -128,7 +135,34 @@ export const resolvePhysicalTraitLine = (traits: {
     `${traits.eyeColor} eyes`,
     `${bodyTypeDescriptor} build`,
     breastDescriptor,
-    ageCue,
+    resolveAgeCue(traits, 'default'),
+  ]
+    .filter(Boolean)
+    .join(', ');
+};
+
+/** Setup portrait previews for Together — breast descriptors and youthful-skin phrasing trip output moderation. */
+export const resolvePreviewPhysicalTraitLine = (traits: {
+  sex: string;
+  origin: string;
+  hairColor: string;
+  hairLength: string;
+  eyeColor: string;
+  bodyType: string;
+  age: number;
+  skinTone?: string;
+  breastSize?: string;
+}): string => {
+  const originDescriptor = resolveStrongEthnicityLine(traits.sex, traits.origin, traits.skinTone);
+  const hairDescriptor = resolveHairDescriptor(traits.hairColor, traits.hairLength);
+  const bodyTypeDescriptor = resolveBodyType(traits.bodyType);
+
+  return [
+    originDescriptor,
+    hairDescriptor,
+    `${traits.eyeColor} eyes`,
+    `${bodyTypeDescriptor} build`,
+    resolveAgeCue(traits, 'together_preview'),
   ]
     .filter(Boolean)
     .join(', ');

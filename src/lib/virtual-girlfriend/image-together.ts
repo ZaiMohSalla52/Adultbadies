@@ -187,7 +187,8 @@ const generateTogetherPortrait = async (
     attempts.push({ model: primaryModel, prompt: softenedPrompt, label: 'softened_primary' });
   }
 
-  if (fallbackModel !== primaryModel) {
+  // FLUX.2-pro uses stricter BFL moderation — only try it for non-NSFW failures elsewhere.
+  if (surface !== 'preview' && fallbackModel !== primaryModel && softenedPrompt !== prompt) {
     attempts.push({ model: fallbackModel, prompt: softenedPrompt, label: 'softened_fallback' });
   }
 

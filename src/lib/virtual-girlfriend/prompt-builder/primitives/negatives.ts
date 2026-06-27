@@ -78,6 +78,10 @@ export const buildNegatives = (categories: Array<keyof typeof HARD_NEGATIVES>): 
 export const buildAllNegatives = (): string =>
   buildNegatives(Object.keys(HARD_NEGATIVES) as Array<keyof typeof HARD_NEGATIVES>);
 
+/** Together portrait previews — omit content negatives; "no nudity" + youthful cues trip output moderation. */
+export const buildTogetherPreviewNegatives = (): string =>
+  buildNegatives(['composition', 'mockup', 'overlay', 'exposure', 'style']);
+
 export const buildIdentityNegatives = (): string =>
   buildNegatives(['composition', 'mockup', 'overlay']);
 

@@ -1,11 +1,11 @@
 /**
- * Together FLUX.2-max can pass bakeoff prompts but block stacked adult-forward
- * production prompts with "image may contain NSFW content". Soften wording and
- * variant pools for setup previews while keeping seductive/glamour intent.
+ * Together FLUX.2-max output moderation triggers (live API tested):
+ * - "youthful smooth skin", "full bust", "large breasts"
+ * - "no nudity"/"no explicit content" negatives combined with adult/glamour cues
  */
 
 const MODERATION_RISKY_PATTERN =
-  /\b(bedroom|intimate|sensual|smolder|collarbone|thirst|lingerie|boudoir|nude|parted lips)\b/i;
+  /\b(bedroom|intimate|sensual|smolder|collarbone|thirst|lingerie|boudoir|nude|parted lips|youthful smooth skin|full bust|large breasts|very full bust)\b/i;
 
 export const isAdultForwardPreviewTraits = (styleVibe?: string, personality?: string) => {
   const vibe = styleVibe?.trim().toLowerCase();
@@ -18,6 +18,13 @@ export const filterModerationSafeVariants = <T extends string>(variants: readonl
   variants.filter((variant) => !MODERATION_RISKY_PATTERN.test(variant));
 
 const MODERATION_SOFT_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/young adult, approximately (\d+) years old, youthful smooth skin/gi, 'real adult woman, approximately $1 years old, natural skin texture'],
+  [/youthful smooth skin/gi, 'natural skin texture'],
+  [/\bfull bust\b/gi, ''],
+  [/\bvery full bust\b/gi, ''],
+  [/\blarge breasts\b/gi, ''],
+  [/\bmedium chest\b/gi, ''],
+  [/\bsmall chest\b/gi, ''],
   [/sultry seductive gaze, parted lips, magnetic adult allure/gi, 'confident warm gaze, magnetic adult presence'],
   [/sultry seductive styling with adult glamour energy/gi, 'polished adult glamour styling, magnetic presence'],
   [/lingerie-forward intimate styling[^.]*\./gi, 'elegant evening styling with tasteful adult allure.'],
@@ -32,6 +39,8 @@ const MODERATION_SOFT_REPLACEMENTS: Array<[RegExp, string]> = [
   [/tight crop from collarbone up[^.]*\./gi, 'close portrait, head and shoulders, face prominent.'],
   [/sensual/gi, 'confident'],
   [/parted lips/gi, 'relaxed natural expression'],
+  [/\bno nudity\b/gi, ''],
+  [/\bno explicit content\b/gi, ''],
 ];
 
 export const softenPreviewPromptForModeration = (prompt: string) => {
@@ -39,5 +48,9 @@ export const softenPreviewPromptForModeration = (prompt: string) => {
   for (const [pattern, replacement] of MODERATION_SOFT_REPLACEMENTS) {
     softened = softened.replace(pattern, replacement);
   }
-  return softened.replace(/\s+/g, ' ').trim();
+  return softened
+    .replace(/,\s*,/g, ',')
+    .replace(/\s+/g, ' ')
+    .replace(/ ,/g, ',')
+    .trim();
 };
