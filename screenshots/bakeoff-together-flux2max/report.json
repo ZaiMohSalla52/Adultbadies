@@ -1,0 +1,56 @@
+{
+  "ranAt": "2026-06-27T07:27:09.025Z",
+  "purpose": "together_flux2max_portrait_bakeoff",
+  "modelId": "black-forest-labs/FLUX.2-max",
+  "results": [
+    {
+      "ok": true,
+      "modelKey": "flux2-max",
+      "modelId": "black-forest-labs/FLUX.2-max",
+      "profileId": "black",
+      "seed": 11101,
+      "black": false,
+      "bytes": 94731,
+      "inferenceMs": 20448,
+      "file": "screenshots/bakeoff-together-flux2max/flux2max_portrait_black_seed11101.jpg"
+    },
+    {
+      "ok": true,
+      "modelKey": "flux2-max",
+      "modelId": "black-forest-labs/FLUX.2-max",
+      "profileId": "caucasian",
+      "seed": 22202,
+      "black": false,
+      "bytes": 98253,
+      "inferenceMs": 20051,
+      "file": "screenshots/bakeoff-together-flux2max/flux2max_portrait_caucasian_seed22202.jpg"
+    },
+    {
+      "ok": true,
+      "modelKey": "flux2-max",
+      "modelId": "black-forest-labs/FLUX.2-max",
+      "profileId": "asian",
+      "seed": 33303,
+      "black": false,
+      "bytes": 76632,
+      "inferenceMs": 23061,
+      "file": "screenshots/bakeoff-together-flux2max/flux2max_portrait_asian_seed33303.jpg"
+    },
+    {
+      "ok": true,
+      "modelKey": "flux2-max",
+      "modelId": "black-forest-labs/FLUX.2-max",
+      "profileId": "latina_seductive",
+      "seed": 30303,
+      "black": false,
+      "bytes": 92641,
+      "inferenceMs": 20075,
+      "file": "screenshots/bakeoff-together-flux2max/flux2max_portrait_latina_seductive_seed30303.jpg"
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "ok": 4,
+    "blackCards": 0
+  }
+}

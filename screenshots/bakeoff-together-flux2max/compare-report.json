@@ -1,0 +1,169 @@
+{
+  "ranAt": "2026-06-27T07:29:22.351Z",
+  "threshold": 0.85,
+  "models": {
+    "together-flux2-pro": {
+      "portraits": 4,
+      "blackCards": 0,
+      "pctNearDup": 0,
+      "maxPairCosine": 0.8025,
+      "nearDupPairs": 0,
+      "pairCount": 6,
+      "avgInferenceMs": 9934,
+      "pairs": [
+        {
+          "a": "black",
+          "b": "caucasian",
+          "cosine": 0.8025,
+          "nearDuplicate": false
+        },
+        {
+          "a": "black",
+          "b": "asian",
+          "cosine": 0.6132,
+          "nearDuplicate": false
+        },
+        {
+          "a": "black",
+          "b": "latina_seductive",
+          "cosine": 0.7308,
+          "nearDuplicate": false
+        },
+        {
+          "a": "caucasian",
+          "b": "asian",
+          "cosine": 0.6577,
+          "nearDuplicate": false
+        },
+        {
+          "a": "caucasian",
+          "b": "latina_seductive",
+          "cosine": 0.7242,
+          "nearDuplicate": false
+        },
+        {
+          "a": "asian",
+          "b": "latina_seductive",
+          "cosine": 0.6429,
+          "nearDuplicate": false
+        }
+      ],
+      "files": [
+        "screenshots/bakeoff-together-flux/flux2pro_portrait_black_seed11101.jpg",
+        "screenshots/bakeoff-together-flux/flux2pro_portrait_caucasian_seed22202.jpg",
+        "screenshots/bakeoff-together-flux/flux2pro_portrait_asian_seed33303.jpg",
+        "screenshots/bakeoff-together-flux/flux2pro_portrait_latina_seductive_seed30303.jpg"
+      ]
+    },
+    "together-flux2-max": {
+      "portraits": 4,
+      "blackCards": 0,
+      "pctNearDup": 0,
+      "maxPairCosine": 0.7651,
+      "nearDupPairs": 0,
+      "pairCount": 6,
+      "avgInferenceMs": 20909,
+      "pairs": [
+        {
+          "a": "black",
+          "b": "caucasian",
+          "cosine": 0.6429,
+          "nearDuplicate": false
+        },
+        {
+          "a": "black",
+          "b": "asian",
+          "cosine": 0.6912,
+          "nearDuplicate": false
+        },
+        {
+          "a": "black",
+          "b": "latina_seductive",
+          "cosine": 0.6039,
+          "nearDuplicate": false
+        },
+        {
+          "a": "caucasian",
+          "b": "asian",
+          "cosine": 0.7087,
+          "nearDuplicate": false
+        },
+        {
+          "a": "caucasian",
+          "b": "latina_seductive",
+          "cosine": 0.6605,
+          "nearDuplicate": false
+        },
+        {
+          "a": "asian",
+          "b": "latina_seductive",
+          "cosine": 0.7651,
+          "nearDuplicate": false
+        }
+      ],
+      "files": [
+        "screenshots/bakeoff-together-flux2max/flux2max_portrait_black_seed11101.jpg",
+        "screenshots/bakeoff-together-flux2max/flux2max_portrait_caucasian_seed22202.jpg",
+        "screenshots/bakeoff-together-flux2max/flux2max_portrait_asian_seed33303.jpg",
+        "screenshots/bakeoff-together-flux2max/flux2max_portrait_latina_seductive_seed30303.jpg"
+      ]
+    },
+    "modelslab-flux2-pro": {
+      "portraits": 2,
+      "blackCards": 0,
+      "pctNearDup": 0,
+      "maxPairCosine": 0.5885,
+      "nearDupPairs": 0,
+      "pairCount": 1,
+      "avgInferenceMs": null,
+      "pairs": [
+        {
+          "a": "caucasian",
+          "b": "asian",
+          "cosine": 0.5885,
+          "nearDuplicate": false
+        }
+      ],
+      "files": [
+        "screenshots/bakeoff-diversity-trio/flux2pro_caucasian_seed22202.png",
+        "screenshots/bakeoff-diversity-trio/flux2pro_asian_seed33303.png"
+      ]
+    }
+  },
+  "winner": "together-flux2-max",
+  "scores": [
+    {
+      "key": "together-flux2-max",
+      "label": "Together FLUX.2-max",
+      "ok": 4,
+      "total": 4,
+      "blackCards": 0,
+      "pctNearDup": 0,
+      "maxPairCosine": 0.7651,
+      "avgInferenceMs": 20909,
+      "score": 16.174500000000002
+    },
+    {
+      "key": "together-flux2-pro",
+      "label": "Together FLUX.2-pro",
+      "ok": 4,
+      "total": 4,
+      "blackCards": 0,
+      "pctNearDup": 0,
+      "maxPairCosine": 0.8025,
+      "avgInferenceMs": 9934,
+      "score": 15.9875
+    },
+    {
+      "key": "modelslab-flux2-pro",
+      "label": "ModelsLab flux-2-pro",
+      "ok": 2,
+      "total": 4,
+      "blackCards": 0,
+      "pctNearDup": 0,
+      "maxPairCosine": 0.5885,
+      "avgInferenceMs": null,
+      "score": 7.0575
+    }
+  ]
+}
