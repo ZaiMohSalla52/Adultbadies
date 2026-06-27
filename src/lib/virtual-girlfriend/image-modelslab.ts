@@ -55,7 +55,8 @@ const FACE_GEN_SFW_NEGATIVE_PROMPT = `${FACE_GEN_BASE_NEGATIVE_PROMPT}, bra, shi
 const MODELSLAB_NEGATIVE_PROMPT = buildModelsLabNegativePrompt();
 
 const PREVIEW_POLL = { maxAttempts: 45, intervalMs: 1_500 } as const;
-const FLUX2_PREVIEW_POLL = { maxAttempts: 90, intervalMs: 2_000 } as const;
+/** Align with v6 preview poll — long polls were exceeding Vercel maxDuration. */
+const FLUX2_PREVIEW_POLL = PREVIEW_POLL;
 
 const DIMENSIONS_BY_ASPECT: Record<string, { width: number; height: number }> = {
   '1x1': { width: 1024, height: 1024 },

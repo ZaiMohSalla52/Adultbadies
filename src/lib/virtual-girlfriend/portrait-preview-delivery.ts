@@ -74,6 +74,11 @@ export const deliverPortraitPreviewCandidates = async (
 
   return Promise.all(
     candidates.map(async (candidate, index) => {
+      // ModelsLab already returns browser-loadable HTTPS URLs — skip download/re-upload round trip.
+      if (isHostedUrl(candidate.imageDataUrl)) {
+        return candidate;
+      }
+
       const parsed = parseDataUrlImage(candidate.imageDataUrl);
       let bytes: Buffer | null = parsed?.bytes ?? null;
       let mimeType = parsed?.mimeType ?? 'image/png';

@@ -1,10 +1,7 @@
 import type { VirtualGirlfriendPortraitPreviewCandidate } from '@/lib/virtual-girlfriend/image-machine';
 import type { SiblingCanonicalReference } from '@/lib/virtual-girlfriend/portrait-distinctness-gate';
 import { runPortraitPreviewImageMachine } from '@/lib/virtual-girlfriend/image-machine';
-import {
-  deliverPortraitPreviewCandidates,
-  filterReachablePortraitPreviewCandidates,
-} from '@/lib/virtual-girlfriend/portrait-preview-delivery';
+import { deliverPortraitPreviewCandidates } from '@/lib/virtual-girlfriend/portrait-preview-delivery';
 import { PORTRAIT_PREVIEW_CANDIDATE_COUNT } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import type { PreviewTraits } from '@/lib/virtual-girlfriend/types/traits';
 
@@ -53,16 +50,7 @@ export const runPortraitPreviewPipeline = async (
   const pool = delivered.length > 0 ? delivered : generated;
 
   const hosted = pool.filter((candidate) => isHostedPreviewUrl(candidate.imageDataUrl));
-  let reachableCount = 0;
-  let candidates: VirtualGirlfriendPortraitPreviewCandidate[] = [];
-
-  if (hosted.length > 0) {
-    const reachable = await filterReachablePortraitPreviewCandidates(hosted);
-    reachableCount = reachable.length;
-    // Reachability probes can be flaky from serverless (Range unsupported, cold CDN).
-    // Prefer reachable URLs, but keep hosted URLs we just generated/published.
-    candidates = reachable.length > 0 ? reachable : hosted;
-  }
+  let candidates: VirtualGirlfriendPortraitPreviewCandidate[] = hosted;
 
   if (candidates.length < 1) {
     candidates = pool.filter((candidate) => isDataUrlPreview(candidate.imageDataUrl));
@@ -77,7 +65,7 @@ export const runPortraitPreviewPipeline = async (
       generated: generated.length,
       delivered: delivered.length,
       hosted: hosted.length,
-      reachable: reachableCount,
+      reachable: hosted.length,
       returned: returned.length,
     },
   };

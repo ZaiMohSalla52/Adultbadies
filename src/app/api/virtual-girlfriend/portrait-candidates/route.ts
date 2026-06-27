@@ -93,8 +93,9 @@ export async function POST(request: NextRequest) {
       .slice(0, 16);
 
     const siblings = await listVirtualGirlfriendCompanions(auth.accessToken, auth.user.id);
+    const siblingSample = siblings.slice(0, 4);
     const siblingProfiles = await Promise.all(
-      siblings.slice(0, 8).map((companion) =>
+      siblingSample.map((companion) =>
         getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id)),
     );
     const negativeOverlapCues = collectSiblingDistinctnessCues(
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     );
     const siblingCanonicalReferences = (
       await Promise.all(
-        siblings.slice(0, 8).map(async (companion) => {
+        siblingSample.map(async (companion) => {
           const image = await getCanonicalReferenceImageForCompanion(
             auth.accessToken,
             auth.user.id,

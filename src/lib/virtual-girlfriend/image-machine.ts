@@ -92,8 +92,8 @@ const sha = (value: string) => crypto.createHash('sha256').update(value).digest(
 const MACHINE_TIMEOUT_MS = {
   /** Portrait / canonical / gallery — typically finishes under 60s. */
   providerRequest: 60_000,
-  /** Aurelium text2img on ModelsLab can poll 30–90s under load. */
-  portraitPreviewRequest: 120_000,
+  /** Flux 2 Pro preview — cap per candidate so four slots fit under Vercel maxDuration. */
+  portraitPreviewRequest: 75_000,
   /** In-chat photos — Vercel maxDuration 300. */
   chatProviderRequest: 270_000,
   /** Face Gen body scene + face swap — primary explicit path. */
@@ -106,9 +106,15 @@ const MACHINE_TIMEOUT_MS = {
 
 const MACHINE_RETRY_ATTEMPTS = {
   providerRequest: 2,
+  /** Portrait chain already falls back to a second model — avoid doubling wall time. */
+  portraitPreview: 1,
   download: 2,
   storageUpload: 2,
 } as const;
+
+/** Stop generating once this budget is spent; return partial set if we have enough. */
+const PORTRAIT_PREVIEW_WALL_BUDGET_MS = 250_000;
+const PORTRAIT_PREVIEW_MIN_CANDIDATES = 2;
 
 export type VirtualGirlfriendMachineFailureReason =
   | 'missing_prerequisites'
@@ -1552,7 +1558,7 @@ const generatePortraitPreviewCandidate = async (
   );
   const seed = (derivePortraitPreviewSeed(input, index) + attemptOffset) % 2_147_483_647;
   const generated = await withRetries({
-    attempts: MACHINE_RETRY_ATTEMPTS.providerRequest,
+    attempts: MACHINE_RETRY_ATTEMPTS.portraitPreview,
     scope: 'portrait_preview',
     stage: 'provider_request',
     reason: 'provider_error',
@@ -1575,8 +1581,8 @@ const generatePortraitPreviewCandidate = async (
   };
 };
 
-/** Serial generation — avoids parallel credit burn when ModelsLab is slow or failing. */
-const PORTRAIT_PREVIEW_CONCURRENCY = 1;
+/** Two at a time — halves wall clock while staying within API credit tolerance. */
+const PORTRAIT_PREVIEW_CONCURRENCY = 2;
 
 const generateDistinctPortraitSlot = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
@@ -1641,24 +1647,57 @@ const fallbackParallelGeneration = async (
   });
 
   const candidates: VirtualGirlfriendPortraitPreviewCandidate[] = [];
+  const startedAt = Date.now();
+  const withinWallBudget = () => Date.now() - startedAt < PORTRAIT_PREVIEW_WALL_BUDGET_MS;
+  const canStopEarly = () =>
+    candidates.length >= PORTRAIT_PREVIEW_MIN_CANDIDATES && !withinWallBudget();
 
-  for (let index = 0; index < target; index += 1) {
-    try {
-      const slot = await generateDistinctPortraitSlot(input, index, referenceFingerprints);
+  for (let batchStart = 0; batchStart < target; batchStart += PORTRAIT_PREVIEW_CONCURRENCY) {
+    if (canStopEarly()) {
+      logImageMachine('portrait_preview', 'wall_budget_stop', {
+        generated: candidates.length,
+        target,
+        elapsedMs: Date.now() - startedAt,
+      });
+      break;
+    }
+
+    const batchIndexes: number[] = [];
+    for (
+      let index = batchStart;
+      index < Math.min(batchStart + PORTRAIT_PREVIEW_CONCURRENCY, target);
+      index += 1
+    ) {
+      if (canStopEarly()) break;
+      batchIndexes.push(index);
+    }
+
+    if (!batchIndexes.length) break;
+
+    const batchSlots = await Promise.all(
+      batchIndexes.map(async (index) => {
+        try {
+          const slot = await generateDistinctPortraitSlot(input, index, referenceFingerprints);
+          return { index, slot, error: null as string | null };
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          logImageMachine('portrait_preview', 'slot_failure', { index, reason });
+          return { index, slot: null, error: reason };
+        }
+      }),
+    );
+
+    for (const entry of batchSlots.sort((left, right) => left.index - right.index)) {
+      if (!entry.slot) continue;
       const normalized = {
-        ...slot.candidate,
-        id: `candidate-${index + 1}`,
-        label: `Candidate ${index + 1}`,
+        ...entry.slot.candidate,
+        id: `candidate-${entry.index + 1}`,
+        label: `Candidate ${entry.index + 1}`,
       };
       candidates.push(normalized);
-      if (slot.fingerprint) {
-        referenceFingerprints.push(slot.fingerprint);
+      if (entry.slot.fingerprint) {
+        referenceFingerprints.push(entry.slot.fingerprint);
       }
-    } catch (error) {
-      logImageMachine('portrait_preview', 'slot_failure', {
-        index,
-        reason: error instanceof Error ? error.message : String(error),
-      });
     }
   }
 

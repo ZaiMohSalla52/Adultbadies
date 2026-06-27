@@ -10,7 +10,8 @@ export type SiblingCanonicalReference = {
   mimeType: string | null;
 };
 
-export const PORTRAIT_DISTINCTNESS_MAX_RETRIES = 4;
+/** Keep low — each retry is a full ModelsLab portrait round-trip. */
+export const PORTRAIT_DISTINCTNESS_MAX_RETRIES = 2;
 
 const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string } | null => {
   const matched = dataUrl.trim().match(/^data:(.+?);base64,(.+)$/);

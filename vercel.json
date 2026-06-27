@@ -1,5 +1,19 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "functions": {
+    "src/app/api/virtual-girlfriend/portrait-candidates/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/virtual-girlfriend/setup/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/virtual-girlfriend/chat/stream/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/virtual-girlfriend/generate-photo/route.ts": {
+      "maxDuration": 300
+    }
+  }
 }
