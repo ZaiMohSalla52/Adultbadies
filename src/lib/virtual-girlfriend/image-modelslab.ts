@@ -7,7 +7,6 @@ import {
   callModelsLabV7TextToImage,
   downloadModelsLabImage,
   isModelsLabRateLimitError,
-  modelsLabSleep,
   type ModelsLabApiResponse,
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';

@@ -14,6 +14,7 @@ const ROOT = path.resolve(import.meta.dirname ?? path.dirname(new URL(import.met
 type BakeoffRow = {
   ok: boolean;
   modelKey: string;
+  phase?: string;
   profileId?: string;
   black?: boolean;
   bytes?: number;
