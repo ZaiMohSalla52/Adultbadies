@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isTogetherGalleryEnabled,
   isTogetherPortraitEnabled,
+  isTogetherRateLimitError,
   resolveTogetherGalleryModel,
   resolveTogetherPortraitModel,
   TOGETHER_DEFAULT_GALLERY_MODEL,
@@ -31,6 +32,12 @@ describe('together-image-config', () => {
     else process.env.TOGETHER_API_KEY = priorKey;
     if (priorOverride === undefined) delete process.env.VG_PORTRAIT_PROVIDER;
     else process.env.VG_PORTRAIT_PROVIDER = priorOverride;
+  });
+
+  it('detects Together rate limit errors', () => {
+    expect(isTogetherRateLimitError(new Error('Together portrait generation failed: Rate limit exceeded'))).toBe(true);
+    expect(isTogetherRateLimitError(new Error('HTTP 429'))).toBe(true);
+    expect(isTogetherRateLimitError(new Error('timeout'))).toBe(false);
   });
 
   it('enables together gallery when API key is set', () => {

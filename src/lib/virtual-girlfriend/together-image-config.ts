@@ -36,3 +36,8 @@ export const assertTogetherApiKey = () => {
   }
   return key;
 };
+
+export const isTogetherRateLimitError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /rate limit|too many requests|HTTP 429|\b429\b/i.test(message);
+};

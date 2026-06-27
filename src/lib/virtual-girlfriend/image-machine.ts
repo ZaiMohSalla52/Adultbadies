@@ -12,13 +12,10 @@ import {
 import type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
-import {
-  PORTRAIT_PREVIEW_CANDIDATE_COUNT,
-  resolveModelsLabPortraitFallbackModel,
-  resolveModelsLabPortraitModel,
-} from '@/lib/virtual-girlfriend/modelslab-image-config';
+import { PORTRAIT_PREVIEW_CANDIDATE_COUNT } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
   isTogetherPortraitEnabled,
+  isTogetherRateLimitError,
   resolveTogetherPortraitModel,
 } from '@/lib/virtual-girlfriend/together-image-config';
 import { isModelsLabRateLimitError, modelsLabSleep } from '@/lib/virtual-girlfriend/modelslab-client';
@@ -174,14 +171,17 @@ const withTimeout = async <T>(label: string, timeoutMs: number, run: () => Promi
   }
 };
 
+const isRateLimitError = (error: unknown) =>
+  isTogetherRateLimitError(error) || isModelsLabRateLimitError(error);
+
 const isTransientError = (error: unknown) => {
-  if (isModelsLabRateLimitError(error)) return true;
+  if (isRateLimitError(error)) return true;
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   return message.includes('timeout') || message.includes('429') || message.includes('503') || message.includes('502') || message.includes('network');
 };
 
 const retryBackoffMs = (error: unknown, attempt: number) =>
-  isModelsLabRateLimitError(error) ? 2_000 * attempt : 250 * attempt;
+  isRateLimitError(error) ? 2_000 * attempt : 250 * attempt;
 
 const withRetries = async <T>(input: {
   attempts: number;
@@ -495,13 +495,13 @@ const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string }
   }
 };
 
-/** Portrait picks may be embedded data URLs or hosted preview URLs from ModelsLab/Cloudinary. */
-/** Persist the user-selected Aurelium portrait as canonical — no Kontext/img2img drift. */
+/** Portrait picks may be embedded data URLs or hosted preview URLs from Together/Cloudinary. */
+/** Persist the user-selected portrait as canonical — no Kontext/img2img drift. */
 const resolveCanonicalFromSelectedPortrait = async (
   scope: string,
   reference: PortraitReferenceImage,
 ): Promise<GeneratedImage> => {
-  const portraitModel = resolveModelsLabPortraitModel();
+  const portraitModel = resolveTogetherPortraitModel();
   let bytes: Buffer;
   let mimeType: string;
 
@@ -536,7 +536,7 @@ const resolveCanonicalFromSelectedPortrait = async (
     width: null,
     height: null,
     revisedPrompt: null,
-    provider: 'modelslab',
+    provider: isTogetherPortraitEnabled() ? 'together' : resolveVgImageProvider(),
     model: portraitModel,
     endpoint: '/canonical/direct_persist',
     requestId: null,
@@ -1668,12 +1668,7 @@ const fallbackParallelGeneration = async (
     siblingFingerprints: siblingFingerprints.length,
     concurrency: PORTRAIT_PREVIEW_CONCURRENCY,
     provider: isTogetherPortraitEnabled() ? 'together' : resolveVgImageProvider(),
-    portraitModel: isTogetherPortraitEnabled()
-      ? resolveTogetherPortraitModel()
-      : resolveModelsLabPortraitModel(),
-    portraitFallbackModel: isTogetherPortraitEnabled()
-      ? resolveModelsLabPortraitModel()
-      : resolveModelsLabPortraitFallbackModel(),
+    portraitModel: resolveTogetherPortraitModel(),
   });
 
   const candidates: VirtualGirlfriendPortraitPreviewCandidate[] = [];
@@ -1706,8 +1701,8 @@ const fallbackParallelGeneration = async (
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       logImageMachine('portrait_preview', 'slot_failure', { index, reason });
-      if (isModelsLabRateLimitError(error) && candidates.length === 0) {
-        throw new Error('ModelsLab portrait rate limit exceeded. Please wait a moment and tap Regenerate looks.');
+      if (isRateLimitError(error) && candidates.length === 0) {
+        throw new Error('Together portrait rate limit exceeded. Please wait a moment and tap Regenerate looks.');
       }
     }
 

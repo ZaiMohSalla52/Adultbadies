@@ -4,12 +4,8 @@ import {
   generateCanonicalImageWithFlux,
   generatePortraitPreviewImageWithFlux,
   generateGalleryImageFromReferenceWithFlux,
-  generateChatImageFromReferenceWithFlux,
 } from '@/lib/virtual-girlfriend/image-flux';
 import {
-  generateCanonicalImageWithModelsLab,
-  generatePortraitPreviewImageWithModelsLab,
-  generateGalleryImageFromReferenceWithModelsLab,
   generateChatImageFromReferenceWithModelsLab,
   generateChatImageWithModelsLabFaceGen,
 } from '@/lib/virtual-girlfriend/image-modelslab';
@@ -19,6 +15,7 @@ import {
   generatePortraitPreviewImageWithTogether,
 } from '@/lib/virtual-girlfriend/image-together';
 import {
+  assertTogetherApiKey,
   isTogetherGalleryEnabled,
   isTogetherPortraitEnabled,
 } from '@/lib/virtual-girlfriend/together-image-config';
@@ -30,42 +27,23 @@ export type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-gir
 /*
  * Hybrid image provider facade.
  *
- * Portrait → Together FLUX.2-max (ModelsLab flux-2-pro fallback)
- * Gallery  → Together FLUX.1-kontext-max (ModelsLab kontext-pro fallback)
+ * Portrait → Together FLUX.2-max only (no ModelsLab fallback)
+ * Gallery  → Together FLUX.1-kontext-max only (no ModelsLab fallback)
  * Explicit chat → ModelsLab Face Gen / face swap (unchanged)
  * Passive chat  → ModelsLab Kontext
  */
 
 const hasModelsLabKey = () => Boolean(process.env.MODELSLAB_API_KEY?.trim());
 
-const withModelsLabPortraitFallback = async (
-  runTogether: () => Promise<GeneratedImage>,
-  runModelsLab: () => Promise<GeneratedImage>,
-  label: string,
-): Promise<GeneratedImage> => {
-  try {
-    return await runTogether();
-  } catch (error) {
-    if (!hasModelsLabKey()) throw error;
-    console.warn(`[virtual-girlfriend][image-provider] ${label} Together failed; ModelsLab fallback`, {
-      reason: error instanceof Error ? error.message : String(error),
-    });
-    return runModelsLab();
-  }
-};
-
 export const generateCanonicalImage = async (prompt: string): Promise<GeneratedImage> => {
   if (isTogetherPortraitEnabled()) {
-    return withModelsLabPortraitFallback(
-      () => generateCanonicalImageWithTogether(prompt),
-      () => generateCanonicalImageWithModelsLab(prompt),
-      'canonical',
-    );
+    assertTogetherApiKey();
+    return generateCanonicalImageWithTogether(prompt);
   }
-  if (hasModelsLabKey() || resolveVgImageProvider() === 'modelslab') {
-    return generateCanonicalImageWithModelsLab(prompt);
+  if (resolveVgImageProvider() === 'flux') {
+    return generateCanonicalImageWithFlux(prompt);
   }
-  return generateCanonicalImageWithFlux(prompt);
+  throw new Error('Portrait generation requires TOGETHER_API_KEY (Together FLUX.2-max).');
 };
 
 export const generatePortraitPreviewImage = async (
@@ -73,16 +51,13 @@ export const generatePortraitPreviewImage = async (
   seed?: number,
 ): Promise<GeneratedImage> => {
   if (isTogetherPortraitEnabled()) {
-    return withModelsLabPortraitFallback(
-      () => generatePortraitPreviewImageWithTogether(prompt, seed),
-      () => generatePortraitPreviewImageWithModelsLab(prompt, seed),
-      'portrait_preview',
-    );
+    assertTogetherApiKey();
+    return generatePortraitPreviewImageWithTogether(prompt, seed);
   }
-  if (hasModelsLabKey() || resolveVgImageProvider() === 'modelslab') {
-    return generatePortraitPreviewImageWithModelsLab(prompt, seed);
+  if (resolveVgImageProvider() === 'flux') {
+    return generatePortraitPreviewImageWithFlux(prompt, seed);
   }
-  return generatePortraitPreviewImageWithFlux(prompt, seed);
+  throw new Error('Portrait generation requires TOGETHER_API_KEY (Together FLUX.2-max).');
 };
 
 export type PortraitReferenceImage =
@@ -96,20 +71,13 @@ export const generateGalleryImageFromReference = async (input: {
   referenceImageUrl?: string;
 }): Promise<GeneratedImage> => {
   if (isTogetherGalleryEnabled()) {
-    try {
-      return await generateGalleryImageFromReferenceWithTogether(input);
-    } catch (error) {
-      if (!hasModelsLabKey()) throw error;
-      console.warn('[virtual-girlfriend][image-provider] gallery Together failed; ModelsLab fallback', {
-        reason: error instanceof Error ? error.message : String(error),
-      });
-      return generateGalleryImageFromReferenceWithModelsLab(input);
-    }
+    assertTogetherApiKey();
+    return generateGalleryImageFromReferenceWithTogether(input);
   }
-  if (hasModelsLabKey() || resolveVgImageProvider() === 'modelslab') {
-    return generateGalleryImageFromReferenceWithModelsLab(input);
+  if (resolveVgImageProvider() === 'flux') {
+    return generateGalleryImageFromReferenceWithFlux(input);
   }
-  return generateGalleryImageFromReferenceWithFlux(input);
+  throw new Error('Gallery generation requires TOGETHER_API_KEY (Together FLUX.1-kontext-max).');
 };
 
 export const generateChatImageFromReference = (input: {

@@ -1,7 +1,6 @@
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
-import { uploadReferenceImageUrl } from '@/lib/virtual-girlfriend/modelslab-client';
 import {
   assertTogetherApiKey,
   resolveTogetherGalleryModel,
@@ -176,9 +175,7 @@ export const generatePortraitPreviewImageWithTogether = async (
 export const generateCanonicalImageWithTogether = async (prompt: string): Promise<GeneratedImage> =>
   generateTogetherPortrait(prompt, 'canonical');
 
-const resolveGalleryReferenceUrl = async (input: {
-  referenceImageBytes: Buffer;
-  referenceMimeType: string;
+const resolveGalleryReferenceUrl = (input: {
   referenceImageUrl?: string;
 }) => {
   const hosted = input.referenceImageUrl?.trim();
@@ -186,11 +183,9 @@ const resolveGalleryReferenceUrl = async (input: {
     return hosted;
   }
 
-  if (!process.env.MODELSLAB_API_KEY?.trim()) {
-    throw new Error('Together gallery requires a hosted reference URL or MODELSLAB_API_KEY to upload the canonical image.');
-  }
-
-  return uploadReferenceImageUrl(input.referenceImageBytes, input.referenceMimeType);
+  throw new Error(
+    'Together gallery requires a public reference URL (canonical delivery_url). Ensure R2_PUBLIC_BASE_URL is configured.',
+  );
 };
 
 export const generateGalleryImageFromReferenceWithTogether = async (input: {
@@ -200,7 +195,7 @@ export const generateGalleryImageFromReferenceWithTogether = async (input: {
   referenceImageUrl?: string;
 }): Promise<GeneratedImage> => {
   const model = resolveTogetherGalleryModel();
-  const imageUrl = await resolveGalleryReferenceUrl(input);
+  const imageUrl = resolveGalleryReferenceUrl(input);
   const aspectRatio = resolveKontextAspect(SURFACE_PARAMS.gallery.aspect_ratio);
 
   const payload = await callTogetherImages(

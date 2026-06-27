@@ -9,17 +9,12 @@ import {
   listVirtualGirlfriendCompanions,
 } from '@/lib/virtual-girlfriend/data';
 import { collectSiblingDistinctnessCues } from '@/lib/virtual-girlfriend/identity-face-dna';
-import { assertModelsLabApiKey, isModelsLabRateLimitError } from '@/lib/virtual-girlfriend/modelslab-client';
 import {
   assertTogetherApiKey,
-  isTogetherPortraitEnabled,
+  isTogetherRateLimitError,
   resolveTogetherPortraitModel,
 } from '@/lib/virtual-girlfriend/together-image-config';
-import {
-  PORTRAIT_PREVIEW_CANDIDATE_COUNT,
-  resolveModelsLabPortraitFallbackModel,
-  resolveModelsLabPortraitModel,
-} from '@/lib/virtual-girlfriend/modelslab-image-config';
+import { PORTRAIT_PREVIEW_CANDIDATE_COUNT } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import { runPortraitPreviewPipeline } from '@/lib/virtual-girlfriend/portrait-preview-pipeline';
 import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
 
@@ -72,25 +67,15 @@ export async function POST(request: NextRequest) {
       freeformDetails: body.freeformDetails,
     });
 
-    const provider = isTogetherPortraitEnabled() ? 'together' : 'modelslab';
-    const portraitModel = isTogetherPortraitEnabled()
-      ? resolveTogetherPortraitModel()
-      : resolveModelsLabPortraitModel();
-    const portraitFallbackModel = isTogetherPortraitEnabled()
-      ? resolveModelsLabPortraitModel()
-      : resolveModelsLabPortraitFallbackModel();
+    assertTogetherApiKey();
 
-    if (isTogetherPortraitEnabled()) {
-      assertTogetherApiKey();
-    } else {
-      assertModelsLabApiKey();
-    }
+    const provider = 'together';
+    const portraitModel = resolveTogetherPortraitModel();
 
     console.info('[virtual-girlfriend] portrait candidate generation start', {
       userId: auth.user.id,
       provider,
       portraitModel,
-      portraitFallbackModel,
       styleVibe: resolvedTraits.styleVibe,
       origin: resolvedTraits.origin,
       deliveryConfigured: isBrowserImageDeliveryConfigured(),
@@ -160,20 +145,17 @@ export async function POST(request: NextRequest) {
     console.error('[virtual-girlfriend] portrait candidate generation failed', error);
     const message = error instanceof Error ? error.message : 'Unable to generate portrait candidates right now.';
     const timedOut = /timeout|timed out|FUNCTION_INVOCATION_TIMEOUT/i.test(message);
-    const rateLimited = isModelsLabRateLimitError(error) || /rate limit/i.test(message);
-    const missingKey = /MODELSLAB_API_KEY is not configured/i.test(message);
-    const missingFlux = /FLUX_API_KEY is not configured/i.test(message);
+    const rateLimited = isTogetherRateLimitError(error);
+    const missingTogetherKey = /TOGETHER_API_KEY is not configured/i.test(message);
     return NextResponse.json(
       {
-        error: missingKey
-          ? 'Portrait generation is not configured (MODELSLAB_API_KEY missing on server).'
-          : missingFlux
-            ? 'Portrait generation provider mismatch (VG_IMAGE_PROVIDER=flux but FLUX_API_KEY missing).'
-            : rateLimited
-              ? 'Portrait service is busy (rate limit). Wait 30 seconds, then tap Regenerate looks.'
-              : timedOut
-                ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
-                : 'Unable to generate portrait candidates right now.',
+        error: missingTogetherKey
+          ? 'Portrait generation is not configured (TOGETHER_API_KEY missing on server).'
+          : rateLimited
+            ? 'Portrait service is busy (Together rate limit). Wait 30 seconds, then tap Regenerate looks.'
+            : timedOut
+              ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
+              : 'Unable to generate portrait candidates right now.',
       },
       { status: rateLimited ? 429 : timedOut ? 504 : 500 },
     );
