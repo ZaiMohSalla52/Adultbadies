@@ -13,9 +13,17 @@ import {
   getPreviewFramingVariant,
   getPreviewLightingVariant,
   getPreviewSceneVariant,
+  PREVIEW_EXPRESSIONS,
+  PREVIEW_FRAMING_VARIANTS,
+  PREVIEW_LIGHTING_VARIANTS,
+  PREVIEW_SCENE_VARIANTS,
   EXPOSURE_LIGHTING_TAIL,
   PHOTO_REALISM_TAIL,
 } from '../primitives/composition';
+import {
+  filterModerationSafeVariants,
+  isAdultForwardPreviewTraits,
+} from '@/lib/virtual-girlfriend/preview-moderation';
 import { buildAllNegatives } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePhysicalTraitLine } from '../primitives/physical';
 import { resolveSubjectStrict } from '../primitives/subject';
@@ -80,9 +88,9 @@ function resolveAppearanceCue(styleVibe?: string, personality?: string, occupati
       sporty: 'athletic sporty activewear look',
       professional: 'sharp composed professional appearance',
       glamorous: 'glamorous high-fashion sophisticated look',
-      seductive: 'sultry seductive styling with adult glamour energy',
-      lingerie: 'lingerie-forward intimate styling, tasteful adult allure',
-      athletic: 'athletic thirst-trap physique emphasis, fitted activewear cues',
+      seductive: 'polished adult glamour styling, magnetic presence',
+      lingerie: 'elegant evening styling with tasteful adult allure',
+      athletic: 'athletic confident look, fitted activewear styling',
     };
     const mapped = styleMap[styleVibe.toLowerCase()];
     if (mapped) parts.push(mapped);
@@ -98,10 +106,10 @@ function resolveAppearanceCue(styleVibe?: string, personality?: string, occupati
       sarcastic_witty: 'sharp wit in her expression, knowing half-smile',
       mysterious: 'mysterious intense smoldering gaze, alluring presence',
       bubbly_energetic: 'bright radiant energetic smile, vibrant presence',
-      sultry_seductive: 'smoldering seductive gaze, parted lips, magnetic adult allure',
-      dominant_tease: 'commanding confident stare, controlled sensual power',
-      submissive_eager: 'soft eager expression, inviting vulnerable warmth',
-      wild_uninhibited: 'uninhibited flirtatious energy, raw adult chemistry in the eyes',
+      sultry_seductive: 'confident warm gaze, magnetic adult presence',
+      dominant_tease: 'commanding confident stare, controlled adult allure',
+      submissive_eager: 'soft eager expression, inviting warm presence',
+      wild_uninhibited: 'playful flirtatious energy, bright adult chemistry in the eyes',
     };
     const mapped = personalityMap[personality.toLowerCase()];
     if (mapped) parts.push(mapped);
@@ -116,20 +124,35 @@ const formatNegativeOverlapLine = (cues: string[] | undefined): string | null =>
   return `Avoid resembling existing companions: ${unique.join('; ')}.`;
 };
 
+const pickModerationSafeVariant = (variants: readonly string[], variantIndex: number) => {
+  const safe = filterModerationSafeVariants(variants);
+  const pool = safe.length > 0 ? safe : [...variants];
+  return pool[variantIndex % pool.length] ?? pool[0] ?? '';
+};
+
 export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: number): string => {
   const appearanceCue = resolveAppearanceCue(input.styleVibe, input.personality, input.occupation);
   const negativeOverlapLine = formatNegativeOverlapLine(input.negativeOverlapCues);
+  const moderationSafe = isAdultForwardPreviewTraits(input.styleVibe, input.personality);
 
   const parts = [
     `${resolveSubjectStrict(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
     input.faceDnaLine?.trim() ? input.faceDnaLine.trim() : null,
     input.faceDnaInvariantLine?.trim() ? input.faceDnaInvariantLine.trim() : null,
-    getPreviewFramingVariant(variantIndex),
-    getPreviewSceneVariant(variantIndex),
+    moderationSafe
+      ? pickModerationSafeVariant(PREVIEW_FRAMING_VARIANTS, variantIndex)
+      : getPreviewFramingVariant(variantIndex),
+    moderationSafe
+      ? pickModerationSafeVariant(PREVIEW_SCENE_VARIANTS, variantIndex)
+      : getPreviewSceneVariant(variantIndex),
     getCompositionAnchor('preview'),
-    getPreviewLightingVariant(variantIndex),
-    getPreviewExpression(variantIndex),
+    moderationSafe
+      ? pickModerationSafeVariant(PREVIEW_LIGHTING_VARIANTS, variantIndex)
+      : getPreviewLightingVariant(variantIndex),
+    moderationSafe
+      ? pickModerationSafeVariant(PREVIEW_EXPRESSIONS, variantIndex)
+      : getPreviewExpression(variantIndex),
   ];
 
   if (appearanceCue) parts.push(appearanceCue);

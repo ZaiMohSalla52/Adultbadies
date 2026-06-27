@@ -1,9 +1,12 @@
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import type { GeneratedImage } from '@/lib/virtual-girlfriend/image-types';
+import { softenPreviewPromptForModeration } from '@/lib/virtual-girlfriend/preview-moderation';
 import {
   assertTogetherApiKey,
+  isTogetherNsfwModerationError,
   resolveTogetherGalleryModel,
+  resolveTogetherPortraitFallbackModel,
   resolveTogetherPortraitModel,
 } from '@/lib/virtual-girlfriend/together-image-config';
 
@@ -137,12 +140,12 @@ const extractTogetherImage = async (
   };
 };
 
-const generateTogetherPortrait = async (
+const callTogetherPortrait = async (
+  model: string,
   prompt: string,
   surface: 'preview' | 'canonical',
   seed?: number,
 ): Promise<GeneratedImage> => {
-  const model = resolveTogetherPortraitModel();
   const params = SURFACE_PARAMS[surface];
   const { width, height } = resolveDimensions(params.aspect_ratio);
 
@@ -165,6 +168,50 @@ const generateTogetherPortrait = async (
     skipDownload: surface === 'preview',
     rejectBlankPortrait: surface !== 'preview',
   });
+};
+
+const generateTogetherPortrait = async (
+  prompt: string,
+  surface: 'preview' | 'canonical',
+  seed?: number,
+): Promise<GeneratedImage> => {
+  const primaryModel = resolveTogetherPortraitModel();
+  const fallbackModel = resolveTogetherPortraitFallbackModel();
+  const softenedPrompt = softenPreviewPromptForModeration(prompt);
+
+  const attempts: Array<{ model: string; prompt: string; label: string }> = [
+    { model: primaryModel, prompt, label: 'primary' },
+  ];
+
+  if (softenedPrompt !== prompt) {
+    attempts.push({ model: primaryModel, prompt: softenedPrompt, label: 'softened_primary' });
+  }
+
+  if (fallbackModel !== primaryModel) {
+    attempts.push({ model: fallbackModel, prompt: softenedPrompt, label: 'softened_fallback' });
+  }
+
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      return await callTogetherPortrait(attempt.model, attempt.prompt, surface, seed);
+    } catch (error) {
+      lastError = error;
+      if (!isTogetherNsfwModerationError(error)) {
+        throw error;
+      }
+      console.warn('[virtual-girlfriend][image-together] portrait moderation block; trying next attempt', {
+        surface,
+        attempt: attempt.label,
+        model: attempt.model,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Together portrait generation failed after moderation-safe retries.');
 };
 
 export const generatePortraitPreviewImageWithTogether = async (

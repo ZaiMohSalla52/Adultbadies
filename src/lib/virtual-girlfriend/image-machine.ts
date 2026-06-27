@@ -14,6 +14,7 @@ import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import { PORTRAIT_PREVIEW_CANDIDATE_COUNT } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
+  isTogetherNsfwModerationError,
   isTogetherPortraitEnabled,
   isTogetherRateLimitError,
   resolveTogetherPortraitModel,
@@ -175,6 +176,7 @@ const isRateLimitError = (error: unknown) =>
   isTogetherRateLimitError(error) || isModelsLabRateLimitError(error);
 
 const isTransientError = (error: unknown) => {
+  if (isTogetherNsfwModerationError(error)) return false;
   if (isRateLimitError(error)) return true;
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   return message.includes('timeout') || message.includes('429') || message.includes('503') || message.includes('502') || message.includes('network');

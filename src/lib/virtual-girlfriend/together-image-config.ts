@@ -1,11 +1,17 @@
 /** Bake-off winner — setup portrait text-to-image. */
 export const TOGETHER_DEFAULT_PORTRAIT_MODEL = 'black-forest-labs/FLUX.2-max';
 
+/** Together-only portrait fallback when FLUX.2-max hits output moderation. */
+export const TOGETHER_DEFAULT_PORTRAIT_FALLBACK_MODEL = 'black-forest-labs/FLUX.2-pro';
+
 /** Bake-off winner — gallery wardrobe from canonical (image_url). */
 export const TOGETHER_DEFAULT_GALLERY_MODEL = 'black-forest-labs/FLUX.1-kontext-max';
 
 export const resolveTogetherPortraitModel = () =>
   process.env.TOGETHER_PORTRAIT_MODEL?.trim() || TOGETHER_DEFAULT_PORTRAIT_MODEL;
+
+export const resolveTogetherPortraitFallbackModel = () =>
+  process.env.TOGETHER_PORTRAIT_FALLBACK_MODEL?.trim() || TOGETHER_DEFAULT_PORTRAIT_FALLBACK_MODEL;
 
 export const resolveTogetherGalleryModel = () =>
   process.env.TOGETHER_GALLERY_MODEL?.trim() || TOGETHER_DEFAULT_GALLERY_MODEL;
@@ -40,4 +46,9 @@ export const assertTogetherApiKey = () => {
 export const isTogetherRateLimitError = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   return /rate limit|too many requests|HTTP 429|\b429\b/i.test(message);
+};
+
+export const isTogetherNsfwModerationError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /nsfw|may contain nsfw|content.?policy|moderation|safety.?filter/i.test(message);
 };

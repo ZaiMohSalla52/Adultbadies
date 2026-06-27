@@ -11,6 +11,7 @@ import {
 import { collectSiblingDistinctnessCues } from '@/lib/virtual-girlfriend/identity-face-dna';
 import {
   assertTogetherApiKey,
+  isTogetherNsfwModerationError,
   isTogetherRateLimitError,
   resolveTogetherPortraitModel,
 } from '@/lib/virtual-girlfriend/together-image-config';
@@ -146,16 +147,20 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Unable to generate portrait candidates right now.';
     const timedOut = /timeout|timed out|FUNCTION_INVOCATION_TIMEOUT/i.test(message);
     const rateLimited = isTogetherRateLimitError(error);
+    const moderationBlocked = isTogetherNsfwModerationError(error);
     const missingTogetherKey = /TOGETHER_API_KEY is not configured/i.test(message);
+    const insufficientCandidates = /not enough portrait preview candidates/i.test(message);
     return NextResponse.json(
       {
         error: missingTogetherKey
           ? 'Portrait generation is not configured (TOGETHER_API_KEY missing on server).'
           : rateLimited
             ? 'Portrait service is busy (Together rate limit). Wait 30 seconds, then tap Regenerate looks.'
-            : timedOut
-              ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
-              : 'Unable to generate portrait candidates right now.',
+            : moderationBlocked || insufficientCandidates
+              ? 'Portrait previews were blocked by the image provider filter. Try Regenerate looks, or pick a slightly softer style.'
+              : timedOut
+                ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
+                : 'Unable to generate portrait candidates right now.',
       },
       { status: rateLimited ? 429 : timedOut ? 504 : 500 },
     );
