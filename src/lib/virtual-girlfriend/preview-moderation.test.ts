@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { buildPreviewPrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/preview';
 import {
+  buildMinimalTogetherPortraitPrompt,
   isAdultForwardPreviewTraits,
+  sanitizePreviewFreeformDetails,
   softenPreviewPromptForModeration,
 } from '@/lib/virtual-girlfriend/preview-moderation';
 import { isTogetherNsfwModerationError } from '@/lib/virtual-girlfriend/together-image-config';
@@ -46,6 +48,32 @@ describe('preview-moderation', () => {
     expect(prompt).not.toContain('no nudity');
     expect(prompt).toContain('natural skin texture');
     expect(prompt).toContain('adult glamour');
+  });
+
+  it('builds a compact minimal portrait prompt without moderation triggers', () => {
+    const minimal = buildMinimalTogetherPortraitPrompt(
+      {
+        sex: 'female',
+        origin: 'white',
+        hairColor: 'blonde',
+        hairLength: 'long',
+        eyeColor: 'blue',
+        bodyType: 'curvy',
+        age: 24,
+        styleVibe: 'seductive',
+        personality: 'sultry_seductive',
+        breastSize: 'large',
+      },
+      0,
+    ).toLowerCase();
+
+    expect(minimal).not.toContain('full bust');
+    expect(minimal).not.toContain('no nudity');
+    expect(minimal).toContain('candid amateur photograph');
+  });
+
+  it('sanitizes risky freeform details', () => {
+    expect(sanitizePreviewFreeformDetails('youthful smooth skin and full bust')).not.toContain('full bust');
   });
 
   it('detects Together NSFW moderation errors', () => {

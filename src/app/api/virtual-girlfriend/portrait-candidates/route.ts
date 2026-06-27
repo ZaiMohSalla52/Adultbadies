@@ -149,18 +149,19 @@ export async function POST(request: NextRequest) {
     const rateLimited = isTogetherRateLimitError(error);
     const moderationBlocked = isTogetherNsfwModerationError(error);
     const missingTogetherKey = /TOGETHER_API_KEY is not configured/i.test(message);
-    const insufficientCandidates = /not enough portrait preview candidates/i.test(message);
     return NextResponse.json(
       {
         error: missingTogetherKey
           ? 'Portrait generation is not configured (TOGETHER_API_KEY missing on server).'
           : rateLimited
             ? 'Portrait service is busy (Together rate limit). Wait 30 seconds, then tap Regenerate looks.'
-            : moderationBlocked || insufficientCandidates
-              ? 'Portrait previews were blocked by the image provider filter. Try Regenerate looks, or pick a slightly softer style.'
+            : moderationBlocked
+              ? 'Portrait previews were blocked by the image provider filter. Tap Regenerate looks to try again.'
               : timedOut
                 ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
-                : 'Unable to generate portrait candidates right now.',
+                : /not enough portrait preview candidates/i.test(message)
+                  ? 'Not enough portrait previews were generated. Tap Regenerate looks to try again.'
+                  : 'Unable to generate portrait candidates right now.',
       },
       { status: rateLimited ? 429 : timedOut ? 504 : 500 },
     );

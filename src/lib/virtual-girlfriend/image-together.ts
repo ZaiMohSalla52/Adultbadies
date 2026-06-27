@@ -174,6 +174,7 @@ const generateTogetherPortrait = async (
   prompt: string,
   surface: 'preview' | 'canonical',
   seed?: number,
+  minimalPrompt?: string,
 ): Promise<GeneratedImage> => {
   const primaryModel = resolveTogetherPortraitModel();
   const fallbackModel = resolveTogetherPortraitFallbackModel();
@@ -185,6 +186,10 @@ const generateTogetherPortrait = async (
 
   if (softenedPrompt !== prompt) {
     attempts.push({ model: primaryModel, prompt: softenedPrompt, label: 'softened_primary' });
+  }
+
+  if (surface === 'preview' && minimalPrompt && minimalPrompt !== prompt && minimalPrompt !== softenedPrompt) {
+    attempts.push({ model: primaryModel, prompt: minimalPrompt, label: 'minimal_fallback' });
   }
 
   // FLUX.2-pro uses stricter BFL moderation — only try it for non-NSFW failures elsewhere.
@@ -218,7 +223,8 @@ const generateTogetherPortrait = async (
 export const generatePortraitPreviewImageWithTogether = async (
   prompt: string,
   seed?: number,
-): Promise<GeneratedImage> => generateTogetherPortrait(prompt, 'preview', seed);
+  minimalPrompt?: string,
+): Promise<GeneratedImage> => generateTogetherPortrait(prompt, 'preview', seed, minimalPrompt);
 
 export const generateCanonicalImageWithTogether = async (prompt: string): Promise<GeneratedImage> =>
   generateTogetherPortrait(prompt, 'canonical');

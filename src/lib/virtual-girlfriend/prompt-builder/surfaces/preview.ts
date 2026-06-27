@@ -23,6 +23,7 @@ import {
 import {
   filterModerationSafeVariants,
   isAdultForwardPreviewTraits,
+  sanitizePreviewFreeformDetails,
 } from '@/lib/virtual-girlfriend/preview-moderation';
 import { buildTogetherPreviewNegatives } from '../primitives/negatives';
 import { resolveEthnicityNegative, resolvePreviewPhysicalTraitLine } from '../primitives/physical';
@@ -171,8 +172,9 @@ export const buildPreviewPrompt = (input: PreviewPromptInput, variantIndex: numb
 
   if (appearanceCue) parts.push(appearanceCue);
 
-  if (input.freeformDetails?.trim()) {
-    parts.push(`Additional details: ${input.freeformDetails.trim()}.`);
+  const freeformDetails = sanitizePreviewFreeformDetails(input.freeformDetails);
+  if (freeformDetails) {
+    parts.push(`Additional details: ${freeformDetails}.`);
   }
 
   parts.push(EXPOSURE_LIGHTING_TAIL);

@@ -13,6 +13,7 @@ import type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-ty
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import { PORTRAIT_PREVIEW_CANDIDATE_COUNT } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import { buildMinimalTogetherPortraitPrompt } from '@/lib/virtual-girlfriend/preview-moderation';
 import {
   isTogetherNsfwModerationError,
   isTogetherPortraitEnabled,
@@ -1577,15 +1578,14 @@ const generatePortraitPreviewCandidate = async (
   };
   const faceDnaLine = buildFaceDnaLine(faceDnaInput);
   const faceDnaInvariantLine = formatFaceDnaInvariantLine(faceDnaInput);
-  const prompt = buildPreviewPrompt(
-    {
-      ...input,
-      faceDnaLine,
-      faceDnaInvariantLine,
-      negativeOverlapCues: input.negativeOverlapCues,
-    },
-    index,
-  );
+  const promptInput = {
+    ...input,
+    faceDnaLine,
+    faceDnaInvariantLine,
+    negativeOverlapCues: input.negativeOverlapCues,
+  };
+  const prompt = buildPreviewPrompt(promptInput, index);
+  const minimalPrompt = buildMinimalTogetherPortraitPrompt(promptInput, index);
   const seed = (derivePortraitPreviewSeed(input, index) + attemptOffset) % 2_147_483_647;
   const generated = await withRetries({
     attempts: MACHINE_RETRY_ATTEMPTS.portraitPreview,
@@ -1594,7 +1594,7 @@ const generatePortraitPreviewCandidate = async (
     reason: 'provider_error',
     run: () =>
       withTimeout('provider_generation', MACHINE_TIMEOUT_MS.portraitPreviewRequest, () =>
-        generatePortraitPreviewImage(prompt, seed)),
+        generatePortraitPreviewImage(prompt, seed, minimalPrompt)),
   });
   const imageDataUrl = portraitPreviewDeliveryUrl(generated);
   if (!imageDataUrl.trim()) {

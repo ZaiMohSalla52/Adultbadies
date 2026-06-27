@@ -49,10 +49,11 @@ export const generateCanonicalImage = async (prompt: string): Promise<GeneratedI
 export const generatePortraitPreviewImage = async (
   prompt: string,
   seed?: number,
+  minimalPrompt?: string,
 ): Promise<GeneratedImage> => {
   if (isTogetherPortraitEnabled()) {
     assertTogetherApiKey();
-    return generatePortraitPreviewImageWithTogether(prompt, seed);
+    return generatePortraitPreviewImageWithTogether(prompt, seed, minimalPrompt);
   }
   if (resolveVgImageProvider() === 'flux') {
     return generatePortraitPreviewImageWithFlux(prompt, seed);

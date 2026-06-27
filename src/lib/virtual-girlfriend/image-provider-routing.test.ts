@@ -68,7 +68,7 @@ describe('image-provider Together-only routing', () => {
     delete process.env.VG_PORTRAIT_PROVIDER;
 
     await generatePortraitPreviewImage('test prompt', 10101);
-    expect(generatePortraitPreviewImageWithTogether).toHaveBeenCalledWith('test prompt', 10101);
+    expect(generatePortraitPreviewImageWithTogether).toHaveBeenCalledWith('test prompt', 10101, undefined);
   });
 
   it('uses Together for gallery when TOGETHER_API_KEY is set', async () => {
