@@ -9,8 +9,12 @@ import {
   listVirtualGirlfriendCompanions,
 } from '@/lib/virtual-girlfriend/data';
 import { collectSiblingDistinctnessCues } from '@/lib/virtual-girlfriend/identity-face-dna';
-import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
 import { assertModelsLabApiKey, isModelsLabRateLimitError } from '@/lib/virtual-girlfriend/modelslab-client';
+import {
+  assertTogetherApiKey,
+  isTogetherPortraitEnabled,
+  resolveTogetherPortraitModel,
+} from '@/lib/virtual-girlfriend/together-image-config';
 import {
   PORTRAIT_PREVIEW_CANDIDATE_COUNT,
   resolveModelsLabPortraitFallbackModel,
@@ -68,11 +72,17 @@ export async function POST(request: NextRequest) {
       freeformDetails: body.freeformDetails,
     });
 
-    const provider = resolveVgImageProvider();
-    const portraitModel = resolveModelsLabPortraitModel();
-    const portraitFallbackModel = resolveModelsLabPortraitFallbackModel();
+    const provider = isTogetherPortraitEnabled() ? 'together' : 'modelslab';
+    const portraitModel = isTogetherPortraitEnabled()
+      ? resolveTogetherPortraitModel()
+      : resolveModelsLabPortraitModel();
+    const portraitFallbackModel = isTogetherPortraitEnabled()
+      ? resolveModelsLabPortraitModel()
+      : resolveModelsLabPortraitFallbackModel();
 
-    if (provider === 'modelslab') {
+    if (isTogetherPortraitEnabled()) {
+      assertTogetherApiKey();
+    } else {
       assertModelsLabApiKey();
     }
 

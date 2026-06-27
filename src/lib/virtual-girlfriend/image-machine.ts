@@ -14,8 +14,13 @@ import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import {
   PORTRAIT_PREVIEW_CANDIDATE_COUNT,
+  resolveModelsLabPortraitFallbackModel,
   resolveModelsLabPortraitModel,
 } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import {
+  isTogetherPortraitEnabled,
+  resolveTogetherPortraitModel,
+} from '@/lib/virtual-girlfriend/together-image-config';
 import { isModelsLabRateLimitError, modelsLabSleep } from '@/lib/virtual-girlfriend/modelslab-client';
 import {
   buildCanonicalPrompt,
@@ -617,10 +622,21 @@ const runProviderGeneration = async (input: {
         ? MACHINE_TIMEOUT_MS.chatProviderRequest
         : MACHINE_TIMEOUT_MS.providerRequest;
 
+    const referenceImageUrl = (() => {
+      if ('deliveryUrl' in input.reference && typeof input.reference.deliveryUrl === 'string') {
+        return input.reference.deliveryUrl;
+      }
+      if ('url' in input.reference && typeof input.reference.url === 'string') {
+        return input.reference.url;
+      }
+      return undefined;
+    })();
+
     return withTimeout('provider_generation', providerTimeoutMs, () => generateFromReference({
       prompt: input.prompt,
       referenceImageBytes,
       referenceMimeType,
+      ...(referenceImageUrl ? { referenceImageUrl } : {}),
       ...(input.mode === 'chat_from_reference'
         ? {
             ...(input.kontextOptions ? { kontextOptions: input.kontextOptions } : {}),
@@ -846,7 +862,11 @@ const generateGalleryFromCanonical = async (input: {
         scope: input.scope,
         mode: 'gallery_from_reference',
         prompt,
-        reference: { bytes: canonicalRef.bytes, mimeType: canonicalRef.mimeType },
+        reference: {
+          bytes: canonicalRef.bytes,
+          mimeType: canonicalRef.mimeType,
+          deliveryUrl: input.canonicalImage.delivery_url,
+        },
       });
 
       const galleryImage = await buildImageRecord({
@@ -1647,8 +1667,13 @@ const fallbackParallelGeneration = async (
     siblingReferences: input.siblingCanonicalReferences?.length ?? 0,
     siblingFingerprints: siblingFingerprints.length,
     concurrency: PORTRAIT_PREVIEW_CONCURRENCY,
-    provider: resolveVgImageProvider(),
-    portraitModel: resolveModelsLabPortraitModel(),
+    provider: isTogetherPortraitEnabled() ? 'together' : resolveVgImageProvider(),
+    portraitModel: isTogetherPortraitEnabled()
+      ? resolveTogetherPortraitModel()
+      : resolveModelsLabPortraitModel(),
+    portraitFallbackModel: isTogetherPortraitEnabled()
+      ? resolveModelsLabPortraitModel()
+      : resolveModelsLabPortraitFallbackModel(),
   });
 
   const candidates: VirtualGirlfriendPortraitPreviewCandidate[] = [];

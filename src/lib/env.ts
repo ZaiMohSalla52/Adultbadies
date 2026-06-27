@@ -14,6 +14,14 @@ export const env = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   ADMIN_REVIEWER_EMAILS: process.env.ADMIN_REVIEWER_EMAILS,
   TOGETHER_API_KEY: process.env.TOGETHER_API_KEY,
+  /** Together portrait text2img — defaults to FLUX.2-max. */
+  TOGETHER_PORTRAIT_MODEL: process.env.TOGETHER_PORTRAIT_MODEL,
+  /** Together gallery img2img — defaults to FLUX.1-kontext-max. */
+  TOGETHER_GALLERY_MODEL: process.env.TOGETHER_GALLERY_MODEL,
+  /** Portrait provider override: together | modelslab */
+  VG_PORTRAIT_PROVIDER: process.env.VG_PORTRAIT_PROVIDER,
+  /** Gallery provider override: together | modelslab */
+  VG_GALLERY_PROVIDER: process.env.VG_GALLERY_PROVIDER,
   MODELSLAB_API_KEY: process.env.MODELSLAB_API_KEY,
   VG_LLM_PROVIDER: process.env.VG_LLM_PROVIDER,
   VG_IMAGE_PROVIDER: process.env.VG_IMAGE_PROVIDER,

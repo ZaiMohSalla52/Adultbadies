@@ -2,8 +2,8 @@ import { env } from '@/lib/env';
 import { isAureliumPortraitModel } from '@/lib/virtual-girlfriend/modelslab-aurelium-template';
 
 /**
- * Default setup portrait — Flux 2 Pro v7 (diversity trio bake-off winner).
- * Fallback: realvisxl-v30 when primary times out or errors.
+ * ModelsLab portrait fallback when Together FLUX.2-max fails.
+ * Primary portrait: Together FLUX.2-max (see together-image-config).
  *
  * Override via MODELSLAB_PORTRAIT_MODEL / MODELSLAB_PORTRAIT_FALLBACK_MODEL.
  * Explicit/nude chat never uses this stack — see image-generation-router (Face Gen / swap).
