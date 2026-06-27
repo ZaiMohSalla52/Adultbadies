@@ -6,12 +6,14 @@ import { requireAgeVerifiedApi } from '@/lib/safety/age';
 import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
   getActiveVirtualGirlfriend,
-  getVirtualGirlfriendCompanionById,
+  getVirtualGirlfriendCompanionForChat,
+  resolveCompanionAssetUserId,
   getLatestVisualProfileForCompanion,
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
   getVirtualGirlfriendCompanionImages,
   getVirtualGirlfriendMessages,
+  getVirtualGirlfriendUserMessageCountForToday,
   insertVirtualGirlfriendMessage,
   insertVirtualGirlfriendMessageReturningId,
   patchVirtualGirlfriendMessage,
@@ -19,7 +21,10 @@ import {
   retrieveRelevantVirtualGirlfriendMemories,
   touchVirtualGirlfriendConversation,
 } from '@/lib/virtual-girlfriend/data';
-import { VG_CHAT_MEMORY_RETRIEVAL_LIMIT } from '@/lib/virtual-girlfriend/chat-config';
+import {
+  VG_CHAT_HISTORY_FETCH_LIMIT,
+  VG_CHAT_MEMORY_RETRIEVAL_LIMIT,
+} from '@/lib/virtual-girlfriend/chat-config';
 import { extractAllVirtualGirlfriendMemoryCandidates, persistVirtualGirlfriendMemories } from '@/lib/virtual-girlfriend/memory';
 import { learnAndPersistVirtualGirlfriendStyle } from '@/lib/virtual-girlfriend/style-adaptation';
 import { getUnlockedImageIds, spendChatMessagePoint } from '@/lib/points/data';
@@ -100,13 +105,30 @@ export async function POST(request: NextRequest) {
 
   const [companion, entitlements] = await Promise.all([
     requestedCompanionId
-      ? getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
+      ? getVirtualGirlfriendCompanionForChat(auth.accessToken, auth.user.id, requestedCompanionId)
       : getActiveVirtualGirlfriend(auth.accessToken, auth.user.id),
     getUserEntitlements(auth.accessToken, auth.user.id),
   ]);
 
   if (!companion || !companion.setup_completed) {
     return new Response(JSON.stringify({ error: 'Complete Virtual Girlfriend setup first.' }), { status: 400 });
+  }
+
+  const dailyLimit = entitlements.limits.virtualGirlfriendMessagesPerDay;
+  if (dailyLimit !== null) {
+    const usedToday = await getVirtualGirlfriendUserMessageCountForToday(auth.accessToken, auth.user.id);
+    if (usedToday >= dailyLimit) {
+      return new Response(
+        JSON.stringify({
+          error: `Daily message limit reached (${dailyLimit}/day on free plan).`,
+          code: 'DAILY_LIMIT_REACHED',
+          limit: dailyLimit,
+          usedToday,
+          upgradePath: '/premium',
+        }),
+        { status: 429 },
+      );
+    }
   }
 
   const pointSpend = await spendChatMessagePoint(auth.accessToken, auth.user.id);
@@ -124,8 +146,9 @@ export async function POST(request: NextRequest) {
   }
 
   const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
+  const assetUserId = resolveCompanionAssetUserId(companion, auth.user.id);
   const [history, retrievedMemories, styleProfile, companionImages, visualProfile, unlockedImageIds] = await Promise.all([
-    getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
+    getVirtualGirlfriendMessages(auth.accessToken, conversation.id, { limit: VG_CHAT_HISTORY_FETCH_LIMIT }),
     retrieveRelevantVirtualGirlfriendMemories(auth.accessToken, {
       userId: auth.user.id,
       companionId: companion.id,
@@ -133,8 +156,8 @@ export async function POST(request: NextRequest) {
       maxItems: VG_CHAT_MEMORY_RETRIEVAL_LIMIT,
     }),
     getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
-    getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
-    getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id),
+    getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id, { assetUserId }),
+    getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id, { assetUserId }),
     getUnlockedImageIds(auth.accessToken, auth.user.id, companion.id),
   ]);
 
@@ -391,6 +414,29 @@ export async function POST(request: NextRequest) {
         let streamContentType: 'text' | 'mixed' = 'text';
         let streamGenerationMode: string | null = null;
 
+        const [, insertedAssistantMessage] = await Promise.all([
+          userMessagePromise,
+          assistantMessagePromise,
+        ]);
+        const assistantMessage = insertedAssistantMessage;
+
+        enqueueEvent(controller, {
+          type: 'done',
+          payload: {
+            content: combinedContent,
+            segments,
+            contentType: 'text',
+            attachments: [],
+            assistantMessageId: assistantMessage.id,
+            generationMode: null,
+            imageGeneration: {
+              requested: photoRequestedThisTurn,
+              outcome: imageMoment.teaseOnly ? 'not_requested' : imageOutcome,
+              reason: imageMoment.teaseOnly ? 'tease_before_photo' : imageOutcomeReason,
+            },
+          },
+        });
+
         let heartbeat: ReturnType<typeof setInterval> | null = null;
         if (imageTask) {
           heartbeat = setInterval(() => {
@@ -402,22 +448,9 @@ export async function POST(request: NextRequest) {
           }, 7000);
         }
 
-        let assistantMessage: { id: string };
-
         try {
-          const [, insertedAssistantMessage, resolvedImage] = await Promise.all([
-            userMessagePromise,
-            assistantMessagePromise,
-            imageTask
-              ?? Promise.resolve({
-                outcome: 'not_requested' as VirtualGirlfriendChatImageOutcome,
-                attachment: null as VirtualGirlfriendMessageAttachment | null,
-                reason: null as string | null,
-              }),
-          ]);
-          assistantMessage = insertedAssistantMessage;
-
           if (imageTask) {
+            const resolvedImage = await imageTask;
             let imageAttachment = resolvedImage.attachment;
             imageOutcome = resolvedImage.outcome;
             imageOutcomeReason = resolvedImage.reason;
@@ -448,7 +481,6 @@ export async function POST(request: NextRequest) {
               } catch (patchError) {
                 console.warn('[virtual-girlfriend] failed to persist late chat image attachment', patchError);
               }
-
             } else if (
               imageStarted
               && photoRequestedThisTurn
@@ -473,23 +505,6 @@ export async function POST(request: NextRequest) {
         } finally {
           if (heartbeat) clearInterval(heartbeat);
         }
-
-        enqueueEvent(controller, {
-          type: 'done',
-          payload: {
-            content: combinedContent,
-            segments,
-            contentType: streamContentType,
-            attachments: streamAttachments,
-            assistantMessageId: assistantMessage.id,
-            generationMode: streamGenerationMode,
-            imageGeneration: {
-              requested: photoRequestedThisTurn,
-              outcome: imageMoment.teaseOnly ? 'not_requested' : imageOutcome,
-              reason: imageMoment.teaseOnly ? 'tease_before_photo' : imageOutcomeReason,
-            },
-          },
-        });
 
         const traceFlags: string[] = [];
         if (containsForbiddenReplyLanguage(combinedContent)) traceFlags.push('forbidden_language_in_final_reply');

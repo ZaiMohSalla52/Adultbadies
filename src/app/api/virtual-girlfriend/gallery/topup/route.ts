@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       companion,
       visualProfile,
       existingImages: images,
+      batchSize: 1,
     });
 
     return NextResponse.json({

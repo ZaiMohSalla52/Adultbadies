@@ -5,14 +5,14 @@ import {
   getActiveVirtualGirlfriend,
   getOrCreateVirtualGirlfriendConversation,
   getOrCreateVirtualGirlfriendUserStyleProfile,
-  getVirtualGirlfriendCompanionById,
+  getVirtualGirlfriendCompanionForChat,
+  resolveCompanionAssetUserId,
   getLatestVisualProfileForCompanion,
   getVirtualGirlfriendCompanionImages,
   getVirtualGirlfriendMessages,
   getVirtualGirlfriendUserMessageCountForToday,
 } from '@/lib/virtual-girlfriend/data';
 import { VirtualGirlfriendChatClient } from '@/components/virtual-girlfriend/chat-client';
-import { processDueVirtualGirlfriendProactiveEvents } from '@/lib/virtual-girlfriend/proactive';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
 import { claimPointStipend, getPointBalance, getUnlockedImageIds } from '@/lib/points/data';
 import { POINTS } from '@/lib/points/constants';
@@ -39,30 +39,25 @@ export default async function VirtualGirlfriendChatPage({
   const requestedCompanionId = params.companionId;
 
   const companion = requestedCompanionId
-    ? await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
+    ? await getVirtualGirlfriendCompanionForChat(auth.accessToken, auth.user.id, requestedCompanionId)
     : await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
 
   if (!companion?.setup_completed) {
     redirect('/virtual-girlfriend/setup');
   }
 
-  // Fire-and-forget — do not block page render
-  void processDueVirtualGirlfriendProactiveEvents({
-    token: auth.accessToken,
-    userId: auth.user.id,
-    companion,
-  });
+  const conversation = await getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id);
 
-  const [conversation, entitlements, usedToday, styleProfile, companionImages, visualProfile] = await Promise.all([
-    getOrCreateVirtualGirlfriendConversation(auth.accessToken, auth.user.id, companion.id),
+  const assetUserId = resolveCompanionAssetUserId(companion, auth.user.id);
+
+  const [entitlements, usedToday, styleProfile, companionImages, visualProfile, messages] = await Promise.all([
     getUserEntitlements(auth.accessToken, auth.user.id),
     getVirtualGirlfriendUserMessageCountForToday(auth.accessToken, auth.user.id),
     getOrCreateVirtualGirlfriendUserStyleProfile(auth.accessToken, auth.user.id, companion.id),
-    getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id),
-    getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id),
+    getVirtualGirlfriendCompanionImages(auth.accessToken, auth.user.id, companion.id, { assetUserId }),
+    getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companion.id, { assetUserId }),
+    getVirtualGirlfriendMessages(auth.accessToken, conversation.id),
   ]);
-
-  const messages = await getVirtualGirlfriendMessages(auth.accessToken, conversation.id);
   const curated = curateVirtualGirlfriendImages(companionImages, {
     lockedCanonicalImageId: visualProfile?.canonical_reference_image_id ?? null,
   });
