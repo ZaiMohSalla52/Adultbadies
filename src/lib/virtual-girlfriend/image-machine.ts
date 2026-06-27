@@ -16,6 +16,7 @@ import {
   PORTRAIT_PREVIEW_CANDIDATE_COUNT,
   resolveModelsLabPortraitModel,
 } from '@/lib/virtual-girlfriend/modelslab-image-config';
+import { isModelsLabRateLimitError, modelsLabSleep } from '@/lib/virtual-girlfriend/modelslab-client';
 import {
   buildCanonicalPrompt,
   canonicalPromptVersion,
@@ -106,8 +107,8 @@ const MACHINE_TIMEOUT_MS = {
 
 const MACHINE_RETRY_ATTEMPTS = {
   providerRequest: 2,
-  /** Portrait chain already falls back to a second model — avoid doubling wall time. */
-  portraitPreview: 1,
+  /** Retry rate limits with backoff; model chain handles primary→fallback separately. */
+  portraitPreview: 4,
   download: 2,
   storageUpload: 2,
 } as const;
@@ -115,6 +116,9 @@ const MACHINE_RETRY_ATTEMPTS = {
 /** Stop generating once this budget is spent; return partial set if we have enough. */
 const PORTRAIT_PREVIEW_WALL_BUDGET_MS = 250_000;
 const PORTRAIT_PREVIEW_MIN_CANDIDATES = 2;
+/** Serial slots — parallel requests trip ModelsLab rate limits. */
+const PORTRAIT_PREVIEW_CONCURRENCY = 1;
+const PORTRAIT_SLOT_STAGGER_MS = 1_500;
 
 export type VirtualGirlfriendMachineFailureReason =
   | 'missing_prerequisites'
@@ -166,9 +170,13 @@ const withTimeout = async <T>(label: string, timeoutMs: number, run: () => Promi
 };
 
 const isTransientError = (error: unknown) => {
+  if (isModelsLabRateLimitError(error)) return true;
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   return message.includes('timeout') || message.includes('429') || message.includes('503') || message.includes('502') || message.includes('network');
 };
+
+const retryBackoffMs = (error: unknown, attempt: number) =>
+  isModelsLabRateLimitError(error) ? 2_000 * attempt : 250 * attempt;
 
 const withRetries = async <T>(input: {
   attempts: number;
@@ -186,7 +194,7 @@ const withRetries = async <T>(input: {
       const retryable = isTransientError(error) && attempt < input.attempts;
       logImageMachine(input.scope, 'stage_failure', { stage: input.stage, reason: input.reason, attempt, retryable });
       if (!retryable) break;
-      await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+      await modelsLabSleep(retryBackoffMs(error, attempt));
     }
   }
 
@@ -1581,9 +1589,6 @@ const generatePortraitPreviewCandidate = async (
   };
 };
 
-/** Two at a time — halves wall clock while staying within API credit tolerance. */
-const PORTRAIT_PREVIEW_CONCURRENCY = 2;
-
 const generateDistinctPortraitSlot = async (
   input: VirtualGirlfriendPortraitPreviewRequest,
   index: number,
@@ -1652,7 +1657,7 @@ const fallbackParallelGeneration = async (
   const canStopEarly = () =>
     candidates.length >= PORTRAIT_PREVIEW_MIN_CANDIDATES && !withinWallBudget();
 
-  for (let batchStart = 0; batchStart < target; batchStart += PORTRAIT_PREVIEW_CONCURRENCY) {
+  for (let index = 0; index < target; index += 1) {
     if (canStopEarly()) {
       logImageMachine('portrait_preview', 'wall_budget_stop', {
         generated: candidates.length,
@@ -1662,42 +1667,27 @@ const fallbackParallelGeneration = async (
       break;
     }
 
-    const batchIndexes: number[] = [];
-    for (
-      let index = batchStart;
-      index < Math.min(batchStart + PORTRAIT_PREVIEW_CONCURRENCY, target);
-      index += 1
-    ) {
-      if (canStopEarly()) break;
-      batchIndexes.push(index);
-    }
-
-    if (!batchIndexes.length) break;
-
-    const batchSlots = await Promise.all(
-      batchIndexes.map(async (index) => {
-        try {
-          const slot = await generateDistinctPortraitSlot(input, index, referenceFingerprints);
-          return { index, slot, error: null as string | null };
-        } catch (error) {
-          const reason = error instanceof Error ? error.message : String(error);
-          logImageMachine('portrait_preview', 'slot_failure', { index, reason });
-          return { index, slot: null, error: reason };
-        }
-      }),
-    );
-
-    for (const entry of batchSlots.sort((left, right) => left.index - right.index)) {
-      if (!entry.slot) continue;
+    try {
+      const slot = await generateDistinctPortraitSlot(input, index, referenceFingerprints);
       const normalized = {
-        ...entry.slot.candidate,
-        id: `candidate-${entry.index + 1}`,
-        label: `Candidate ${entry.index + 1}`,
+        ...slot.candidate,
+        id: `candidate-${index + 1}`,
+        label: `Candidate ${index + 1}`,
       };
       candidates.push(normalized);
-      if (entry.slot.fingerprint) {
-        referenceFingerprints.push(entry.slot.fingerprint);
+      if (slot.fingerprint) {
+        referenceFingerprints.push(slot.fingerprint);
       }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      logImageMachine('portrait_preview', 'slot_failure', { index, reason });
+      if (isModelsLabRateLimitError(error) && candidates.length === 0) {
+        throw new Error('ModelsLab portrait rate limit exceeded. Please wait a moment and tap Regenerate looks.');
+      }
+    }
+
+    if (index < target - 1 && withinWallBudget()) {
+      await modelsLabSleep(PORTRAIT_SLOT_STAGGER_MS);
     }
   }
 

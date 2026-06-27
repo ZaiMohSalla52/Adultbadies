@@ -6,6 +6,8 @@ import {
   callModelsLabV7ImageToImage,
   callModelsLabV7TextToImage,
   downloadModelsLabImage,
+  isModelsLabRateLimitError,
+  modelsLabSleep,
   type ModelsLabApiResponse,
   uploadReferenceImageUrl,
 } from '@/lib/virtual-girlfriend/modelslab-client';
@@ -342,6 +344,9 @@ export const generatePortraitPreviewImageWithModelsLab = async (
       return generated;
     } catch (error) {
       lastError = error;
+      if (isModelsLabRateLimitError(error)) {
+        throw error;
+      }
       const hasFallback = index < models.length - 1;
       console.warn('[virtual-girlfriend][portrait-preview] model attempt failed', {
         modelId,

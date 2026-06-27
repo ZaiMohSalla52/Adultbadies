@@ -10,7 +10,7 @@ import {
 } from '@/lib/virtual-girlfriend/data';
 import { collectSiblingDistinctnessCues } from '@/lib/virtual-girlfriend/identity-face-dna';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
-import { assertModelsLabApiKey } from '@/lib/virtual-girlfriend/modelslab-client';
+import { assertModelsLabApiKey, isModelsLabRateLimitError } from '@/lib/virtual-girlfriend/modelslab-client';
 import {
   PORTRAIT_PREVIEW_CANDIDATE_COUNT,
   resolveModelsLabPortraitFallbackModel,
@@ -150,6 +150,7 @@ export async function POST(request: NextRequest) {
     console.error('[virtual-girlfriend] portrait candidate generation failed', error);
     const message = error instanceof Error ? error.message : 'Unable to generate portrait candidates right now.';
     const timedOut = /timeout|timed out|FUNCTION_INVOCATION_TIMEOUT/i.test(message);
+    const rateLimited = isModelsLabRateLimitError(error) || /rate limit/i.test(message);
     const missingKey = /MODELSLAB_API_KEY is not configured/i.test(message);
     const missingFlux = /FLUX_API_KEY is not configured/i.test(message);
     return NextResponse.json(
@@ -158,11 +159,13 @@ export async function POST(request: NextRequest) {
           ? 'Portrait generation is not configured (MODELSLAB_API_KEY missing on server).'
           : missingFlux
             ? 'Portrait generation provider mismatch (VG_IMAGE_PROVIDER=flux but FLUX_API_KEY missing).'
-            : timedOut
-              ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
-              : 'Unable to generate portrait candidates right now.',
+            : rateLimited
+              ? 'Portrait service is busy (rate limit). Wait 30 seconds, then tap Regenerate looks.'
+              : timedOut
+                ? 'Portrait generation took too long. Please tap Regenerate looks to try again.'
+                : 'Unable to generate portrait candidates right now.',
       },
-      { status: timedOut ? 504 : 500 },
+      { status: rateLimited ? 429 : timedOut ? 504 : 500 },
     );
   }
 }

@@ -44,7 +44,8 @@ const isUsablePortraitUrl = (value: string | null | undefined) => {
 const filterPortraitCandidates = (candidates: PortraitCandidate[]) =>
   candidates.filter((candidate) => isUsablePortraitUrl(candidate.imageDataUrl));
 
-const describePortraitFetchError = (error: unknown) => {
+const describePortraitFetchError = (error: unknown, serverMessage?: string) => {
+  if (serverMessage?.trim()) return serverMessage.trim();
   if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
     return 'Portrait request timed out or lost connection. Wait a moment, then tap Regenerate looks.';
   }

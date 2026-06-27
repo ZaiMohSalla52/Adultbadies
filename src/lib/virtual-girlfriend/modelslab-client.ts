@@ -18,7 +18,12 @@ export type ModelsLabApiResponse = {
   meta?: Record<string, unknown>;
 };
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const modelsLabSleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const isModelsLabRateLimitError = (error: unknown) => {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes('rate limit') || message.includes('429');
+};
 
 export const assertModelsLabApiKey = () => {
   const key = env.MODELSLAB_API_KEY?.trim();
@@ -139,7 +144,7 @@ export const awaitModelsLabImageResult = async (
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const waitMs = initial.eta && attempt === 0 ? Math.min(initial.eta * 1_000, 4_000) : intervalMs;
-    await sleep(waitMs);
+    await modelsLabSleep(waitMs);
 
     const polled = await postModelsLabJson(
       `${MODELSLAB_V6_BASE}/images/fetch`,
@@ -193,7 +198,7 @@ const pollModelsLabFaceSwapJob = async (
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const waitMs = initial?.eta && attempt === 0 ? Math.min(initial.eta * 1_000, 5_000) : intervalMs;
-    await sleep(waitMs);
+    await modelsLabSleep(waitMs);
 
     const polled = await postModelsLabJson(fetchUrl, { key }, errorLabel);
     if (polled.status === 'success') return polled;
