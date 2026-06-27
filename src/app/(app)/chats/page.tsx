@@ -81,7 +81,11 @@ export default async function ChatsPage() {
         <div className="chats-premium-banner">
           <div className="chats-premium-copy">
             <p className="chats-premium-title">
-              Enjoy <span>Premium</span> points
+              {entitlements.isPremium ? (
+                <>Your <span>Premium</span> points</>
+              ) : (
+                <>Earn more with <span>Premium</span></>
+              )}
             </p>
             <ul className="chats-premium-list">
               <li>💜 {POINTS.messageCost} point per message</li>

@@ -14,23 +14,18 @@ const featureRows = [
   },
   {
     name: 'Rewind last swipe',
-    free: 'Locked teaser',
+    free: 'Not included',
     premium: 'Included',
   },
   {
     name: 'See who liked you',
-    free: 'Locked teaser',
+    free: 'Not included',
     premium: 'Included',
   },
   {
     name: 'AI chat messages',
     free: `${POINTS.messageCost} point each`,
     premium: `${POINTS.messageCost} point each + monthly stipend`,
-  },
-  {
-    name: 'Virtual Girlfriend voice chat',
-    free: 'Not available',
-    premium: 'Coming soon',
   },
   {
     name: 'Gallery photo unlocks',
@@ -124,16 +119,20 @@ export default async function PremiumPage() {
       </Card>
 
       <Card className="app-surface-card premium-cta-card">
-        <h2 className="my-0 text-base font-semibold">Billing provider (MVP scaffold)</h2>
+        <h2 className="my-0 text-base font-semibold">
+          {entitlements.isPremium ? 'Manage your plan' : 'Upgrade to Premium'}
+        </h2>
         <p className="text-sm text-muted my-0">
-          Checkout provider integration is scaffolded for a future stage. Plan upgrades are currently UI- and entitlement-ready.
+          {entitlements.isPremium
+            ? 'Your Premium benefits are active. Billing changes are managed from account settings.'
+            : 'Premium unlocks unlimited swipes, expanded daily chat, and a monthly point stipend for gallery unlocks.'}
         </p>
         <div className="premium-cta-actions">
-          <Link href="/discovery" className="ui-button ui-button-secondary">
-            Return to discovery
+          <Link href="/account" className="ui-button ui-button-primary">
+            {entitlements.isPremium ? 'Account settings' : 'View account options'}
           </Link>
-          <Link href="/account" className="ui-button ui-button-ghost">
-            Open account settings
+          <Link href="/discovery" className="ui-button ui-button-ghost">
+            Browse companions
           </Link>
         </div>
       </Card>

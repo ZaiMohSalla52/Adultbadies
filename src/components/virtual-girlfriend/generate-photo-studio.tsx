@@ -145,6 +145,16 @@ export const GeneratePhotoStudio = ({
 
       {error ? <p className={styles.error}>{error}</p> : null}
 
+      {pending ? (
+        <section className={styles.resultPanel} aria-busy="true" aria-label="Generating photo">
+          <h2 className={styles.sectionTitle}>Generating…</h2>
+          <div className={styles.loadingFrame}>
+            <div className={styles.loadingShimmer} />
+          </div>
+          <p className={styles.hint}>This usually takes under a minute. Stay on this page.</p>
+        </section>
+      ) : null}
+
       {attachment ? (
         <section className={styles.resultPanel}>
           <h2 className={styles.sectionTitle}>Result</h2>

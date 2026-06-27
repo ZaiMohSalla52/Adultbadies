@@ -146,3 +146,32 @@
 .resultFrame {
   max-width: 420px;
 }
+
+.loadingFrame {
+  max-width: 420px;
+  aspect-ratio: 3 / 4;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.loadingShimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    rgba(255, 46, 99, 0.04) 8%,
+    rgba(255, 255, 255, 0.14) 18%,
+    rgba(255, 46, 99, 0.06) 33%
+  );
+  background-size: 200% 100%;
+  animation: studioShimmer 1.2s linear infinite;
+}
+
+@keyframes studioShimmer {
+  to {
+    background-position: -200% 0;
+  }
+}

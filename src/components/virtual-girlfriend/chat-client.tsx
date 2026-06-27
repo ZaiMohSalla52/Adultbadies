@@ -114,48 +114,29 @@ export const VirtualGirlfriendChatClient = ({
   const [sidebarUnlocked, setSidebarUnlocked] = useState(unlockedImageIds);
   const [stylePending, setStylePending] = useState<VirtualGirlfriendStyleControlPreset | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [voicePending, setVoicePending] = useState(false);
-  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'connecting' | 'ready' | 'expired' | 'reconnecting' | 'disconnected'>('idle');
-  const [voiceSession, setVoiceSession] = useState<{
-    id: string | null;
-    clientSecret: string;
-    expiresAt: string | null;
-    model: string;
-    companion: { id: string; name: string };
-    memoryCount: number;
-    styleAdaptationStrength: number;
-  } | null>(null);
-  const [micMuted, setMicMuted] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isMicActive, setIsMicActive] = useState(false);
-  const [isCompanionSpeaking, setIsCompanionSpeaking] = useState(false);
-  const [voiceLevel, setVoiceLevel] = useState(0);
 
-  const micStreamRef = useRef<MediaStream | null>(null);
-  const remoteStreamRef = useRef<MediaStream | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const companionAudioContextRef = useRef<AudioContext | null>(null);
-  const companionAnalyserRef = useRef<AnalyserNode | null>(null);
-  const meterFrameRef = useRef<number | null>(null);
-  const companionMeterFrameRef = useRef<number | null>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const eventsChannelRef = useRef<RTCDataChannel | null>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
-  const voiceRunRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const messageCost = POINTS.messageCost;
   const insufficientPoints = pointBalance < messageCost;
+  const dailyMessageLimit = entitlements.limits.virtualGirlfriendMessagesPerDay;
+  const dailyLimitReached = dailyMessageLimit !== null && usedToday >= dailyMessageLimit;
   const outfitPresets = useMemo(() => getOutfitPresetsForSex(companionSex), [companionSex]);
   const labels = useMemo(() => getCompanionLabels(companionSex), [companionSex]);
+  const [messagesUsedToday, setMessagesUsedToday] = useState(usedToday);
+  const [resetPending, setResetPending] = useState(false);
 
-  const lastAssistantMessageId = useMemo(() => {
-    for (let index = messages.length - 1; index >= 0; index -= 1) {
-      if (messages[index]?.role === 'assistant') return messages[index]!.id;
-    }
-    return null;
-  }, [messages]);
+  const isTypingActivity =
+    companionActivity === 'typing'
+    && isStreaming
+    && !messages.some((message) => message.id.startsWith('temp-assistant-'));
+  const isPhotoActivity = companionActivity === 'sending_photo' && awaitingPhoto;
+
+  const activityLabel = isTypingActivity
+    ? 'typing…'
+    : isPhotoActivity
+      ? 'sharing something…'
+      : 'online';
 
   const scrollToBottom = () => {
     scrollRef.current?.scrollTo({
@@ -183,6 +164,10 @@ export const VirtualGirlfriendChatClient = ({
   useEffect(() => {
     scrollToBottom();
   }, []);
+
+  useEffect(() => {
+    setMessagesUsedToday(usedToday);
+  }, [usedToday]);
 
   useEffect(() => {
     const nextAvatar = companionAvatarUrl ?? portraitPreviewUrl ?? '';
@@ -252,9 +237,59 @@ export const VirtualGirlfriendChatClient = ({
     };
   }, [companionAvatarUrl, companionId, router]);
 
+  const shareCompanion = async () => {
+    const shareUrl = `${window.location.origin}/virtual-girlfriend/chat?companionId=${companionId}`;
+    const shareData = {
+      title: `Chat with ${companionName}`,
+      text: `Continue your conversation with ${companionName}.`,
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      setError(null);
+    } catch (shareError) {
+      if (shareError instanceof Error && shareError.name === 'AbortError') return;
+      setError('Unable to share this chat link right now.');
+    }
+  };
+
+  const resetChat = async () => {
+    if (resetPending || pending) return;
+    const confirmed = window.confirm(`Clear your chat history with ${companionName}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setResetPending(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/virtual-girlfriend/chat/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companionId }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        setError(body.error ?? 'Unable to reset chat.');
+        return;
+      }
+      setMessages([]);
+      setMessagesUsedToday(0);
+      router.refresh();
+    } catch {
+      setError('Unable to reset chat right now.');
+    } finally {
+      setResetPending(false);
+    }
+  };
+
   const send = async (override?: string) => {
     const text = (override ?? draft).trim();
-    if (!text || pending || insufficientPoints) return;
+    if (!text || pending || insufficientPoints || dailyLimitReached || awaitingPhoto) return;
 
     setPending(true);
     setIsStreaming(true);
@@ -291,11 +326,16 @@ export const VirtualGirlfriendChatClient = ({
         error?: string;
         code?: string;
         balance?: number;
+        limit?: number;
+        usedToday?: number;
       };
       setMessages((prev) => prev.filter((message) => message.id !== optimisticUser.id));
       if (body.code === 'INSUFFICIENT_POINTS') {
         if (typeof body.balance === 'number') setPointBalance(body.balance);
         setError(`Not enough points. Each message costs ${messageCost} point.`);
+      } else if (body.code === 'DAILY_LIMIT_REACHED') {
+        if (typeof body.usedToday === 'number') setMessagesUsedToday(body.usedToday);
+        setError(body.error ?? 'Daily message limit reached.');
       } else {
         setError(body.error ?? 'Unable to send message.');
       }
@@ -306,6 +346,7 @@ export const VirtualGirlfriendChatClient = ({
     }
 
     setPointBalance((prev) => Math.max(0, prev - messageCost));
+    setMessagesUsedToday((prev) => prev + 1);
 
     type DonePayload = {
       content: string;
@@ -600,7 +641,22 @@ export const VirtualGirlfriendChatClient = ({
             return;
           }
 
-          if (event.type === 'done') payload = event.payload;
+          if (event.type === 'done') {
+            payload = event.payload;
+            const imageStillPending =
+              photoPending
+              || (
+                payload.imageGeneration?.requested
+                && payload.imageGeneration.outcome === 'pending'
+                && !payload.attachments?.some((attachment) => attachment.kind === 'image')
+              );
+            setPending(false);
+            setIsStreaming(false);
+            if (!imageStillPending) {
+              setAwaitingPhoto(false);
+              setCompanionActivity('idle');
+            }
+          }
         }
       }
     }
@@ -623,10 +679,17 @@ export const VirtualGirlfriendChatClient = ({
       registerChatImage(imageAttachment);
     }
 
-    if (payload.imageGeneration?.requested && !imageAttachment && payload.assistantMessageId) {
+    const assistantMessageId = payload.assistantMessageId;
+    const shouldPollForAttachment =
+      payload.imageGeneration?.requested
+      && !imageAttachment
+      && Boolean(assistantMessageId)
+      && (payload.imageGeneration.outcome === 'pending' || photoPending);
+
+    if (shouldPollForAttachment && assistantMessageId) {
       setAwaitingPhoto(true);
       setCompanionActivity('sending_photo');
-      const polled = await pollForMessageAttachment(payload.assistantMessageId);
+      const polled = await pollForMessageAttachment(assistantMessageId);
       if (polled) imageAttachment = polled;
     }
 
@@ -648,10 +711,10 @@ export const VirtualGirlfriendChatClient = ({
       );
     }
 
-    setPending(false);
-    setIsStreaming(false);
-    setAwaitingPhoto(false);
-    setCompanionActivity('idle');
+    if (!photoPending && !shouldPollForAttachment) {
+      setAwaitingPhoto(false);
+      setCompanionActivity('idle');
+    }
     scrollToBottom();
   };
 
@@ -677,513 +740,11 @@ export const VirtualGirlfriendChatClient = ({
     setStylePending(null);
   };
 
-  const closeCompanionMeter = () => {
-    if (companionMeterFrameRef.current !== null) {
-      window.cancelAnimationFrame(companionMeterFrameRef.current);
-      companionMeterFrameRef.current = null;
-    }
-    companionAnalyserRef.current = null;
-
-    if (companionAudioContextRef.current) {
-      void companionAudioContextRef.current.close();
-      companionAudioContextRef.current = null;
-    }
-  };
-
-  const stopVoiceMeter = () => {
-    if (meterFrameRef.current !== null) {
-      window.cancelAnimationFrame(meterFrameRef.current);
-      meterFrameRef.current = null;
-    }
-    analyserRef.current = null;
-
-    if (audioContextRef.current) {
-      void audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-  };
-
-  const stopMicrophoneStream = () => {
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach((track) => track.stop());
-      micStreamRef.current = null;
-    }
-    setIsMicActive(false);
-    setVoiceLevel(0);
-  };
-
-  const teardownVoiceRealtimeUi = () => {
-    closeCompanionMeter();
-    stopVoiceMeter();
-    stopMicrophoneStream();
-    if (eventsChannelRef.current) {
-      eventsChannelRef.current.close();
-      eventsChannelRef.current = null;
-    }
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.pause();
-      remoteAudioRef.current.srcObject = null;
-      remoteAudioRef.current = null;
-    }
-    remoteStreamRef.current = null;
-    setIsListening(false);
-    setMicMuted(false);
-    setVoiceLevel(0);
-    setIsMicActive(false);
-    setIsCompanionSpeaking(false);
-  };
-
-  const startCompanionMeter = (stream: MediaStream) => {
-    closeCompanionMeter();
-
-    const AudioContextCtor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) return;
-
-    const audioContext = new AudioContextCtor();
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 1024;
-    const source = audioContext.createMediaStreamSource(stream);
-    source.connect(analyser);
-
-    companionAudioContextRef.current = audioContext;
-    companionAnalyserRef.current = analyser;
-    const data = new Uint8Array(analyser.frequencyBinCount);
-
-    const tick = () => {
-      const meter = companionAnalyserRef.current;
-      if (!meter) return;
-
-      meter.getByteTimeDomainData(data);
-      let sum = 0;
-      for (let i = 0; i < data.length; i += 1) {
-        const normalized = (data[i] - 128) / 128;
-        sum += normalized * normalized;
-      }
-      const rms = Math.sqrt(sum / data.length);
-      setIsCompanionSpeaking(rms > 0.03);
-      companionMeterFrameRef.current = window.requestAnimationFrame(tick);
-    };
-
-    companionMeterFrameRef.current = window.requestAnimationFrame(tick);
-  };
-
-  const startVoiceMeter = (stream: MediaStream) => {
-    stopVoiceMeter();
-
-    const AudioContextCtor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) return;
-
-    const audioContext = new AudioContextCtor();
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 512;
-
-    const source = audioContext.createMediaStreamSource(stream);
-    source.connect(analyser);
-
-    audioContextRef.current = audioContext;
-    analyserRef.current = analyser;
-    const data = new Uint8Array(analyser.frequencyBinCount);
-
-    let userSpeakingFrames = 0;
-
-    const tick = () => {
-      const meter = analyserRef.current;
-      if (!meter) return;
-
-      meter.getByteTimeDomainData(data);
-      let sum = 0;
-      for (let i = 0; i < data.length; i += 1) {
-        const normalized = (data[i] - 128) / 128;
-        sum += normalized * normalized;
-      }
-      const rms = Math.sqrt(sum / data.length);
-      const level = Math.min(1, rms * 8.2);
-      setVoiceLevel(level);
-
-      if (!micMuted && voiceSession && peerConnectionRef.current) {
-        setIsListening(true);
-
-        if (level > 0.15) {
-          userSpeakingFrames += 1;
-          if (userSpeakingFrames > 2) {
-            setIsMicActive(true);
-          }
-        } else {
-          userSpeakingFrames = 0;
-          setIsMicActive(false);
-        }
-      } else {
-        setIsListening(false);
-        setIsMicActive(false);
-      }
-
-      meterFrameRef.current = window.requestAnimationFrame(tick);
-    };
-
-    meterFrameRef.current = window.requestAnimationFrame(tick);
-  };
-
-  const checkMicrophoneAccess = async () => {
-    if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
-      return { ok: false, message: 'Microphone access is required.' } as const;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      return { ok: true, stream } as const;
-    } catch {
-      return { ok: false, message: 'Microphone access is required.' } as const;
-    }
-  };
-
-  const startVoiceSession = async () => {
-    if (!isPremium || voicePending || voiceStatus === 'connecting' || voiceStatus === 'reconnecting') return;
-    if (companionGenerationStatus !== 'ready') {
-      setError('Voice unlocks once this companion finishes generation.');
-      return;
-    }
-    if (!companionId) {
-      setError('No companion selected.');
-      return;
-    }
-
-    voiceRunRef.current += 1;
-    const runId = voiceRunRef.current;
-    const isCurrentRun = () => voiceRunRef.current === runId;
-
-    if (voiceSession || peerConnectionRef.current || micStreamRef.current) {
-      teardownVoiceRealtimeUi();
-      setVoiceSession(null);
-    }
-
-    setVoicePending(true);
-    setVoiceStatus(voiceSession ? 'reconnecting' : 'connecting');
-    setError(null);
-
-    const mic = await checkMicrophoneAccess();
-    if (!mic.ok) {
-      if (!isCurrentRun()) return;
-      setError(mic.message);
-      setVoicePending(false);
-      setVoiceStatus('disconnected');
-      teardownVoiceRealtimeUi();
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/virtual-girlfriend/voice/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companionId }),
-      });
-
-      if (!response.ok) {
-        if (!isCurrentRun()) {
-          mic.stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        const body = (await response.json().catch(() => ({}))) as { error?: string; upgradePath?: string; code?: string };
-        if (response.status === 402) {
-          setError(body.error ?? 'Voice is available on Premium.');
-        } else if (response.status === 503 && body.code === 'VG_VOICE_PROVIDER_UNAVAILABLE') {
-          setError(body.error ?? 'Voice chat is temporarily unavailable while we migrate to Together AI.');
-        } else if (response.status === 409) {
-          setError(body.error ?? 'Voice unlocks once this companion finishes generation.');
-        } else if (response.status === 400) {
-          setError(body.error ?? 'No companion selected.');
-        } else {
-          setError(body.error ?? 'Unable to start voice session. Check your connection and try again.');
-        }
-        setVoiceSession(null);
-        setVoicePending(false);
-        setVoiceStatus('disconnected');
-        teardownVoiceRealtimeUi();
-        mic.stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-
-      const body = (await response.json()) as {
-        session: {
-          id: string | null;
-          clientSecret: string;
-          expiresAt: string | null;
-          model: string;
-          companion: { id: string; name: string };
-          memoryCount: number;
-          styleAdaptationStrength: number;
-        };
-      };
-
-      const session = body.session;
-      if (!session || typeof session.clientSecret !== 'string' || !session.clientSecret || typeof session.model !== 'string' || !session.model) {
-        throw new Error('Voice session bootstrap returned an invalid payload.');
-      }
-
-      const connectResponse = await fetch(`https://api.openai.com/v1/realtime?model=${encodeURIComponent(session.model)}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.clientSecret}`,
-          'Content-Type': 'application/sdp',
-        },
-        body: await (async () => {
-          const peerConnection = new RTCPeerConnection();
-          peerConnectionRef.current = peerConnection;
-
-          const remoteAudio = new Audio();
-          remoteAudio.autoplay = true;
-          remoteAudioRef.current = remoteAudio;
-
-          peerConnection.ontrack = (event) => {
-            const stream = event.streams[0];
-            if (!stream) return;
-            remoteStreamRef.current = stream;
-            remoteAudio.srcObject = stream;
-            void remoteAudio.play().catch(() => {
-              setError('Audio playback was blocked. Tap Start voice again to resume playback.');
-            });
-            startCompanionMeter(stream);
-          };
-
-          peerConnection.onconnectionstatechange = () => {
-            const state = peerConnection.connectionState;
-            if (state === 'connected') {
-              if (!isCurrentRun()) return;
-              setVoiceStatus('ready');
-              setError(null);
-              return;
-            }
-            if (state === 'connecting') {
-              if (!isCurrentRun()) return;
-              setVoiceStatus('connecting');
-              return;
-            }
-            if (state === 'disconnected') {
-              if (!isCurrentRun()) return;
-              setIsListening(false);
-              setIsMicActive(false);
-              setIsCompanionSpeaking(false);
-              setVoiceStatus('disconnected');
-              return;
-            }
-            if (state === 'failed') {
-              if (!isCurrentRun()) return;
-              setIsListening(false);
-              setIsMicActive(false);
-              setIsCompanionSpeaking(false);
-              setVoiceStatus('disconnected');
-              setError('Voice connection failed. Restart voice to continue.');
-              return;
-            }
-            if (state === 'closed') {
-              if (!isCurrentRun()) return;
-              setIsListening(false);
-              setIsMicActive(false);
-              setIsCompanionSpeaking(false);
-              setVoiceStatus('disconnected');
-            }
-          };
-
-          peerConnection.oniceconnectionstatechange = () => {
-            const state = peerConnection.iceConnectionState;
-            if (!isCurrentRun()) return;
-            if (state === 'checking') setVoiceStatus('connecting');
-            if (state === 'disconnected') {
-              setIsListening(false);
-              setIsMicActive(false);
-              setIsCompanionSpeaking(false);
-              setVoiceStatus('reconnecting');
-            }
-            if (state === 'failed') {
-              setIsListening(false);
-              setIsMicActive(false);
-              setIsCompanionSpeaking(false);
-              setVoiceStatus('disconnected');
-              setError('Voice network path failed. Restart voice to reconnect.');
-            }
-          };
-
-          const channel = peerConnection.createDataChannel('oai-events');
-          eventsChannelRef.current = channel;
-          channel.onmessage = (event) => {
-            try {
-              const payload = JSON.parse(event.data) as { type?: string };
-              if (payload.type === 'response.audio.done') {
-                setIsCompanionSpeaking(false);
-              }
-              if (payload.type === 'output_audio_buffer.started') {
-                setIsCompanionSpeaking(true);
-              }
-              if (payload.type === 'output_audio_buffer.stopped') {
-                setIsCompanionSpeaking(false);
-              }
-            } catch {
-              // Ignore non-JSON event payloads from transport.
-            }
-          };
-
-          mic.stream.getTracks().forEach((track) => {
-            peerConnection.addTrack(track, mic.stream);
-          });
-
-          const offer = await peerConnection.createOffer();
-          await peerConnection.setLocalDescription(offer);
-          return offer.sdp ?? '';
-        })(),
-      });
-
-      if (!connectResponse.ok) {
-        throw new Error(`Realtime SDP exchange failed (${connectResponse.status}).`);
-      }
-
-      const answerSdp = await connectResponse.text();
-      if (!isCurrentRun()) {
-        mic.stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-      const peerConnection = peerConnectionRef.current;
-      if (!peerConnection) {
-        throw new Error('Realtime peer connection was not initialized.');
-      }
-      await peerConnection.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-
-      micStreamRef.current = mic.stream;
-      setMicMuted(false);
-      startVoiceMeter(mic.stream);
-      setVoiceSession(session);
-      setVoiceStatus('connecting');
-      setVoicePending(false);
-    } catch {
-      if (!isCurrentRun()) return;
-      setError('Unable to start voice session. Check your connection and try again.');
-      setVoiceSession(null);
-      setVoiceStatus('disconnected');
-      setVoicePending(false);
-      teardownVoiceRealtimeUi();
-      mic.stream.getTracks().forEach((track) => track.stop());
-    }
-  };
-
-  const endVoiceSession = () => {
-    voiceRunRef.current += 1;
-    setVoiceSession(null);
-    setVoiceStatus('idle');
-    teardownVoiceRealtimeUi();
-  };
-
-  const toggleMicMute = () => {
-    const next = !micMuted;
-    setMicMuted(next);
-
-    if (micStreamRef.current) {
-      micStreamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = !next;
-      });
-    }
-
-    if (next) {
-      setIsMicActive(false);
-      setIsListening(false);
-      setVoiceLevel(0);
-      setIsCompanionSpeaking(false);
-    }
-  };
-
-  useEffect(() => {
-    if (voiceSession && !voiceSession.expiresAt) return;
-    if (!voiceSession?.expiresAt) return;
-
-    const expiresAtMs = new Date(voiceSession.expiresAt).getTime();
-    const timeout = window.setTimeout(
-      () => {
-        voiceRunRef.current += 1;
-        closeCompanionMeter();
-        stopVoiceMeter();
-        stopMicrophoneStream();
-        if (eventsChannelRef.current) {
-          eventsChannelRef.current.close();
-          eventsChannelRef.current = null;
-        }
-        if (peerConnectionRef.current) {
-          peerConnectionRef.current.close();
-          peerConnectionRef.current = null;
-        }
-        if (remoteAudioRef.current) {
-          remoteAudioRef.current.pause();
-          remoteAudioRef.current.srcObject = null;
-          remoteAudioRef.current = null;
-        }
-        remoteStreamRef.current = null;
-        setVoiceSession(null);
-        setVoiceStatus('expired');
-        setIsListening(false);
-        setIsMicActive(false);
-        setVoiceLevel(0);
-        setIsCompanionSpeaking(false);
-      },
-      Math.max(0, expiresAtMs - Date.now()),
-    );
-
-    return () => window.clearTimeout(timeout);
-  }, [voiceSession]);
-
-  useEffect(() => {
-    return () => {
-      closeCompanionMeter();
-      stopVoiceMeter();
-      stopMicrophoneStream();
-      if (eventsChannelRef.current) {
-        eventsChannelRef.current.close();
-        eventsChannelRef.current = null;
-      }
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.pause();
-        remoteAudioRef.current.srcObject = null;
-        remoteAudioRef.current = null;
-      }
-      remoteStreamRef.current = null;
-      setIsListening(false);
-      setIsCompanionSpeaking(false);
-    };
-  }, []);
-
-  const isVoiceExpired = useMemo(() => {
-    if (!voiceSession?.expiresAt) return false;
-    return new Date(voiceSession.expiresAt).getTime() <= Date.now();
-  }, [voiceSession]);
-
-  const voiceStatusText = useMemo(() => {
-    if (!isPremium) return 'Voice is available on Premium.';
-    if (!companionId) return 'No companion selected.';
-    if (companionGenerationStatus !== 'ready') return 'Voice unlocks after this companion finishes profile generation.';
-    if (voiceStatus === 'connecting') return 'Connecting…';
-    if (voiceStatus === 'reconnecting') return 'Reconnecting…';
-    if (voiceStatus === 'disconnected') return 'Connection dropped. Restart voice to continue.';
-    if (voiceSession && (isVoiceExpired || voiceStatus === 'expired')) return 'Session expired, refresh to continue.';
-    if (voiceStatus === 'ready' && voiceSession) return 'Voice session ready.';
-    return 'This initializes a companion-scoped realtime token with persona, style adaptation, and memory context.';
-  }, [companionGenerationStatus, companionId, isPremium, isVoiceExpired, voiceSession, voiceStatus]);
-
-  const voiceStatusTone =
-    voiceStatus === 'connecting' || voiceStatus === 'reconnecting'
-      ? styles.voiceToneConnecting
-      : voiceStatus === 'ready' && !isVoiceExpired
-        ? styles.voiceToneReady
-        : voiceStatus === 'disconnected' || voiceStatus === 'expired' || isVoiceExpired
-          ? styles.voiceToneWarning
-          : '';
-
-  const helperText = useMemo(
-    () => `💜 ${pointBalance} points · ${messageCost} per message · unblur ${POINTS.unblurCost} pts`,
-    [pointBalance, messageCost],
-  );
+  const helperText = useMemo(() => {
+    const pointsLine = `💜 ${pointBalance} points · ${messageCost} per message · unblur ${POINTS.unblurCost} pts`;
+    if (dailyMessageLimit === null) return pointsLine;
+    return `${pointsLine} · ${messagesUsedToday}/${dailyMessageLimit} messages today`;
+  }, [pointBalance, messageCost, dailyMessageLimit, messagesUsedToday]);
 
   const avatarUrl = liveAvatarUrl;
   const backdropUrl = liveBackdropUrl;
@@ -1201,8 +762,10 @@ export const VirtualGirlfriendChatClient = ({
       <p className={styles.infoPanelSub}>{panelBio}</p>
 
       <div className={styles.infoPanelActions}>
-        <button type="button" className={styles.shareBtn}>↑ Share</button>
-        <button type="button" className={styles.resetBtn} onClick={() => setMessages(initialMessages)}>Reset chat</button>
+        <button type="button" className={styles.shareBtn} onClick={() => void shareCompanion()}>↑ Share</button>
+        <button type="button" className={styles.resetBtn} disabled={resetPending || pending} onClick={() => void resetChat()}>
+          {resetPending ? 'Clearing…' : 'Reset chat'}
+        </button>
       </div>
 
       <div className={styles.infoTabs}>
@@ -1246,7 +809,7 @@ export const VirtualGirlfriendChatClient = ({
                 key={preset.id}
                 type="button"
                 className={styles.wardrobeItem}
-                disabled={pending}
+                disabled={pending || awaitingPhoto}
                 onClick={() => void send(preset.message)}
               >
                 <span aria-hidden>{preset.icon}</span>
@@ -1287,6 +850,51 @@ export const VirtualGirlfriendChatClient = ({
           <Link href="/chats" className={styles.allChatsBtn}>
             ‹ All Chats
           </Link>
+          <div className={styles.desktopToolbarCenter}>
+            <div className={styles.desktopToolbarAvatar}>
+              {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
+            </div>
+            <div className={styles.desktopToolbarInfo}>
+              <span className={styles.desktopToolbarName}>{companionName}</span>
+              <span
+                className={
+                  isTypingActivity || isPhotoActivity
+                    ? `${styles.desktopToolbarStatus} ${styles.desktopToolbarStatusActive}`
+                    : styles.desktopToolbarStatus
+                }
+              >
+                {activityLabel}
+              </span>
+            </div>
+          </div>
+          <div className={styles.desktopToolbarEnd}>
+            <span className={styles.pointsPill} aria-label={`${pointBalance} points`}>
+              💜 {pointBalance}
+            </span>
+            <details className={styles.headerMenu}>
+              <summary className={styles.menuTrigger}>⋯</summary>
+              <div className={styles.menuPanel}>
+                <p className={styles.menuMeta}>{helperText}</p>
+                <p className={styles.menuLabel}>Tone presets</p>
+                <div className={styles.menuButtons}>
+                  {STYLE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      className={styles.menuButton}
+                      disabled={!isPremium || !!stylePending}
+                      onClick={() => applyPreset(preset.key)}
+                    >
+                      {stylePending === preset.key ? 'Updating…' : preset.label}
+                    </button>
+                  ))}
+                </div>
+                <p className={styles.menuMeta}>
+                  Adaptation {Math.round(styleProfile.adaptation_strength * 100)}% • stability {Math.round(styleProfile.stability_score * 100)}%
+                </p>
+              </div>
+            </details>
+          </div>
         </div>
 
         <header className={styles.chatHeader}>
@@ -1308,16 +916,12 @@ export const VirtualGirlfriendChatClient = ({
               <span className={styles.headerName}>{companionName}</span>
               <span
                 className={
-                  companionActivity === 'idle'
-                    ? styles.companionHeaderStatus
-                    : `${styles.companionHeaderStatus} ${styles.companionHeaderStatusActive}`
+                  isTypingActivity || isPhotoActivity
+                    ? `${styles.companionHeaderStatus} ${styles.companionHeaderStatusActive}`
+                    : styles.companionHeaderStatus
                 }
               >
-                {companionActivity === 'typing'
-                  ? 'typing…'
-                  : companionActivity === 'sending_photo'
-                    ? 'sending a photo…'
-                    : 'online'}
+                {activityLabel}
               </span>
             </div>
           </button>
@@ -1345,55 +949,6 @@ export const VirtualGirlfriendChatClient = ({
               <p className={styles.menuMeta}>
                 Adaptation {Math.round(styleProfile.adaptation_strength * 100)}% • stability {Math.round(styleProfile.stability_score * 100)}%
               </p>
-              <p className={styles.menuLabel}>Voice (Premium)</p>
-              <p className={styles.menuMeta}>{voiceStatusText}</p>
-              <div className={styles.voiceControls}>
-                <button
-                  type="button"
-                  className={styles.menuButton}
-                  disabled={
-                    !isPremium
-                    || voicePending
-                    || voiceStatus === 'connecting'
-                    || voiceStatus === 'reconnecting'
-                    || !companionId
-                    || companionGenerationStatus !== 'ready'
-                  }
-                  onClick={startVoiceSession}
-                >
-                  {voicePending || voiceStatus === 'connecting' || voiceStatus === 'reconnecting'
-                    ? voiceStatus === 'reconnecting'
-                      ? 'Reconnecting…'
-                      : 'Connecting…'
-                    : voiceSession
-                      ? 'Refresh voice session'
-                      : 'Start voice session'}
-                </button>
-                {voiceSession ? (
-                  <>
-                    <button type="button" className={styles.menuButton} onClick={toggleMicMute}>
-                      {micMuted ? 'Unmute microphone' : 'Mute microphone'}
-                    </button>
-                    <button type="button" className={styles.menuButton} onClick={endVoiceSession}>
-                      End session
-                    </button>
-                  </>
-                ) : null}
-              </div>
-              <div className={styles.voiceIndicators}>
-                <span className={`${styles.voiceIndicator} ${voiceStatusTone}`}>Status</span>
-                <span className={`${styles.voiceIndicator} ${isCompanionSpeaking ? styles.isLive : ''}`}>Companion</span>
-                <span className={`${styles.voiceIndicator} ${isMicActive && !micMuted ? styles.isLive : ''}`}>Mic</span>
-                <span className={`${styles.voiceIndicator} ${isListening && !micMuted ? styles.isLive : ''}`}>Listening</span>
-              </div>
-              <div className={styles.voiceWave} aria-label="Voice activity">
-                {Array.from({ length: 16 }).map((_, idx) => {
-                  const phase = (idx % 4) / 4;
-                  const activity = isCompanionSpeaking ? 0.75 : isMicActive ? 0.58 : isListening && !micMuted ? Math.max(0.16, voiceLevel * 0.5) : 0.12;
-                  const barScale = 0.32 + activity + phase * 0.16;
-                  return <span key={idx} className={styles.voiceWaveBar} style={{ transform: `scaleY(${Math.min(1.8, barScale)})` }} />;
-                })}
-              </div>
             </div>
           </details>
         </header>
@@ -1478,12 +1033,6 @@ export const VirtualGirlfriendChatClient = ({
                       {idx === renderBubbles.length - 1 ? (
                         <div className={styles.messageActions}>
                           <span className={styles.timestamp}>{formatTime(message.created_at)}</span>
-                          <button type="button" className={styles.likeBtn} aria-label="Like message">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
-                          </button>
-                          <button type="button" className={styles.dislikeBtn} aria-label="Dislike message">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
-                          </button>
                         </div>
                       ) : null}
                     </div>
@@ -1494,10 +1043,7 @@ export const VirtualGirlfriendChatClient = ({
             );
           })}
 
-          {(companionActivity === 'typing'
-            && isStreaming
-            && !messages.some((message) => message.id.startsWith('temp-assistant-')))
-          || (companionActivity === 'sending_photo' && awaitingPhoto) ? (
+          {isTypingActivity ? (
             <div className={styles.messageCompanion}>
               <div className={styles.companionAvatar}>
                 {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
@@ -1506,15 +1052,28 @@ export const VirtualGirlfriendChatClient = ({
                 className={styles.typingIndicator}
                 role="status"
                 aria-live="polite"
-                aria-label={
-                  companionActivity === 'sending_photo'
-                    ? `${companionName} is sending a photo`
-                    : `${companionName} is typing`
-                }
+                aria-label={`${companionName} is typing`}
               >
                 <span className={styles.typingDot} />
                 <span className={styles.typingDot} />
                 <span className={styles.typingDot} />
+              </div>
+            </div>
+          ) : null}
+
+          {isPhotoActivity ? (
+            <div className={styles.messageCompanion}>
+              <div className={styles.companionAvatar}>
+                {avatarUrl ? <ChatAvatarImage src={avatarUrl} alt={companionName} width={32} height={32} sizes="32px" /> : <span>{companionName.charAt(0)}</span>}
+              </div>
+              <div
+                className={styles.photoSendingIndicator}
+                role="status"
+                aria-live="polite"
+                aria-label={`${companionName} is sharing a photo`}
+              >
+                <div className={styles.photoSendingShimmer} aria-hidden />
+                <span className={styles.photoSendingLabel}>One moment…</span>
               </div>
             </div>
           ) : null}
@@ -1529,12 +1088,24 @@ export const VirtualGirlfriendChatClient = ({
               type="button"
               className={styles.quickChip}
               onClick={() => void send(preset.message)}
-              disabled={pending}
+              disabled={pending || awaitingPhoto}
             >
               <span aria-hidden>{preset.icon}</span> {preset.label}
             </button>
           ))}
         </div>
+
+        {companionGenerationStatus === 'generating' ? (
+          <div className={styles.generationBanner} role="status">
+            {companionName}&apos;s photos are still generating — chat works now; gallery fills in shortly.
+          </div>
+        ) : null}
+
+        {error ? (
+          <p className={styles.errorBanner} role="alert" aria-live="assertive">
+            {error}
+          </p>
+        ) : null}
 
         <div className={styles.composerArea}>
           {outfitMenuOpen ? (
@@ -1544,7 +1115,7 @@ export const VirtualGirlfriendChatClient = ({
                   key={preset.id}
                   type="button"
                   className={styles.outfitMenuItem}
-                  disabled={pending}
+                  disabled={pending || awaitingPhoto}
                   onClick={() => void send(preset.message)}
                 >
                   <span className={styles.outfitMenuIcon}>{preset.icon}</span>
@@ -1553,7 +1124,21 @@ export const VirtualGirlfriendChatClient = ({
               ))}
             </div>
           ) : null}
-          {insufficientPoints ? (
+          {dailyLimitReached ? (
+            <div className={styles.limitBox}>
+              <p>
+                Daily limit reached ({messagesUsedToday}/{dailyMessageLimit} messages). Premium removes the cap.
+              </p>
+              <div className={styles.limitActions}>
+                <Link href="/premium" className={styles.linkButton}>
+                  Upgrade to Premium
+                </Link>
+                <Link href="/chats" className={styles.linkButtonGhost}>
+                  Back to chats
+                </Link>
+              </div>
+            </div>
+          ) : insufficientPoints ? (
             <div className={styles.limitBox}>
               <p>You need at least {messageCost} point to send a message.</p>
               <div className={styles.limitActions}>
@@ -1573,7 +1158,7 @@ export const VirtualGirlfriendChatClient = ({
                 aria-label="Wardrobe and outfit options"
                 aria-expanded={outfitMenuOpen}
                 onClick={() => setOutfitMenuOpen((open) => !open)}
-                disabled={pending}
+                disabled={pending || awaitingPhoto}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 5v14M5 12h14" />
@@ -1592,8 +1177,9 @@ export const VirtualGirlfriendChatClient = ({
                 }}
                 rows={1}
                 maxLength={2500}
+                disabled={awaitingPhoto}
               />
-              <button className={styles.sendButton} onClick={() => void send()} disabled={!draft.trim() || pending} aria-label="Send message">
+              <button className={styles.sendButton} onClick={() => void send()} disabled={!draft.trim() || pending || awaitingPhoto} aria-label="Send message">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 2 11 13" />
                   <path d="M22 2 15 22 11 13 2 9l20-7z" />
@@ -1602,7 +1188,6 @@ export const VirtualGirlfriendChatClient = ({
             </>
           )}
         </div>
-        {error ? <p className={styles.errorText}>{error}</p> : null}
       </main>
 
       <aside className={styles.infoPanel}>{companionPanel}</aside>

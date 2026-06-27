@@ -24,6 +24,12 @@ const formatDate = (value: string) => {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
 };
 
+const isRecentlyActive = (value: string) => {
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return false;
+  return Date.now() - timestamp < 5 * 60 * 1000;
+};
+
 export function CompanionChatRows({ items }: { items: VGThreadItem[] }) {
   return (
     <>
@@ -35,7 +41,7 @@ export function CompanionChatRows({ items }: { items: VGThreadItem[] }) {
             kind="ai"
             size="lg"
             ring
-            isActive
+            isActive={isRecentlyActive(item.lastActivityAt)}
           />
           <div className="chats-item-body">
             <div className="chats-item-top">
