@@ -30,6 +30,7 @@ const companion = (structured: VirtualGirlfriendStructuredProfile): VirtualGirlf
   ({
     id: 'existing-1',
     user_id: 'u1',
+    source: 'user',
     name: structured.name,
     display_bio: null,
     persona_profile: {} as VirtualGirlfriendCompanionRecord['persona_profile'],

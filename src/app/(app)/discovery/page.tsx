@@ -43,7 +43,7 @@ export default async function DiscoveryPage({
   const initialTab = parseTab(params.tab);
 
   const [discoverable, companions] = await Promise.all([
-    getDiscoverableVirtualGirlfriends(auth.accessToken, auth.user.id),
+    getDiscoverableVirtualGirlfriends(auth.accessToken),
     listVirtualGirlfriendCompanionsForGrid(auth.accessToken, auth.user.id),
   ]);
 
@@ -70,6 +70,7 @@ export default async function DiscoveryPage({
       status,
       isActive: companion.id === activeId,
       chatReady,
+      deletable: companion.source !== 'catalog',
       href: chatReady
         ? `/virtual-girlfriend/chat?companionId=${companion.id}`
         : `/virtual-girlfriend/profile?companionId=${companion.id}`,

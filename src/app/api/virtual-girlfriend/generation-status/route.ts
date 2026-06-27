@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/app/api/onboarding/shared';
 import {
   getLatestVisualProfileForCompanion,
-  getVirtualGirlfriendCompanionById,
+  getVirtualGirlfriendCompanionForChat,
+  resolveCompanionAssetUserId,
   getVirtualGirlfriendCompanionThumbnailBatch,
 } from '@/lib/virtual-girlfriend/data';
 import { curateVirtualGirlfriendImages } from '@/lib/virtual-girlfriend/gallery';
@@ -19,14 +20,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'companionId is required.' }, { status: 400 });
   }
 
-  const companion = await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, companionId);
+  const companion = await getVirtualGirlfriendCompanionForChat(auth.accessToken, auth.user.id, companionId);
   if (!companion) {
     return NextResponse.json({ error: 'Companion not found.' }, { status: 404 });
   }
 
+  const assetUserId = resolveCompanionAssetUserId(companion, auth.user.id);
   const [visualProfile, thumbnailMap] = await Promise.all([
-    getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companionId),
-    getVirtualGirlfriendCompanionThumbnailBatch(auth.accessToken, auth.user.id, [companionId]),
+    getLatestVisualProfileForCompanion(auth.accessToken, auth.user.id, companionId, { assetUserId }),
+    getVirtualGirlfriendCompanionThumbnailBatch(auth.accessToken, assetUserId, [companionId]),
   ]);
 
   const images = thumbnailMap.get(companionId) ?? [];

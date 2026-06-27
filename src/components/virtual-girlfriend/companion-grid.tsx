@@ -12,11 +12,12 @@ export type CompanionGridCard = {
   isActive: boolean;
   chatReady: boolean;
   href: string;
+  deletable?: boolean;
 };
 
 export const CompanionGrid = ({ cards }: { cards: CompanionGridCard[] }) => (
   <div className="ai-gf-grid">
-    {cards.map(({ companion, imageUrl, status, isActive, chatReady, href }) => (
+    {cards.map(({ companion, imageUrl, status, isActive, chatReady, href, deletable = true }) => (
       <div key={companion.id} className="ai-gf-card-wrap">
         <Link href={href} className="ai-gf-card">
           <div className="ai-gf-card-img">
@@ -51,7 +52,9 @@ export const CompanionGrid = ({ cards }: { cards: CompanionGridCard[] }) => (
             </span>
           </div>
         </Link>
-        <CompanionCardDeleteButton companionId={companion.id} companionName={companion.name} />
+        {deletable ? (
+          <CompanionCardDeleteButton companionId={companion.id} companionName={companion.name} />
+        ) : null}
       </div>
     ))}
 

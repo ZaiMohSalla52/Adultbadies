@@ -13,6 +13,8 @@ import type {
 
 const companion = {
   id: 'companion-1',
+  user_id: 'user-1',
+  source: 'user',
   name: 'Susy',
   visual_aesthetic: 'warm casual',
   structured_profile: {

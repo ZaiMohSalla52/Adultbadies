@@ -52,6 +52,8 @@ export type PersonaProfile = {
 
 export type VirtualGirlfriendGenerationStatus = 'generating' | 'ready' | 'failed';
 
+export type VirtualGirlfriendCompanionSource = 'user' | 'catalog';
+
 export type VirtualGirlfriendImageGenerationState =
   | 'blocked_pre_gen'
   | 'generating'
@@ -112,6 +114,7 @@ export type VirtualGirlfriendCanonicalReviewStatus = (typeof VIRTUAL_GIRLFRIEND_
 export type VirtualGirlfriendCompanionRecord = {
   id: string;
   user_id: string;
+  source: VirtualGirlfriendCompanionSource;
   name: string;
   display_bio: string | null;
   persona_profile: PersonaProfile;

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import type { ExploreTab } from '@/lib/discovery/types';
 import type { CompanionGridCard } from '@/components/virtual-girlfriend/companion-grid';
+import { CompanionCardDeleteButton } from '@/components/virtual-girlfriend/companion-card-delete-button';
 import type { DiscoveryCandidate } from '@/lib/discovery/types';
 import styles from './explore-library.module.css';
 
@@ -38,16 +39,17 @@ const toExploreCardFromDiscovery = (candidate: DiscoveryCandidate): ExploreCard 
   bio: candidate.bio,
   photoUrl: candidate.photoUrl,
   href: `/virtual-girlfriend/chat?companionId=${candidate.companionId}`,
-  tag: candidate.gender === 'male' ? 'Boyfriend' : 'Girlfriend',
+  tag: 'Library',
 });
 
-const toExploreCardFromCompanion = (card: CompanionGridCard): ExploreCard => ({
+const toExploreCardFromCompanion = (card: CompanionGridCard): ExploreCard & { deletable?: boolean } => ({
   id: card.companion.id,
   name: card.companion.name,
   bio: card.companion.display_bio || card.companion.archetype || 'AI Companion',
   photoUrl: card.imageUrl,
   href: card.href,
   tag: card.isActive ? 'Active' : card.chatReady ? 'Ready' : 'Setup',
+  deletable: card.deletable,
 });
 
 type ExploreLibraryProps = {
@@ -108,7 +110,7 @@ export const ExploreLibrary = ({
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Explore</h1>
-          <p className={styles.subtitle}>Browse AI companions — girlfriends, boyfriends, and anime styles.</p>
+          <p className={styles.subtitle}>Browse the romantic AI library or create your own companion.</p>
         </div>
         <div className={styles.searchWrap}>
           <input
@@ -148,13 +150,13 @@ export const ExploreLibrary = ({
         {cards.length === 0 ? (
           <div className={styles.empty}>
             <p className={styles.emptyTitle}>
-              {tab === 'anime' ? 'Anime companions coming soon' : 'No characters yet'}
+              {tab === 'anime' ? 'No anime-style companions yet' : 'No characters yet'}
             </p>
             <p>
               {tab === 'my'
                 ? 'Create your first companion to see them here.'
                 : tab === 'anime'
-                  ? 'Use Create to build a companion — anime styling is on the roadmap.'
+                  ? 'Create a companion and choose an anime-inspired look in setup.'
                   : 'Try another category or create your own.'}
             </p>
             <Link href="/virtual-girlfriend/setup?new=1" className={styles.bannerCta} style={{ display: 'inline-block', marginTop: 16 }}>
@@ -162,22 +164,36 @@ export const ExploreLibrary = ({
             </Link>
           </div>
         ) : (
-          cards.map((card) => (
-            <Link key={card.id} href={card.href} className={styles.card}>
-              <div className={styles.cardImage}>
-                {card.photoUrl ? (
-                  <Image src={card.photoUrl} alt={card.name} fill sizes="(max-width: 520px) 50vw, 220px" className={styles.cardPhoto} />
-                ) : (
-                  <div className={styles.cardFallback}>{card.name.charAt(0)}</div>
-                )}
-              </div>
-              <div className={styles.cardBody}>
-                <span className={styles.cardName}>{card.name}</span>
-                <p className={styles.cardBio}>{card.bio}</p>
-                {card.tag ? <span className={styles.cardTag}>{card.tag}</span> : null}
-              </div>
-            </Link>
-          ))
+          cards.map((card) => {
+            const myCard = tab === 'my' ? (card as ExploreCard & { deletable?: boolean }) : null;
+            const cardInner = (
+              <Link href={card.href} className={styles.card}>
+                <div className={styles.cardImage}>
+                  {card.photoUrl ? (
+                    <Image src={card.photoUrl} alt={card.name} fill sizes="(max-width: 520px) 50vw, 220px" className={styles.cardPhoto} />
+                  ) : (
+                    <div className={styles.cardFallback}>{card.name.charAt(0)}</div>
+                  )}
+                </div>
+                <div className={styles.cardBody}>
+                  <span className={styles.cardName}>{card.name}</span>
+                  <p className={styles.cardBio}>{card.bio}</p>
+                  {card.tag ? <span className={styles.cardTag}>{card.tag}</span> : null}
+                </div>
+              </Link>
+            );
+
+            if (myCard?.deletable) {
+              return (
+                <div key={card.id} className={styles.cardWrap}>
+                  {cardInner}
+                  <CompanionCardDeleteButton companionId={card.id} companionName={card.name} />
+                </div>
+              );
+            }
+
+            return <div key={card.id}>{cardInner}</div>;
+          })
         )}
 
         {tab === 'my' ? (

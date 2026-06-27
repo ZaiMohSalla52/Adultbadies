@@ -55,6 +55,9 @@ export const env = {
   R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
   /** Public HTTPS base for browser delivery (R2 custom domain or *.r2.dev). */
   R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL,
+
+  /** Auth user id that owns auto-generated catalog companion rows. */
+  CATALOG_SYSTEM_USER_ID: process.env.CATALOG_SYSTEM_USER_ID,
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,

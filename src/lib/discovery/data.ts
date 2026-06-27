@@ -1,4 +1,5 @@
 import { env } from '@/lib/env';
+import { CATALOG_COMPANION_LIMIT } from '@/lib/virtual-girlfriend/catalog/constants';
 import { repairCompanionImageDeliveryUrl } from '@/lib/storage/delivery-url';
 import { supabaseRest } from '@/lib/supabase/rest';
 import type { DiscoveryCandidate, DiscoveryPhotoRecord, DiscoveryPreferenceRecord, DiscoveryProfileRecord, SwipeRecord } from '@/lib/discovery/types';
@@ -82,14 +83,15 @@ type VgImageRow = {
   origin_storage_key?: string | null;
 };
 
-export const getDiscoverableVirtualGirlfriends = async (token: string, userId: string): Promise<DiscoveryCandidate[]> => {
+export const getDiscoverableVirtualGirlfriends = async (token: string): Promise<DiscoveryCandidate[]> => {
   const companions = await supabaseRest<VgCompanionRow[]>('ai_companions', token, {
     searchParams: new URLSearchParams({
       select: 'id,user_id,name,display_bio,disclosure_label,structured_profile,archetype',
-      is_discoverable: 'eq.true',
+      source: 'eq.catalog',
       setup_completed: 'eq.true',
-      user_id: `neq.${userId}`,
-      limit: '20',
+      generation_status: 'eq.ready',
+      order: 'created_at.asc',
+      limit: String(CATALOG_COMPANION_LIMIT),
     }),
   });
 

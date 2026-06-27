@@ -1,5 +1,9 @@
 import { env } from '@/lib/env';
-import { VG_CHAT_MEMORY_RETRIEVAL_LIMIT } from '@/lib/virtual-girlfriend/chat-config';
+import {
+  VG_CHAT_EMBEDDING_MIN_QUERY_LENGTH,
+  VG_CHAT_MEMORY_POOL_LIMIT,
+  VG_CHAT_MEMORY_RETRIEVAL_LIMIT,
+} from '@/lib/virtual-girlfriend/chat-config';
 import {
   buildMemoryEmbeddingText,
   cosineSimilarityVectors,
@@ -32,11 +36,11 @@ import type {
 } from '@/lib/virtual-girlfriend/types';
 
 const companionSelect =
-  'id,user_id,name,display_bio,persona_profile,structured_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,generation_status,disclosure_label,is_active,created_at,updated_at';
+  'id,user_id,source,name,display_bio,persona_profile,structured_profile,archetype,tone,affection_style,visual_aesthetic,preference_hints,profile_tags,setup_completed,generation_status,disclosure_label,is_active,created_at,updated_at';
 
 /** Lightweight companion row for grid/list cards — avoids large persona JSON blobs. */
 const companionGridSelect =
-  'id,user_id,name,display_bio,archetype,setup_completed,generation_status,is_active,updated_at';
+  'id,user_id,source,name,display_bio,archetype,setup_completed,generation_status,is_active,updated_at';
 
 const companionThumbnailSelect =
   'id,companion_id,image_kind,delivery_url,delivery_provider,origin_storage_provider,origin_storage_key,width,height,prompt_hash,quality_score,lineage_metadata,created_at';
@@ -134,6 +138,43 @@ export const getVirtualGirlfriendCompanionById = async (
   return rows[0] ?? null;
 };
 
+export const getCatalogVirtualGirlfriendCompanionById = async (
+  token: string,
+  companionId: string,
+): Promise<VirtualGirlfriendCompanionRecord | null> => {
+  const rows = await supabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', token, {
+    searchParams: new URLSearchParams({
+      select: companionSelect,
+      id: `eq.${companionId}`,
+      source: 'eq.catalog',
+      setup_completed: 'eq.true',
+      limit: '1',
+    }),
+  });
+
+  return rows[0] ?? null;
+};
+
+/** Owned companion or public catalog companion the user may chat with. */
+export const getVirtualGirlfriendCompanionForChat = async (
+  token: string,
+  userId: string,
+  companionId: string,
+): Promise<VirtualGirlfriendCompanionRecord | null> => {
+  const owned = await getVirtualGirlfriendCompanionById(token, userId, companionId);
+  if (owned) return owned;
+  return getCatalogVirtualGirlfriendCompanionById(token, companionId);
+};
+
+export const isCatalogCompanion = (
+  companion: Pick<VirtualGirlfriendCompanionRecord, 'source'>,
+) => companion.source === 'catalog';
+
+export const resolveCompanionAssetUserId = (
+  companion: Pick<VirtualGirlfriendCompanionRecord, 'user_id' | 'source'>,
+  chattingUserId: string,
+) => (companion.source === 'catalog' ? companion.user_id : chattingUserId);
+
 export const listVirtualGirlfriendCompanions = async (
   token: string,
   userId: string,
@@ -156,6 +197,7 @@ export const listVirtualGirlfriendCompanionsForGrid = async (
     searchParams: new URLSearchParams({
       select: companionGridSelect,
       user_id: `eq.${userId}`,
+      source: 'eq.user',
       order: 'is_active.desc,updated_at.desc',
       limit: '24',
     }),
@@ -283,6 +325,7 @@ export const upsertVirtualGirlfriend = async (
     method: 'POST',
     body: {
       user_id: input.userId,
+      source: 'user',
       name: input.name,
       persona_prompt: 'Stage 9 Virtual Girlfriend structured persona',
       display_bio: input.bio,
@@ -458,20 +501,25 @@ export const getVirtualGirlfriendMessageById = async (
 export const getVirtualGirlfriendMessages = async (
   token: string,
   conversationId: string,
+  options?: { limit?: number },
 ): Promise<VirtualGirlfriendMessageRecord[]> => {
+  const limit = options?.limit ?? 250;
   const rows = await supabaseRest<VirtualGirlfriendMessageRecord[]>('ai_messages', token, {
     searchParams: new URLSearchParams({
       select: 'id,conversation_id,user_id,role,content,model,token_count,moderation,content_type,attachments,created_at',
       conversation_id: `eq.${conversationId}`,
-      order: 'created_at.asc',
-      limit: '250',
+      order: 'created_at.desc',
+      limit: String(limit),
     }),
   });
 
-  return rows.map((row) => ({
-    ...row,
-    attachments: normalizeMessageAttachments(row.attachments),
-  }));
+  return rows
+    .slice()
+    .reverse()
+    .map((row) => ({
+      ...row,
+      attachments: normalizeMessageAttachments(row.attachments),
+    }));
 };
 
 const isMessagePatchDeniedError = (error: unknown) => {
@@ -564,6 +612,30 @@ export const touchVirtualGirlfriendConversation = async (token: string, conversa
     method: 'PATCH',
     searchParams: new URLSearchParams({ id: `eq.${conversationId}` }),
     body: { last_message_at: new Date().toISOString() },
+    prefer: 'return=minimal',
+  });
+};
+
+export const clearVirtualGirlfriendConversationMessages = async (
+  token: string,
+  input: { conversationId: string; userId: string },
+) => {
+  await supabaseRest('ai_messages', token, {
+    method: 'DELETE',
+    searchParams: new URLSearchParams({
+      conversation_id: `eq.${input.conversationId}`,
+      user_id: `eq.${input.userId}`,
+    }),
+    prefer: 'return=minimal',
+  });
+
+  await supabaseRest('ai_conversations', token, {
+    method: 'PATCH',
+    searchParams: new URLSearchParams({
+      id: `eq.${input.conversationId}`,
+      user_id: `eq.${input.userId}`,
+    }),
+    body: { last_message_at: null },
     prefer: 'return=minimal',
   });
 };
@@ -741,7 +813,7 @@ export const retrieveRelevantVirtualGirlfriendMemories = async (
     maxItems?: number;
   },
 ): Promise<VirtualGirlfriendMemoryRecord[]> => {
-  const pool = await getVirtualGirlfriendMemories(token, input.userId, input.companionId, 200);
+  const pool = await getVirtualGirlfriendMemories(token, input.userId, input.companionId, VG_CHAT_MEMORY_POOL_LIMIT);
 
   if (pool.length === 0) return [];
 
@@ -751,7 +823,11 @@ export const retrieveRelevantVirtualGirlfriendMemories = async (
 
   let queryEmbedding: number[] | null = null;
   const embeddedPool = pool.filter((memory) => memory.embedding_status === 'ready' && memoryEmbeddingFromMetadata(memory.metadata));
-  if (embeddedPool.length > 0 && input.queryText.trim().length >= 4 && env.TOGETHER_API_KEY?.trim()) {
+  if (
+    embeddedPool.length > 0
+    && input.queryText.trim().length >= VG_CHAT_EMBEDDING_MIN_QUERY_LENGTH
+    && env.TOGETHER_API_KEY?.trim()
+  ) {
     try {
       queryEmbedding = await embedMemoryText(input.queryText.trim());
     } catch (error) {
@@ -888,17 +964,38 @@ export const getVirtualGirlfriendCompanionImages = async (
   token: string,
   userId: string,
   companionId: string,
+  options?: { assetUserId?: string },
 ): Promise<VirtualGirlfriendCompanionImageRecord[]> => {
+  const assetUserId = options?.assetUserId ?? userId;
   const rows = await supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
     searchParams: new URLSearchParams({
       select: companionImageSelect,
-      user_id: `eq.${userId}`,
+      user_id: `eq.${assetUserId}`,
       companion_id: `eq.${companionId}`,
       order: 'image_kind.asc,variant_index.asc,created_at.asc',
       limit: '30',
     }),
   });
-  return rows.map(normalizeCompanionImageRow);
+
+  if (assetUserId === userId) {
+    return rows.map(normalizeCompanionImageRow);
+  }
+
+  const personalRows = await supabaseRest<VirtualGirlfriendCompanionImageRecord[]>('ai_companion_images', token, {
+    searchParams: new URLSearchParams({
+      select: companionImageSelect,
+      user_id: `eq.${userId}`,
+      companion_id: `eq.${companionId}`,
+      order: 'created_at.desc',
+      limit: '10',
+    }),
+  });
+
+  const merged = new Map<string, VirtualGirlfriendCompanionImageRecord>();
+  for (const row of [...rows, ...personalRows].map(normalizeCompanionImageRow)) {
+    merged.set(row.id, row);
+  }
+  return Array.from(merged.values());
 };
 
 export const getVirtualGirlfriendCompanionImagesBatch = async (
@@ -1038,11 +1135,13 @@ export const getLatestVisualProfileForCompanion = async (
   token: string,
   userId: string,
   companionId: string,
+  options?: { assetUserId?: string },
 ): Promise<VirtualGirlfriendVisualProfileRecord | null> => {
+  const assetUserId = options?.assetUserId ?? userId;
   const rows = await supabaseRest<VirtualGirlfriendVisualProfileRecord[]>('ai_companion_visual_profiles', token, {
     searchParams: new URLSearchParams({
       select: visualProfileSelect,
-      user_id: `eq.${userId}`,
+      user_id: `eq.${assetUserId}`,
       companion_id: `eq.${companionId}`,
       order: 'created_at.desc',
       limit: '1',

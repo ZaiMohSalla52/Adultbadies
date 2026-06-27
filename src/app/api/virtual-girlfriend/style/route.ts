@@ -4,7 +4,7 @@ import { getUserEntitlements } from '@/lib/subscriptions/data';
 import {
   getActiveVirtualGirlfriend,
   getOrCreateVirtualGirlfriendUserStyleProfile,
-  getVirtualGirlfriendCompanionById,
+  getVirtualGirlfriendCompanionForChat,
 } from '@/lib/virtual-girlfriend/data';
 import { applyStyleControlPreset } from '@/lib/virtual-girlfriend/style-adaptation';
 import {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   const requestedCompanionId = String(body.companionId ?? '').trim();
 
   const companion = requestedCompanionId
-    ? await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, requestedCompanionId)
+    ? await getVirtualGirlfriendCompanionForChat(auth.accessToken, auth.user.id, requestedCompanionId)
     : await getActiveVirtualGirlfriend(auth.accessToken, auth.user.id);
   if (!companion?.setup_completed) {
     return NextResponse.json({ error: 'Complete Virtual Girlfriend setup first.' }, { status: 400 });

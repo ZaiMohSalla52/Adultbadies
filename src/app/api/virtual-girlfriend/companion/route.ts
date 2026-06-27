@@ -5,6 +5,7 @@ import { purgeCompanionImageStorage } from '@/lib/virtual-girlfriend/companion-d
 import {
   deleteVirtualGirlfriendCompanion,
   getVirtualGirlfriendCompanionById,
+  isCatalogCompanion,
   getVirtualGirlfriendCompanionImages,
 } from '@/lib/virtual-girlfriend/data';
 
@@ -33,6 +34,10 @@ export async function DELETE(request: NextRequest) {
   const companion = await getVirtualGirlfriendCompanionById(auth.accessToken, auth.user.id, companionId);
   if (!companion) {
     return NextResponse.json({ error: 'Companion not found.' }, { status: 404 });
+  }
+
+  if (isCatalogCompanion(companion)) {
+    return NextResponse.json({ error: 'Library companions cannot be deleted.' }, { status: 403 });
   }
 
   try {
