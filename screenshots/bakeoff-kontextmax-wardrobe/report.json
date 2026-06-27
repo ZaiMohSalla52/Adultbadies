@@ -1,0 +1,64 @@
+{
+  "ranAt": "2026-06-27T07:35:34.692Z",
+  "purpose": "kontext_max_wardrobe_gallery_bakeoff",
+  "modelId": "black-forest-labs/FLUX.1-kontext-max",
+  "referenceUrl": "https://api.together.ai/shrt/zjEOEUH5PfGDcVkR",
+  "referenceFile": null,
+  "wardrobeLooks": [
+    {
+      "id": "casual_street",
+      "label": "Casual streetwear",
+      "seed": 60101
+    },
+    {
+      "id": "lingerie_boudoir",
+      "label": "Lingerie boudoir",
+      "seed": 60202
+    },
+    {
+      "id": "bikini_beach",
+      "label": "Bikini beach",
+      "seed": 60303
+    }
+  ],
+  "results": [
+    {
+      "ok": true,
+      "lookId": "casual_street",
+      "label": "Casual streetwear",
+      "seed": 60101,
+      "black": false,
+      "moderated": false,
+      "bytes": 141698,
+      "inferenceMs": 14588,
+      "file": "screenshots/bakeoff-kontextmax-wardrobe/kontextmax_casual_street_seed60101.jpg"
+    },
+    {
+      "ok": false,
+      "lookId": "lingerie_boudoir",
+      "label": "Lingerie boudoir",
+      "seed": 60202,
+      "moderated": true,
+      "error": "kontext-max/lingerie_boudoir: HTTP 422 — image may contain NSFW content"
+    },
+    {
+      "ok": true,
+      "lookId": "bikini_beach",
+      "label": "Bikini beach",
+      "seed": 60303,
+      "black": false,
+      "moderated": false,
+      "bytes": 114481,
+      "inferenceMs": 15813,
+      "file": "screenshots/bakeoff-kontextmax-wardrobe/kontextmax_bikini_beach_seed60303.jpg"
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "ok": 2,
+    "failed": 1,
+    "blackCards": 0,
+    "moderated": 1,
+    "verdict": "PARTIAL — moderation blocked some looks"
+  }
+}
