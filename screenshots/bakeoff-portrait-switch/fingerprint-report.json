@@ -1,0 +1,45 @@
+{
+  "ranAt": "2026-06-27T05:41:52.015Z",
+  "threshold": 0.85,
+  "fingerprinted": 12,
+  "byPrompt": {
+    "blonde": {
+      "seedDiversity": {
+        "aurelium": {
+          "avgCosine": 0.8236,
+          "nearDuplicatePairs": 0,
+          "totalPairs": 1
+        },
+        "flux": {
+          "avgCosine": 0.7234,
+          "nearDuplicatePairs": 0,
+          "totalPairs": 1
+        },
+        "beautyfoolultrareal-v20": {
+          "avgCosine": 0.8817,
+          "nearDuplicatePairs": 1,
+          "totalPairs": 1
+        }
+      }
+    },
+    "latina": {
+      "seedDiversity": {
+        "aurelium": {
+          "avgCosine": 0.7834,
+          "nearDuplicatePairs": 0,
+          "totalPairs": 1
+        },
+        "flux": {
+          "avgCosine": 0.6916,
+          "nearDuplicatePairs": 0,
+          "totalPairs": 1
+        },
+        "beautyfoolultrareal-v20": {
+          "avgCosine": 0.7968,
+          "nearDuplicatePairs": 0,
+          "totalPairs": 1
+        }
+      }
+    }
+  }
+}

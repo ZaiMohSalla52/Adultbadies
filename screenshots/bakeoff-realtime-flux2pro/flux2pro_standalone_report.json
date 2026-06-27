@@ -1,0 +1,23 @@
+{
+  "ranAt": "2026-06-27T05:25:00.000Z",
+  "model": "flux-2-pro",
+  "endpoint": "v7/images/text-to-image",
+  "seed": 10101,
+  "costEstimateUsd": 0.054,
+  "file": "screenshots/bakeoff-realtime-flux2pro/flux2pro_standalone_v7_seed10101.jpg",
+  "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/040d67b0-59fe-42da-8902-9f0c74afd7fc.png",
+  "bytes": 276869,
+  "black": false,
+  "localComparisons": [
+    {
+      "vs": "aurelium_seed10101",
+      "cosine": 0.89,
+      "nearDuplicate": true
+    },
+    {
+      "vs": "realtime_t2i_flux2pro_seed10101",
+      "cosine": 0.921,
+      "nearDuplicate": true
+    }
+  ]
+}

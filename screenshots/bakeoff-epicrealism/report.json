@@ -1,0 +1,217 @@
+{
+  "ranAt": "2026-06-26T17:59:24.710Z",
+  "epicrealismModel": "epicrealism-xl-vxv-anewstory-realism",
+  "aureliumModel": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+  "seeds": [
+    10101
+  ],
+  "strengths": [
+    0.5
+  ],
+  "reference": {
+    "initImage": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-54c3acf3-5c3d-4af4-94fe-d1a2cd09597b.jpg",
+    "initMethod": "phase0_report_url"
+  },
+  "results": [
+    {
+      "id": "portrait_epicrealism_seed10101",
+      "modelKey": "epicrealism",
+      "modelId": "epicrealism-xl-vxv-anewstory-realism",
+      "promptId": "portrait",
+      "surface": "portrait",
+      "mode": "text2img",
+      "promptLabel": "Setup portrait — head and shoulders, adult glamour",
+      "seed": 10101,
+      "strength": null,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1044046,
+      "file": "screenshots/bakeoff-epicrealism/portrait_epicrealism_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-b0d8c6c9-e7ff-4674-b84b-7f376ad9e25f.jpg",
+      "generationTime": 12.3,
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "body_epicrealism_seed10101",
+      "modelKey": "epicrealism",
+      "modelId": "epicrealism-xl-vxv-anewstory-realism",
+      "promptId": "body",
+      "surface": "body",
+      "mode": "text2img",
+      "promptLabel": "Gallery body — three-quarter waist-up, urban golden hour",
+      "seed": 10101,
+      "strength": null,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 914825,
+      "file": "screenshots/bakeoff-epicrealism/body_epicrealism_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-6b7aad94-2812-411a-9f29-20907a8f8672.jpg",
+      "generationTime": 12.3,
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "rooftop_epicrealism_s05",
+      "modelKey": "epicrealism",
+      "modelId": "epicrealism-xl-vxv-anewstory-realism",
+      "promptId": "rooftop",
+      "surface": "wardrobe",
+      "mode": "img2img",
+      "promptLabel": "Wardrobe — urban rooftop satin slip dress",
+      "seed": null,
+      "strength": 0.5,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 83112,
+      "file": "screenshots/bakeoff-epicrealism/rooftop_epicrealism_s05.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-35c8e12c-523b-4783-aaaa-044b163b5524.jpg",
+      "generationTime": 9.246060371398926,
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "apartment_epicrealism_s05",
+      "modelKey": "epicrealism",
+      "modelId": "epicrealism-xl-vxv-anewstory-realism",
+      "promptId": "apartment",
+      "surface": "wardrobe",
+      "mode": "img2img",
+      "promptLabel": "Wardrobe — cozy apartment oversized white shirt",
+      "seed": null,
+      "strength": 0.5,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 81210,
+      "file": "screenshots/bakeoff-epicrealism/apartment_epicrealism_s05.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-b8a1e9e7-102d-464e-82d4-49922c86efd1.jpg",
+      "generationTime": 7.186166048049927,
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "portrait_aurelium_seed10101",
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "promptId": "portrait",
+      "surface": "portrait",
+      "mode": "text2img",
+      "promptLabel": "Setup portrait — head and shoulders, adult glamour",
+      "seed": 10101,
+      "strength": null,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1137256,
+      "file": "screenshots/bakeoff-epicrealism/portrait_aurelium_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-b4001627-fb26-4989-b3af-f4d07f86cccb.jpg",
+      "generationTime": null,
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "body_aurelium_seed10101",
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "promptId": "body",
+      "surface": "body",
+      "mode": "text2img",
+      "promptLabel": "Gallery body — three-quarter waist-up, urban golden hour",
+      "seed": 10101,
+      "strength": null,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1171504,
+      "file": "screenshots/bakeoff-epicrealism/body_aurelium_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-23765232-c579-4b66-8b60-845805c4a1d6.jpg",
+      "generationTime": null,
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "rooftop_aurelium_s05",
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "promptId": "rooftop",
+      "surface": "wardrobe",
+      "mode": "img2img",
+      "promptLabel": "Wardrobe — urban rooftop satin slip dress",
+      "seed": null,
+      "strength": 0.5,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 85902,
+      "file": "screenshots/bakeoff-epicrealism/rooftop_aurelium_s05.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-af53f476-8217-4f38-af22-25173d0f317f.jpg",
+      "generationTime": 7.418046951293945,
+      "verdict": "CAPABLE"
+    },
+    {
+      "id": "apartment_aurelium_s05",
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "promptId": "apartment",
+      "surface": "wardrobe",
+      "mode": "img2img",
+      "promptLabel": "Wardrobe — cozy apartment oversized white shirt",
+      "seed": null,
+      "strength": 0.5,
+      "ok": true,
+      "black": false,
+      "nsfw": false,
+      "bytes": 84276,
+      "file": "screenshots/bakeoff-epicrealism/apartment_aurelium_s05.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-ecd00556-e11f-460b-b88c-435b52eea2bb.jpg",
+      "generationTime": 7.1879894733428955,
+      "verdict": "CAPABLE"
+    }
+  ],
+  "verdict": {
+    "epicrealism": {
+      "capable": 4,
+      "black": 0,
+      "nsfw": 0,
+      "failed": 0,
+      "total": 4,
+      "portrait": [
+        "CAPABLE"
+      ],
+      "body": [
+        "CAPABLE"
+      ],
+      "wardrobe": [
+        "CAPABLE",
+        "CAPABLE"
+      ]
+    },
+    "aurelium": {
+      "capable": 4,
+      "black": 0,
+      "nsfw": 0,
+      "failed": 0,
+      "total": 4,
+      "portrait": [
+        "CAPABLE"
+      ],
+      "body": [
+        "CAPABLE"
+      ],
+      "wardrobe": [
+        "CAPABLE",
+        "CAPABLE"
+      ]
+    },
+    "overallWinner": "tie_review_visually",
+    "deployRecommendation": "epiCRealism passed automated checks — review images visually before setting MODELSLAB_PORTRAIT_MODEL.",
+    "compareVisually": [
+      "screenshots/bakeoff-epicrealism/portrait_epicrealism_seed10101.png",
+      "screenshots/bakeoff-epicrealism/body_epicrealism_seed10101.png",
+      "screenshots/bakeoff-epicrealism/rooftop_epicrealism_s05.png",
+      "screenshots/bakeoff-epicrealism/apartment_epicrealism_s05.png",
+      "screenshots/bakeoff-epicrealism/portrait_aurelium_seed10101.png",
+      "screenshots/bakeoff-epicrealism/body_aurelium_seed10101.png",
+      "screenshots/bakeoff-epicrealism/rooftop_aurelium_s05.png",
+      "screenshots/bakeoff-epicrealism/apartment_aurelium_s05.png"
+    ]
+  }
+}

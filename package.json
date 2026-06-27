@@ -14,6 +14,12 @@
     "phase0:face-baseline-local": "tsx scripts/phase0-face-diversity-local.ts",
     "phase0:chat-audit": "tsx scripts/phase0-chat-thread-audit.ts",
     "phase0:baseline": "npm run phase0:face-baseline && npm run phase0:chat-audit",
+    "phase0:portrait-switch-bakeoff": "node scripts/phase0-portrait-switch-bakeoff.mjs",
+    "phase0:portrait-switch-fingerprint": "tsx scripts/phase0-portrait-switch-fingerprint.ts",
+    "phase0:diversity-trio-bakeoff": "node scripts/phase0-diversity-trio-bakeoff.mjs",
+    "phase0:diversity-trio-fingerprint": "tsx scripts/phase0-diversity-trio-fingerprint.ts",
+    "phase0:realvisxl-diversity-trio": "node scripts/phase0-realvisxl-diversity-trio.mjs",
+    "phase0:realvisxl-diversity-compare": "tsx scripts/phase0-realvisxl-diversity-compare.ts",
     "phase0:trace-summary": "tsx scripts/phase0-summarize-turn-traces.ts",
     "memory:embed-backfill": "tsx scripts/memory-embed-backfill.ts"
   },

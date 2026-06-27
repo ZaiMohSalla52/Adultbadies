@@ -1612,18 +1612,13 @@ const generateDistinctPortraitSlot = async (
   }
 
   if (bestFallback) {
-    logImageMachine('portrait_preview', 'distinctness_fallback', {
+    logImageMachine('portrait_preview', 'distinctness_rejected', {
       index,
       similarity: Number(bestFallback.similarity.toFixed(4)),
     });
-    return {
-      candidate: bestFallback.candidate,
-      fingerprint: bestFallback.fingerprint,
-      distinct: false,
-    };
   }
 
-  throw new Error('Portrait preview candidate could not be generated.');
+  throw new Error('Portrait preview candidate could not satisfy distinctness gate.');
 };
 
 const fallbackParallelGeneration = async (

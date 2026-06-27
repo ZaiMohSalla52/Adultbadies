@@ -1,0 +1,89 @@
+{
+  "ranAt": "2026-06-27T06:02:18.462Z",
+  "summaries": [
+    {
+      "key": "realvisxl-v30",
+      "imageCount": 3,
+      "pairs": [
+        {
+          "a": "black",
+          "b": "caucasian",
+          "cosine": 0.8882,
+          "nearDuplicate": true
+        },
+        {
+          "a": "black",
+          "b": "asian",
+          "cosine": 0.8278,
+          "nearDuplicate": false
+        },
+        {
+          "a": "caucasian",
+          "b": "asian",
+          "cosine": 0.8304,
+          "nearDuplicate": false
+        }
+      ],
+      "nearDuplicatePairs": 1,
+      "totalPairs": 3,
+      "avgCosine": 0.8488,
+      "pctNearDup": 33
+    },
+    {
+      "key": "flux2pro",
+      "imageCount": 3,
+      "pairs": [
+        {
+          "a": "black",
+          "b": "caucasian",
+          "cosine": 0.7969,
+          "nearDuplicate": false
+        },
+        {
+          "a": "black",
+          "b": "asian",
+          "cosine": 0.6638,
+          "nearDuplicate": false
+        },
+        {
+          "a": "caucasian",
+          "b": "asian",
+          "cosine": 0.5885,
+          "nearDuplicate": false
+        }
+      ],
+      "nearDuplicatePairs": 0,
+      "totalPairs": 3,
+      "avgCosine": 0.6831,
+      "pctNearDup": 0
+    },
+    {
+      "key": "epicrealism",
+      "imageCount": 3,
+      "pairs": [
+        {
+          "a": "black",
+          "b": "caucasian",
+          "cosine": 0.8603,
+          "nearDuplicate": true
+        },
+        {
+          "a": "black",
+          "b": "asian",
+          "cosine": 0.8561,
+          "nearDuplicate": true
+        },
+        {
+          "a": "caucasian",
+          "b": "asian",
+          "cosine": 0.8414,
+          "nearDuplicate": false
+        }
+      ],
+      "nearDuplicatePairs": 2,
+      "totalPairs": 3,
+      "avgCosine": 0.8526,
+      "pctNearDup": 67
+    }
+  ]
+}

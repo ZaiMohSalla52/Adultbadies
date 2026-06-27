@@ -4,6 +4,7 @@ import {
   callModelsLabFaceGen,
   callModelsLabV6Images,
   callModelsLabV7ImageToImage,
+  callModelsLabV7TextToImage,
   downloadModelsLabImage,
   type ModelsLabApiResponse,
   uploadReferenceImageUrl,
@@ -20,7 +21,9 @@ import type { WardrobeContext } from '@/lib/virtual-girlfriend/companion-wardrob
 import { SURFACE_PARAMS } from '@/lib/virtual-girlfriend/image-surfaces';
 import {
   applyModelsLabPortraitPrompt,
+  isFlux2ProPortraitModel,
   MODELSLAB_DEFAULT_KONTEXT_PRO_MODEL,
+  resolveModelsLabPortraitFallbackModel,
   resolveModelsLabPortraitModel,
 } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import {
@@ -37,14 +40,13 @@ export type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-ty
 /*
  * ModelsLab image provider — Phase 1 stack:
  *
- * Portrait preview / fallback canonical text2img → Aurelium (MODELSLAB_PORTRAIT_MODEL, safety_checker off)
+ * Portrait preview / fallback canonical text2img → Flux 2 Pro v7 primary, RealVisXL-v30 fallback
  * Setup canonical from selected portrait → direct persist (image-machine, no API)
  * Gallery from canonical → flux-kontext-pro (v7 img2img)
  * Adult explicit chat → Face Gen first; img2img fallback for sexual requested-look / failures
  * Passive adult chat img2img fallback → flux-kontext-dev (v6, safety_checker off)
  */
 
-const MODELSLAB_PORTRAIT_MODEL = resolveModelsLabPortraitModel();
 const MODELSLAB_KONTEXT_PRO_MODEL =
   env.MODELSLAB_KONTEXT_PRO_MODEL ?? MODELSLAB_DEFAULT_KONTEXT_PRO_MODEL;
 const MODELSLAB_KONTEXT_DEV_MODEL = env.MODELSLAB_KONTEXT_DEV_MODEL ?? 'flux-kontext-dev';
@@ -53,6 +55,7 @@ const FACE_GEN_SFW_NEGATIVE_PROMPT = `${FACE_GEN_BASE_NEGATIVE_PROMPT}, bra, shi
 const MODELSLAB_NEGATIVE_PROMPT = buildModelsLabNegativePrompt();
 
 const PREVIEW_POLL = { maxAttempts: 45, intervalMs: 1_500 } as const;
+const FLUX2_PREVIEW_POLL = { maxAttempts: 90, intervalMs: 2_000 } as const;
 
 const DIMENSIONS_BY_ASPECT: Record<string, { width: number; height: number }> = {
   '1x1': { width: 1024, height: 1024 },
@@ -211,36 +214,95 @@ const extractGeneratedImage = async (
 };
 
 export const generateCanonicalImageWithModelsLab = async (prompt: string): Promise<GeneratedImage> => {
-  const canonicalParams = SURFACE_PARAMS.canonical;
-  const { width, height } = resolveDimensions(canonicalParams.aspect_ratio);
-  const payload = await callModelsLabV6Images(
-    'text2img',
-    buildModelsLabText2ImgRequest({
-      modelId: MODELSLAB_PORTRAIT_MODEL,
-      prompt,
-      width,
-      height,
-      samples: canonicalParams.num_images,
-      numInferenceSteps: 28,
-      guidanceScale: 7.5,
-      useAureliumTemplate: true,
-    }),
-    'ModelsLab canonical image generation failed',
-  );
+  const models = portraitModelChain();
+  let lastError: unknown;
 
-  return extractGeneratedImage(payload, MODELSLAB_PORTRAIT_MODEL, '/v6/images/text2img');
+  for (let index = 0; index < models.length; index += 1) {
+    const modelId = models[index]!;
+    try {
+      const canonicalParams = SURFACE_PARAMS.canonical;
+      const { width, height } = resolveDimensions(canonicalParams.aspect_ratio);
+
+      if (isFlux2ProPortraitModel(modelId)) {
+        const payload = await callModelsLabV7TextToImage(
+          {
+            model_id: modelId,
+            prompt: applyModelsLabPortraitPrompt(prompt, modelId),
+            width,
+            height,
+          },
+          `ModelsLab canonical image generation failed (${modelId})`,
+          FLUX2_PREVIEW_POLL,
+        );
+        return extractGeneratedImage(payload, modelId, '/v7/images/text-to-image');
+      }
+
+      const payload = await callModelsLabV6Images(
+        'text2img',
+        buildModelsLabText2ImgRequest({
+          modelId,
+          prompt,
+          width,
+          height,
+          samples: canonicalParams.num_images,
+          numInferenceSteps: 28,
+          guidanceScale: 7.5,
+          useAureliumTemplate: isAureliumPortraitModel(modelId),
+        }),
+        `ModelsLab canonical image generation failed (${modelId})`,
+      );
+
+      return extractGeneratedImage(payload, modelId, '/v6/images/text2img');
+    } catch (error) {
+      lastError = error;
+      if (index >= models.length - 1) break;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('ModelsLab canonical image generation failed for all configured models.');
 };
 
-export const generatePortraitPreviewImageWithModelsLab = async (
+const portraitModelChain = () => {
+  const primary = resolveModelsLabPortraitModel();
+  const fallback = resolveModelsLabPortraitFallbackModel();
+  const chain = [primary];
+  if (fallback && fallback !== primary) chain.push(fallback);
+  return chain;
+};
+
+const generatePortraitPreviewWithModel = async (
   prompt: string,
-  seed?: number,
+  seed: number | undefined,
+  modelId: string,
 ): Promise<GeneratedImage> => {
   const previewParams = SURFACE_PARAMS.preview;
   const { width, height } = resolvePreviewDimensions(previewParams.aspect_ratio);
+
+  if (isFlux2ProPortraitModel(modelId)) {
+    const corePrompt = applyModelsLabPortraitPrompt(prompt, modelId);
+    const payload = await callModelsLabV7TextToImage(
+      {
+        model_id: modelId,
+        prompt: corePrompt,
+        width,
+        height,
+        ...(seed !== undefined ? { seed } : {}),
+      },
+      `ModelsLab portrait preview generation failed (${modelId})`,
+      FLUX2_PREVIEW_POLL,
+    );
+
+    return extractGeneratedImage(payload, modelId, '/v7/images/text-to-image', {
+      skipDownload: true,
+    });
+  }
+
   const payload = await callModelsLabV6Images(
     'text2img',
     buildModelsLabText2ImgRequest({
-      modelId: MODELSLAB_PORTRAIT_MODEL,
+      modelId,
       prompt,
       width,
       height,
@@ -248,15 +310,50 @@ export const generatePortraitPreviewImageWithModelsLab = async (
       numInferenceSteps: 28,
       guidanceScale: 7.5,
       seed,
+      useAureliumTemplate: isAureliumPortraitModel(modelId),
     }),
-    'ModelsLab portrait preview generation failed',
+    `ModelsLab portrait preview generation failed (${modelId})`,
     PREVIEW_POLL,
   );
 
-  // Return the ModelsLab CDN URL immediately; delivery re-hosts to R2/Cloudinary.
-  return extractGeneratedImage(payload, MODELSLAB_PORTRAIT_MODEL, '/v6/images/text2img', {
+  return extractGeneratedImage(payload, modelId, '/v6/images/text2img', {
     skipDownload: true,
   });
+};
+
+export const generatePortraitPreviewImageWithModelsLab = async (
+  prompt: string,
+  seed?: number,
+): Promise<GeneratedImage> => {
+  const models = portraitModelChain();
+  let lastError: unknown;
+
+  for (let index = 0; index < models.length; index += 1) {
+    const modelId = models[index]!;
+    try {
+      const generated = await generatePortraitPreviewWithModel(prompt, seed, modelId);
+      if (index > 0) {
+        console.info('[virtual-girlfriend][portrait-preview] fallback model used', {
+          primary: models[0],
+          fallback: modelId,
+        });
+      }
+      return generated;
+    } catch (error) {
+      lastError = error;
+      const hasFallback = index < models.length - 1;
+      console.warn('[virtual-girlfriend][portrait-preview] model attempt failed', {
+        modelId,
+        hasFallback,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+      if (!hasFallback) break;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('ModelsLab portrait preview generation failed for all configured models.');
 };
 
 const resolveReferenceInitImage = async (input: {

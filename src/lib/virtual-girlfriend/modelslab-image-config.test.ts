@@ -1,38 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
-  MODELSLAB_DEFAULT_PORTRAIT_MODEL,
-  applyModelsLabPortraitPrompt,
+  isFlux2ProPortraitModel,
+  isRealVisXlPortraitModel,
+  resolveModelsLabPortraitFallbackModel,
   resolveModelsLabPortraitModel,
-} from '@/lib/virtual-girlfriend/modelslab-image-config';
+} from "./modelslab-image-config";
 
-describe('modelslab-image-config', () => {
-  it('defaults portrait model to Aurelium photoreal checkpoint', () => {
-    const priorPortrait = process.env.MODELSLAB_PORTRAIT_MODEL;
-    const priorFlux = process.env.MODELSLAB_FLUX_MODEL;
-    delete process.env.MODELSLAB_PORTRAIT_MODEL;
-    delete process.env.MODELSLAB_FLUX_MODEL;
-
-    expect(resolveModelsLabPortraitModel()).toBe(MODELSLAB_DEFAULT_PORTRAIT_MODEL);
-
-    if (priorPortrait === undefined) delete process.env.MODELSLAB_PORTRAIT_MODEL;
-    else process.env.MODELSLAB_PORTRAIT_MODEL = priorPortrait;
-    if (priorFlux === undefined) delete process.env.MODELSLAB_FLUX_MODEL;
-    else process.env.MODELSLAB_FLUX_MODEL = priorFlux;
+describe("modelslab-image-config", () => {
+  it("defaults portrait model to flux-2-pro", () => {
+    expect(resolveModelsLabPortraitModel()).toBe("flux-2-pro");
   });
 
-  it('leaves Aurelium prompts unchanged (no R3alisticF LoRA trigger)', () => {
-    const prompt = applyModelsLabPortraitPrompt('portrait of a woman', MODELSLAB_DEFAULT_PORTRAIT_MODEL);
-    expect(prompt).toBe('portrait of a woman');
+  it("defaults portrait fallback to realvisxl-v30", () => {
+    expect(resolveModelsLabPortraitFallbackModel()).toBe("realvisxl-v30");
   });
 
-  it('adds the realistic portrait trigger token for flux-realistic-portrait models', () => {
-    const prompt = applyModelsLabPortraitPrompt('portrait of a woman', 'flux-realistic-portrait-v2-0');
-    expect(prompt.startsWith('R3alisticF,')).toBe(true);
-    expect(prompt.includes('portrait of a woman')).toBe(true);
+  it("detects flux-2-pro portrait model", () => {
+    expect(isFlux2ProPortraitModel("flux-2-pro")).toBe(true);
+    expect(isFlux2ProPortraitModel("realvisxl-v30")).toBe(false);
   });
 
-  it('does not duplicate the trigger token', () => {
-    const prompt = applyModelsLabPortraitPrompt('R3alisticF, portrait of a woman', MODELSLAB_DEFAULT_PORTRAIT_MODEL);
-    expect(prompt).toBe('R3alisticF, portrait of a woman');
+  it("detects realvisxl portrait model", () => {
+    expect(isRealVisXlPortraitModel("realvisxl-v30")).toBe(true);
+    expect(isRealVisXlPortraitModel("flux-2-pro")).toBe(false);
   });
 });

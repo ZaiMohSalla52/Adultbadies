@@ -13,6 +13,7 @@ import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-
 import { assertModelsLabApiKey } from '@/lib/virtual-girlfriend/modelslab-client';
 import {
   PORTRAIT_PREVIEW_CANDIDATE_COUNT,
+  resolveModelsLabPortraitFallbackModel,
   resolveModelsLabPortraitModel,
 } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import { runPortraitPreviewPipeline } from '@/lib/virtual-girlfriend/portrait-preview-pipeline';
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
 
     const provider = resolveVgImageProvider();
     const portraitModel = resolveModelsLabPortraitModel();
+    const portraitFallbackModel = resolveModelsLabPortraitFallbackModel();
 
     if (provider === 'modelslab') {
       assertModelsLabApiKey();
@@ -78,6 +80,9 @@ export async function POST(request: NextRequest) {
       userId: auth.user.id,
       provider,
       portraitModel,
+      portraitFallbackModel,
+      styleVibe: resolvedTraits.styleVibe,
+      origin: resolvedTraits.origin,
       deliveryConfigured: isBrowserImageDeliveryConfigured(),
     });
 

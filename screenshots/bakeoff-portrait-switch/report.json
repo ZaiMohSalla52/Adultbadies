@@ -1,0 +1,348 @@
+{
+  "ranAt": "2026-06-27T05:38:00.972Z",
+  "purpose": "pre_switch_portrait_model",
+  "models": [
+    {
+      "key": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462"
+    },
+    {
+      "key": "flux",
+      "modelId": "flux"
+    },
+    {
+      "key": "beautyfoolultrareal-v20",
+      "modelId": "beautyfoolultrareal-v20"
+    }
+  ],
+  "prompts": [
+    "blonde",
+    "latina"
+  ],
+  "seeds": [
+    10101,
+    30303
+  ],
+  "results": [
+    {
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "ok": true,
+      "promptKey": "blonde",
+      "seed": 10101,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1221276,
+      "file": "screenshots/bakeoff-portrait-switch/aurelium_blonde_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-564ac00e-5f50-43ad-b315-b1d22b80a9d8.jpg",
+      "generationTime": 14.35
+    },
+    {
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "ok": true,
+      "promptKey": "blonde",
+      "seed": 30303,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1268833,
+      "file": "screenshots/bakeoff-portrait-switch/aurelium_blonde_seed30303.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-539d1684-8d9f-4e1c-a465-d6068225a773.jpg",
+      "generationTime": null
+    },
+    {
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "ok": true,
+      "promptKey": "latina",
+      "seed": 10101,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1159863,
+      "file": "screenshots/bakeoff-portrait-switch/aurelium_latina_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-7fd61a47-5d08-485e-bda6-1b8f25bd125d.jpg",
+      "generationTime": 11.28
+    },
+    {
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "ok": true,
+      "promptKey": "latina",
+      "seed": 30303,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1201917,
+      "file": "screenshots/bakeoff-portrait-switch/aurelium_latina_seed30303.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-5dfef5ad-2b6b-407f-adfd-d10176bcb51f.jpg",
+      "generationTime": 11.28
+    },
+    {
+      "modelKey": "flux",
+      "modelId": "flux",
+      "ok": true,
+      "promptKey": "blonde",
+      "seed": 10101,
+      "black": false,
+      "nsfw": false,
+      "bytes": 986901,
+      "file": "screenshots/bakeoff-portrait-switch/flux_blonde_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/546ab2ae-561b-49aa-88e4-410d99a143d3-0.jpg",
+      "generationTime": null
+    },
+    {
+      "modelKey": "flux",
+      "modelId": "flux",
+      "ok": true,
+      "promptKey": "blonde",
+      "seed": 30303,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1019993,
+      "file": "screenshots/bakeoff-portrait-switch/flux_blonde_seed30303.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/89a75dec-4425-48c6-8166-6677a2ffbb4a-0.jpg",
+      "generationTime": null
+    },
+    {
+      "modelKey": "flux",
+      "modelId": "flux",
+      "ok": true,
+      "promptKey": "latina",
+      "seed": 10101,
+      "black": false,
+      "nsfw": false,
+      "bytes": 949628,
+      "file": "screenshots/bakeoff-portrait-switch/flux_latina_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/e4bb475c-6ae1-4d05-a4b8-52dfd17bb5fe-0.jpg",
+      "generationTime": null
+    },
+    {
+      "modelKey": "flux",
+      "modelId": "flux",
+      "ok": true,
+      "promptKey": "latina",
+      "seed": 30303,
+      "black": false,
+      "nsfw": false,
+      "bytes": 997297,
+      "file": "screenshots/bakeoff-portrait-switch/flux_latina_seed30303.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/b40dced7-baf0-436a-84da-24b022dc8253-0.jpg",
+      "generationTime": null
+    },
+    {
+      "modelKey": "beautyfoolultrareal-v20",
+      "modelId": "beautyfoolultrareal-v20",
+      "ok": true,
+      "promptKey": "blonde",
+      "seed": 10101,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1329020,
+      "file": "screenshots/bakeoff-portrait-switch/beautyfoolultrareal-v20_blonde_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-bfbd222a-f282-4f5e-8316-2b3c50d9c4b4.jpg",
+      "generationTime": 13.32
+    },
+    {
+      "modelKey": "beautyfoolultrareal-v20",
+      "modelId": "beautyfoolultrareal-v20",
+      "ok": true,
+      "promptKey": "blonde",
+      "seed": 30303,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1256421,
+      "file": "screenshots/bakeoff-portrait-switch/beautyfoolultrareal-v20_blonde_seed30303.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-99a6061b-63db-4f61-82d7-8f48ce8d1081.jpg",
+      "generationTime": null
+    },
+    {
+      "modelKey": "beautyfoolultrareal-v20",
+      "modelId": "beautyfoolultrareal-v20",
+      "ok": true,
+      "promptKey": "latina",
+      "seed": 10101,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1259531,
+      "file": "screenshots/bakeoff-portrait-switch/beautyfoolultrareal-v20_latina_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-ebf546c4-5094-47d2-8a9a-512ed1c165ff.jpg",
+      "generationTime": 8.21
+    },
+    {
+      "modelKey": "beautyfoolultrareal-v20",
+      "modelId": "beautyfoolultrareal-v20",
+      "ok": true,
+      "promptKey": "latina",
+      "seed": 30303,
+      "black": false,
+      "nsfw": false,
+      "bytes": 1269252,
+      "file": "screenshots/bakeoff-portrait-switch/beautyfoolultrareal-v20_latina_seed30303.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-dc7cce3a-ca08-45d1-83e5-98aa6722a98f.jpg",
+      "generationTime": 13.32
+    }
+  ],
+  "summary": {
+    "aurelium": {
+      "modelKey": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "ok": 4,
+      "black": 0,
+      "nsfw": 0,
+      "failed": 0,
+      "attempts": [
+        {
+          "ok": true,
+          "promptKey": "blonde",
+          "seed": 10101,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1221276,
+          "file": "screenshots/bakeoff-portrait-switch/aurelium_blonde_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-564ac00e-5f50-43ad-b315-b1d22b80a9d8.jpg",
+          "generationTime": 14.35
+        },
+        {
+          "ok": true,
+          "promptKey": "blonde",
+          "seed": 30303,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1268833,
+          "file": "screenshots/bakeoff-portrait-switch/aurelium_blonde_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-539d1684-8d9f-4e1c-a465-d6068225a773.jpg",
+          "generationTime": null
+        },
+        {
+          "ok": true,
+          "promptKey": "latina",
+          "seed": 10101,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1159863,
+          "file": "screenshots/bakeoff-portrait-switch/aurelium_latina_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-7fd61a47-5d08-485e-bda6-1b8f25bd125d.jpg",
+          "generationTime": 11.28
+        },
+        {
+          "ok": true,
+          "promptKey": "latina",
+          "seed": 30303,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1201917,
+          "file": "screenshots/bakeoff-portrait-switch/aurelium_latina_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-5dfef5ad-2b6b-407f-adfd-d10176bcb51f.jpg",
+          "generationTime": 11.28
+        }
+      ]
+    },
+    "flux": {
+      "modelKey": "flux",
+      "modelId": "flux",
+      "ok": 4,
+      "black": 0,
+      "nsfw": 0,
+      "failed": 0,
+      "attempts": [
+        {
+          "ok": true,
+          "promptKey": "blonde",
+          "seed": 10101,
+          "black": false,
+          "nsfw": false,
+          "bytes": 986901,
+          "file": "screenshots/bakeoff-portrait-switch/flux_blonde_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/546ab2ae-561b-49aa-88e4-410d99a143d3-0.jpg",
+          "generationTime": null
+        },
+        {
+          "ok": true,
+          "promptKey": "blonde",
+          "seed": 30303,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1019993,
+          "file": "screenshots/bakeoff-portrait-switch/flux_blonde_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/89a75dec-4425-48c6-8166-6677a2ffbb4a-0.jpg",
+          "generationTime": null
+        },
+        {
+          "ok": true,
+          "promptKey": "latina",
+          "seed": 10101,
+          "black": false,
+          "nsfw": false,
+          "bytes": 949628,
+          "file": "screenshots/bakeoff-portrait-switch/flux_latina_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/e4bb475c-6ae1-4d05-a4b8-52dfd17bb5fe-0.jpg",
+          "generationTime": null
+        },
+        {
+          "ok": true,
+          "promptKey": "latina",
+          "seed": 30303,
+          "black": false,
+          "nsfw": false,
+          "bytes": 997297,
+          "file": "screenshots/bakeoff-portrait-switch/flux_latina_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/b40dced7-baf0-436a-84da-24b022dc8253-0.jpg",
+          "generationTime": null
+        }
+      ]
+    },
+    "beautyfoolultrareal-v20": {
+      "modelKey": "beautyfoolultrareal-v20",
+      "modelId": "beautyfoolultrareal-v20",
+      "ok": 4,
+      "black": 0,
+      "nsfw": 0,
+      "failed": 0,
+      "attempts": [
+        {
+          "ok": true,
+          "promptKey": "blonde",
+          "seed": 10101,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1329020,
+          "file": "screenshots/bakeoff-portrait-switch/beautyfoolultrareal-v20_blonde_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-bfbd222a-f282-4f5e-8316-2b3c50d9c4b4.jpg",
+          "generationTime": 13.32
+        },
+        {
+          "ok": true,
+          "promptKey": "blonde",
+          "seed": 30303,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1256421,
+          "file": "screenshots/bakeoff-portrait-switch/beautyfoolultrareal-v20_blonde_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-99a6061b-63db-4f61-82d7-8f48ce8d1081.jpg",
+          "generationTime": null
+        },
+        {
+          "ok": true,
+          "promptKey": "latina",
+          "seed": 10101,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1259531,
+          "file": "screenshots/bakeoff-portrait-switch/beautyfoolultrareal-v20_latina_seed10101.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-ebf546c4-5094-47d2-8a9a-512ed1c165ff.jpg",
+          "generationTime": 8.21
+        },
+        {
+          "ok": true,
+          "promptKey": "latina",
+          "seed": 30303,
+          "black": false,
+          "nsfw": false,
+          "bytes": 1269252,
+          "file": "screenshots/bakeoff-portrait-switch/beautyfoolultrareal-v20_latina_seed30303.png",
+          "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-dc7cce3a-ca08-45d1-83e5-98aa6722a98f.jpg",
+          "generationTime": 13.32
+        }
+      ]
+    }
+  }
+}

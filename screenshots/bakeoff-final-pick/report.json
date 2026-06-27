@@ -1,0 +1,33 @@
+{
+  "ranAt": "2026-06-26T18:17:32.079Z",
+  "reference": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-9e0c56d1-9c76-4843-8283-9b1faa78ac5f.jpg",
+  "results": [
+    {
+      "id": "aurelium_portrait",
+      "model": "aurelium",
+      "surface": "portrait",
+      "ok": true,
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-df3a8a92-1ada-4b1a-96e1-6b5428c62758.jpg",
+      "file": "screenshots/bakeoff-final-pick/aurelium_portrait.png",
+      "bytes": 1118368
+    },
+    {
+      "id": "kontext_wardrobe_street",
+      "model": "kontext-pro",
+      "surface": "gallery_wardrobe",
+      "ok": true,
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/42b30f32-0d8e-47c6-b646-1bac1728d3f2.png",
+      "file": "screenshots/bakeoff-final-pick/kontext_wardrobe_street.png",
+      "bytes": 1233513
+    },
+    {
+      "id": "kontext_wardrobe_rooftop",
+      "model": "kontext-pro",
+      "surface": "gallery_wardrobe",
+      "ok": true,
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/00292e9f-ea4c-4319-91e3-85eb34341cbd.png",
+      "file": "screenshots/bakeoff-final-pick/kontext_wardrobe_rooftop.png",
+      "bytes": 1104868
+    }
+  ]
+}

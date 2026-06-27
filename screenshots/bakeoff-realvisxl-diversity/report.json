@@ -1,0 +1,50 @@
+{
+  "ranAt": "2026-06-27T06:00:54.989Z",
+  "modelId": "realvisxl-v30",
+  "profiles": [
+    {
+      "id": "black",
+      "seed": 11101
+    },
+    {
+      "id": "caucasian",
+      "seed": 22202
+    },
+    {
+      "id": "asian",
+      "seed": 33303
+    }
+  ],
+  "results": [
+    {
+      "ok": true,
+      "profileId": "black",
+      "seed": 11101,
+      "black": false,
+      "bytes": 1005884,
+      "file": "screenshots/bakeoff-realvisxl-diversity/realvisxl-v30_black_seed11101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-b39879b3-e047-4ff0-a791-276b630e6da3.jpg",
+      "generationTime": null
+    },
+    {
+      "ok": true,
+      "profileId": "caucasian",
+      "seed": 22202,
+      "black": false,
+      "bytes": 1061368,
+      "file": "screenshots/bakeoff-realvisxl-diversity/realvisxl-v30_caucasian_seed22202.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-25a18201-2f88-4745-8539-b8c4f7342b22.jpg",
+      "generationTime": 12.3
+    },
+    {
+      "ok": true,
+      "profileId": "asian",
+      "seed": 33303,
+      "black": false,
+      "bytes": 975218,
+      "file": "screenshots/bakeoff-realvisxl-diversity/realvisxl-v30_asian_seed33303.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-fbdba2d2-bf9d-431f-a16c-11477e806237.jpg",
+      "generationTime": null
+    }
+  ]
+}

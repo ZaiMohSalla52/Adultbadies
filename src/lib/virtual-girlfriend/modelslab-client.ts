@@ -247,3 +247,13 @@ export const callModelsLabV7ImageToImage = async (
   const initial = await postModelsLabJson(`${MODELSLAB_V7_BASE}/image-to-image`, { key, ...body }, errorLabel);
   return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
 };
+
+export const callModelsLabV7TextToImage = async (
+  body: Record<string, unknown>,
+  errorLabel: string,
+  pollOptions?: ModelsLabPollOptions,
+) => {
+  const key = assertModelsLabApiKey();
+  const initial = await postModelsLabJson(`${MODELSLAB_V7_BASE}/text-to-image`, { key, ...body }, errorLabel);
+  return awaitModelsLabImageResult(initial, errorLabel, pollOptions);
+};

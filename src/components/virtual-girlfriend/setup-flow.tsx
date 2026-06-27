@@ -163,9 +163,9 @@ const STEPS: BuilderStep[] = [
   'styleVibe',
   'personality',
   'occupation',
-  'portrait',
   'sexuality',
   'freeformDetails',
+  'portrait',
 ];
 
 const makeInitialState = (): CreatorState => ({
@@ -491,9 +491,11 @@ const portraitTraitsKeyFromState = (current: CreatorState) =>
     current.bodyType,
     current.breastSize,
     current.age,
-    current.styleVibe,
     current.personality,
+    current.styleVibe,
     current.occupation,
+    current.sexuality,
+    current.freeformDetails.trim().toLowerCase(),
   ].join('|');
 
 const makeRandomName = () => {
@@ -567,6 +569,9 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
     if (step === 'age' && !state.age) return 'Choose age.';
     if (step === 'breastSize' && state.sex === 'female' && !state.breastSize) return 'Choose chest size.';
     if (step === 'styleVibe' && !state.styleVibe) return `Choose ${labels.stylePrompt}.`;
+    if (step === 'personality' && !state.personality) return 'Choose personality.';
+    if (step === 'occupation' && !state.occupation) return 'Choose occupation.';
+    if (step === 'sexuality' && !state.sexuality) return 'Choose sexual preference.';
     if (step === 'portrait') {
       const hasPortrait =
         Boolean(state.selectedPortraitImage)
@@ -574,9 +579,6 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
         || visiblePortraitCandidates.length > 0;
       if (!hasPortrait) return 'Pick one portrait to continue.';
     }
-    if (step === 'occupation' && !state.occupation) return 'Choose occupation.';
-    if (step === 'personality' && !state.personality) return 'Choose personality.';
-    if (step === 'sexuality' && !state.sexuality) return 'Choose sexual preference.';
     return null;
   };
 
@@ -657,6 +659,7 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
           styleVibe: workingState.styleVibe,
           personality: workingState.personality,
           occupation: workingState.occupation,
+          sexuality: workingState.sexuality,
           freeformDetails: workingState.freeformDetails,
         }),
       });
@@ -925,8 +928,8 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
   };
 
   const isSubmitting = generationStarted || pending;
-  const showContinue = step === 'name' || step === 'portrait';
-  const showCreate = step === 'freeformDetails';
+  const showContinue = step === 'name' || step === 'freeformDetails';
+  const showCreate = step === 'portrait';
   const nameOr = (withName: string, withoutName: string) =>
     state.name.trim() ? withName.replace('{name}', state.name.trim()) : withoutName;
 
@@ -994,6 +997,9 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
             {step === 'origin' && (
               <div className={styles.stepContent}>
                 <h2 className={styles.stepTitle}>{nameOr('{name}\'s ethnicity', 'Choose ethnicity')}</h2>
+                <p className={styles.loadingSubtext}>
+                  Origin shapes face structure and skin tone. Mix different ethnicities across companions for a varied roster.
+                </p>
                 <div className={styles.optionGridThree}>
                   {originOptions.map((option) => (
                     <button
@@ -1168,7 +1174,12 @@ export const VirtualGirlfriendSetupFlow = ({ createNew = false }: { createNew?: 
                 ) : (
                   <>
                     <h2 className={styles.stepTitle}>{nameOr(`Pick {name}'s portrait`, labels.pickPortrait)}</h2>
-                    <p className={styles.loadingSubtext}>Tap a look below — the first option is pre-selected for you.</p>
+                    <p className={styles.loadingSubtext}>
+                      Four unique looks from your full profile — hair, eyes, wardrobe, and personality all shape the portrait. Tap one to lock {labels.possessive} identity.
+                    </p>
+                    <p className={styles.loadingSubtext}>
+                      Tip: vary origin, hair, eye color, and style across companions for a gallery with distinct faces and outfits.
+                    </p>
                     {error ? <p className={styles.portraitInlineError}>{error}</p> : null}
                     {(() => {
                       const previewUrl =

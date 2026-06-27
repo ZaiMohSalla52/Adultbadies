@@ -1,0 +1,88 @@
+{
+  "ranAt": "2026-06-27T05:50:37.271Z",
+  "purpose": "diversity_trio_epicrealism_vs_flux2pro",
+  "profiles": [
+    {
+      "id": "black",
+      "seed": 11101
+    },
+    {
+      "id": "caucasian",
+      "seed": 22202
+    },
+    {
+      "id": "asian",
+      "seed": 33303
+    }
+  ],
+  "results": [
+    {
+      "ok": true,
+      "modelKey": "epicrealism",
+      "modelId": "epicrealism-xl-vxv-anewstory-realism",
+      "profileId": "black",
+      "seed": 11101,
+      "black": false,
+      "bytes": 989215,
+      "file": "screenshots/bakeoff-diversity-trio/epicrealism_black_seed11101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-b5440103-3306-4824-a7f0-77818963a141.jpg",
+      "generationTime": null
+    },
+    {
+      "ok": true,
+      "modelKey": "epicrealism",
+      "modelId": "epicrealism-xl-vxv-anewstory-realism",
+      "profileId": "caucasian",
+      "seed": 22202,
+      "black": false,
+      "bytes": 991441,
+      "file": "screenshots/bakeoff-diversity-trio/epicrealism_caucasian_seed22202.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-e3c99d0b-df79-4b00-b75f-9299f9873728.jpg",
+      "generationTime": null
+    },
+    {
+      "ok": true,
+      "modelKey": "epicrealism",
+      "modelId": "epicrealism-xl-vxv-anewstory-realism",
+      "profileId": "asian",
+      "seed": 33303,
+      "black": false,
+      "bytes": 994850,
+      "file": "screenshots/bakeoff-diversity-trio/epicrealism_asian_seed33303.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-7db2e8d4-af7e-4204-aec3-734d90ebca70.jpg",
+      "generationTime": null
+    },
+    {
+      "ok": false,
+      "modelKey": "flux2pro",
+      "modelId": "flux-2-pro",
+      "profileId": "black",
+      "seed": 11101,
+      "error": "flux2pro/black: timed out"
+    },
+    {
+      "ok": true,
+      "modelKey": "flux2pro",
+      "modelId": "flux-2-pro",
+      "profileId": "caucasian",
+      "seed": 22202,
+      "black": false,
+      "bytes": 258805,
+      "file": "screenshots/bakeoff-diversity-trio/flux2pro_caucasian_seed22202.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/23c31b0c-4e8d-422f-baea-47f1dd603bca.png",
+      "generationTime": null
+    },
+    {
+      "ok": true,
+      "modelKey": "flux2pro",
+      "modelId": "flux-2-pro",
+      "profileId": "asian",
+      "seed": 33303,
+      "black": false,
+      "bytes": 277418,
+      "file": "screenshots/bakeoff-diversity-trio/flux2pro_asian_seed33303.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/d18b6db8-ee73-4cae-bb95-8c609ac3ee03.png",
+      "generationTime": null
+    }
+  ]
+}

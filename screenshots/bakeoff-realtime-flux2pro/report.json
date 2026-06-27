@@ -1,0 +1,66 @@
+{
+  "ranAt": "2026-06-27T05:21:51.690Z",
+  "seed": 10101,
+  "corePrompt": "A real adult woman, age 24. Caucasian heritage, fair skin, long wavy blonde hair, blue eyes, slim athletic body. Close portrait, head and shoulders, face prominent, centered frame. Soft apartment background with gentle bokeh. Single person portrait photograph of a real human. Warm natural window light, soft directional warmth. Confident warm smile, magnetic adult presence. Face and body clearly lit — no underexposure, no silhouette. Candid amateur photograph of a real person, natural available light, true-to-life skin tones. Face DNA: oval face with balanced proportions, soft rounded jawline, straight refined nose bridge, medium lips with natural rose tint, arched brows with natural thickness, high prominent cheekbones, average eye spacing with almond eye shape.",
+  "comparisons": [
+    {
+      "left": "aurelium",
+      "right": "realtime_t2i_flux2pro",
+      "cosine": 0.9135,
+      "dHashSimilarity": 0.6406,
+      "nearDuplicate": true,
+      "threshold": 0.85
+    }
+  ],
+  "results": [
+    {
+      "ok": true,
+      "label": "aurelium",
+      "modelId": "aurelium-photorealistic-people-bysilas-v1-0-1771498462",
+      "endpoint": "v6/images/text2img",
+      "black": false,
+      "bytes": 1234334,
+      "file": "screenshots/bakeoff-realtime-flux2pro/aurelium_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/0-c31d0153-03c8-4a1f-882d-55ef26945103.jpg",
+      "generationTime": null,
+      "meta": null
+    },
+    {
+      "ok": true,
+      "label": "realtime_t2i_flux2pro",
+      "modelId": "realtime_t2i+flux-2-pro",
+      "endpoint": "v6/images/text2img",
+      "black": false,
+      "bytes": 984768,
+      "file": "screenshots/bakeoff-realtime-flux2pro/realtime_t2i_flux2pro_seed10101.png",
+      "url": "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/f8a28482-ba3a-474b-9669-9ba0b49e641e-0.jpg",
+      "generationTime": 1.39,
+      "meta": {
+        "id": 181004548,
+        "model_id": "realtime_t2i",
+        "prompt": "A real adult woman, age 24. Caucasian heritage, fair skin, long wavy blonde hair, blue eyes, slim athletic body. Close portrait, head and shoulders, face prominent, centered frame. Soft apartment background with gentle bokeh. Single person portrait photograph of a real human. Warm natural window light, soft directional warmth. Confident warm smile, magnetic adult presence. Face and body clearly lit — no underexposure, no silhouette. Candid amateur photograph of a real person, natural available light, true-to-life skin tones. Face DNA: oval face with balanced proportions, soft rounded jawline, straight refined nose bridge, medium lips with natural rose tint, arched brows with natural thickness, high prominent cheekbones, average eye spacing with almond eye shape.",
+        "seed": 10101,
+        "negative_prompt": "(worst quality:2), (low quality:2), blurry, duplicate, bad anatomy, disfigured, deformed, cloned face, watermark, text, logo, underexposed, overexposed, child, teen, underage",
+        "width": 768,
+        "height": 1024,
+        "samples": 1,
+        "instant_response": "no",
+        "safety_checker": "no",
+        "safety_checker_type": "black",
+        "guidance_scale": 0,
+        "num_inference_steps": 4,
+        "base64": "no",
+        "enhance_prompt": "no",
+        "enhance_style": null,
+        "webhook": null,
+        "track_id": null,
+        "watermark": "no",
+        "temp": "no",
+        "file_prefix": "f8a28482-ba3a-474b-9669-9ba0b49e641e",
+        "output": [
+          "https://pub-3626123a908346a7a8be8d9295f44e26.r2.dev/generations/f8a28482-ba3a-474b-9669-9ba0b49e641e-0.jpg"
+        ]
+      }
+    }
+  ]
+}
