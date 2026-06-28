@@ -5,8 +5,7 @@ import path from 'node:path';
  * Loads `.env.local` into process.env for standalone tsx scripts.
  * Does not override variables already set in the shell.
  */
-export const loadLocalEnv = (root = process.cwd()) => {
-  const envPath = path.join(root, '.env.local');
+const loadEnvFile = (envPath: string) => {
   if (!fs.existsSync(envPath)) return;
 
   const content = fs.readFileSync(envPath, 'utf8');
@@ -31,4 +30,10 @@ export const loadLocalEnv = (root = process.cwd()) => {
       process.env[key] = value;
     }
   }
+};
+
+/** Loads `.env.local` then optional `.env.r2.local` (image delivery secrets). */
+export const loadLocalEnv = (root = process.cwd()) => {
+  loadEnvFile(path.join(root, '.env.local'));
+  loadEnvFile(path.join(root, '.env.r2.local'));
 };
