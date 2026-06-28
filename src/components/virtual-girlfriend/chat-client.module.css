@@ -413,6 +413,19 @@
   color: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  animation: bubbleCompanionEnter 0.35s ease-out both;
+}
+
+@keyframes bubbleCompanionEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .chatImage {

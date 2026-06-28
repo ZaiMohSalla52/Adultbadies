@@ -1,7 +1,30 @@
+/** Delay before the first character appears (after the model has finished). */
+export const computeThinkDelayMs = () => 500 + Math.floor(Math.random() * 400);
+
+/** Pause between separate chat bubbles, like a real person sending multiple texts. */
+export const computeSegmentPauseMs = () => 1200 + Math.floor(Math.random() * 1300);
+
+const computeCharDelayMs = (char: string) => {
+  if (/[.!?]/.test(char)) return 320 + Math.floor(Math.random() * 280);
+  if (/[,;]/.test(char)) return 140 + Math.floor(Math.random() * 100);
+  if (char === ':') return 100 + Math.floor(Math.random() * 60);
+  if (char === '\n') return 450 + Math.floor(Math.random() * 350);
+  if (char === ' ') return 48 + Math.floor(Math.random() * 32);
+  return 42 + Math.floor(Math.random() * 38);
+};
+
+export type ChatReplyPacerOptions = {
+  /** Override initial think delay (0 skips the pre-typing pause). */
+  thinkMs?: number;
+  onEmitStart?: () => void;
+};
+
 /** Pace streamed assistant text so replies feel human, not instant. */
-export const createChatReplyPacer = (emit: (chunk: string) => void) => {
-  const thinkMs = 900 + Math.floor(Math.random() * 550);
-  const charMs = 28;
+export const createChatReplyPacer = (
+  emit: (chunk: string) => void,
+  options?: ChatReplyPacerOptions,
+) => {
+  const thinkMs = options?.thinkMs ?? computeThinkDelayMs();
   let queue = '';
   let timer: ReturnType<typeof setTimeout> | null = null;
   let started = false;
@@ -22,15 +45,19 @@ export const createChatReplyPacer = (emit: (chunk: string) => void) => {
 
     const char = queue.charAt(0);
     queue = queue.slice(1);
-    started = true;
+    if (!started) {
+      started = true;
+      options?.onEmitStart?.();
+    }
     emit(char);
 
-    timer = setTimeout(pump, charMs);
+    timer = setTimeout(pump, computeCharDelayMs(char));
   };
 
   const schedule = () => {
     if (timer) return;
-    timer = setTimeout(pump, started ? charMs : thinkMs);
+    const delay = started ? computeCharDelayMs(queue.charAt(0)) : thinkMs;
+    timer = setTimeout(pump, delay);
   };
 
   return {
@@ -55,3 +82,5 @@ export const createChatReplyPacer = (emit: (chunk: string) => void) => {
     },
   };
 };
+
+export const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));

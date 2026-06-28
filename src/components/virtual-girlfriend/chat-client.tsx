@@ -16,7 +16,12 @@ import type {
 import { getOutfitPresetsForSex } from '@/lib/virtual-girlfriend/outfit-presets';
 import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import { POINTS } from '@/lib/points/constants';
-import { createChatReplyPacer } from '@/lib/virtual-girlfriend/chat-reply-pace';
+import {
+  computeSegmentPauseMs,
+  computeThinkDelayMs,
+  createChatReplyPacer,
+  sleep,
+} from '@/lib/virtual-girlfriend/chat-reply-pace';
 import { dedupeMessageSegments } from '@/lib/virtual-girlfriend/message-segments';
 import { polishChatDisplayText } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { ChatAvatarImage } from './chat-avatar-image';
@@ -109,6 +114,8 @@ export const VirtualGirlfriendChatClient = ({
   const [pending, setPending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [companionActivity, setCompanionActivity] = useState<'idle' | 'typing' | 'sending_photo'>('idle');
+  const [replyRevealing, setReplyRevealing] = useState(false);
+  const [isPacingChars, setIsPacingChars] = useState(false);
   const [awaitingPhoto, setAwaitingPhoto] = useState(false);
   const [companionSheetOpen, setCompanionSheetOpen] = useState(false);
   const [sidebarImages, setSidebarImages] = useState(galleryImages);
@@ -129,8 +136,8 @@ export const VirtualGirlfriendChatClient = ({
 
   const isTypingActivity =
     companionActivity === 'typing'
-    && isStreaming
-    && !messages.some((message) => message.id.startsWith('temp-assistant-'));
+    && !isPacingChars
+    && (replyRevealing || isStreaming);
   const isPhotoActivity = companionActivity === 'sending_photo' && awaitingPhoto;
 
   const activityLabel = isTypingActivity
@@ -342,6 +349,8 @@ export const VirtualGirlfriendChatClient = ({
       }
       setPending(false);
       setIsStreaming(false);
+      setReplyRevealing(false);
+      setIsPacingChars(false);
       setCompanionActivity('idle');
       return;
     }
@@ -378,8 +387,6 @@ export const VirtualGirlfriendChatClient = ({
     };
     let liveAttachments: VirtualGirlfriendMessageAttachment[] = [];
     let photoPending = false;
-    let receivedLiveTokens = false;
-    let liveReplyBuffer = '';
 
     const registerChatImage = (attachment: VirtualGirlfriendMessageAttachment) => {
       if (!attachment.imageId || !attachment.imageUrl) return;
@@ -432,135 +439,92 @@ export const VirtualGirlfriendChatClient = ({
       scrollToBottom();
     };
 
-    const finalizeSegments = (segments: string[], contentType: DonePayload['contentType']) => {
-      if (!streamState.assistantId) return;
-
-      const streamId = streamState.assistantId;
-      if (segments.length > 1) {
-        streamState.assistantId = `${streamId}-0`;
-      }
+    const upsertRevealingBubble = (
+      messageId: string,
+      content: string,
+      contentType: DonePayload['contentType'],
+      isFirstBubble: boolean,
+    ) => {
       setMessages((prev) => {
-        const withoutStream = prev.filter((message) => message.id !== streamId);
-        const createdAt = new Date().toISOString();
+        const existing = prev.find((message) => message.id === messageId);
+        const nextMessage = {
+          id: messageId,
+          role: 'assistant' as const,
+          content,
+          conversation_id: 'temp',
+          user_id: 'temp',
+          created_at: existing?.created_at ?? new Date().toISOString(),
+          moderation: {},
+          model: null,
+          token_count: null,
+          content_type: isFirstBubble && liveAttachments.length > 0 ? contentType : 'text',
+          attachments: isFirstBubble ? liveAttachments : [],
+        };
 
-        if (segments.length <= 1) {
-          return [
-            ...withoutStream,
-            {
-              id: streamId,
-              role: 'assistant' as const,
-              content: polishChatDisplayText(segments[0] ?? ''),
-              conversation_id: 'temp',
-              user_id: 'temp',
-              created_at: createdAt,
-              moderation: {},
-              model: null,
-              token_count: null,
-              content_type: liveAttachments.length > 0 ? contentType : 'text',
-              attachments: liveAttachments,
-            },
-          ];
-        }
-
-        return [
-          ...withoutStream,
-          ...segments.map((segment, index) => ({
-            id: `${streamId}-${index}`,
-            role: 'assistant' as const,
-            content: polishChatDisplayText(segment),
-            conversation_id: 'temp',
-            user_id: 'temp',
-            created_at: createdAt,
-            moderation: {},
-            model: null,
-            token_count: null,
-            content_type: index === 0 && liveAttachments.length > 0 ? contentType : 'text',
-            attachments: index === 0 ? liveAttachments : [],
-          })),
-        ];
-      });
-      scrollToBottom();
-    };
-
-    const appendLiveToken = (token: string) => {
-      receivedLiveTokens = true;
-      liveReplyBuffer += token;
-      const streamId = streamState.assistantId ?? `temp-assistant-${Date.now()}`;
-      streamState.assistantId = streamId;
-      const content = polishChatDisplayText(liveReplyBuffer);
-
-      setMessages((prev) => {
-        const existing = prev.find((message) => message.id === streamId);
         if (existing) {
-          return prev.map((message) =>
-            message.id === streamId ? { ...message, content } : message,
-          );
+          return prev.map((message) => (message.id === messageId ? { ...message, ...nextMessage } : message));
         }
 
-        return [
-          ...prev,
-          {
-            id: streamId,
-            role: 'assistant' as const,
-            content,
-            conversation_id: 'temp',
-            user_id: 'temp',
-            created_at: new Date().toISOString(),
-            moderation: {},
-            model: null,
-            token_count: null,
-            content_type: 'text' as const,
-            attachments: [],
-          },
-        ];
+        return [...prev, nextMessage];
       });
       scrollToBottom();
     };
 
-    const revealAssistantReply = async (segments: string[], contentType: DonePayload['contentType']) => {
+    const revealAssistantSegments = async (
+      segments: string[],
+      contentType: DonePayload['contentType'],
+    ) => {
       const streamId = `temp-assistant-${Date.now()}`;
-      streamState.assistantId = streamId;
-      const polishedSegments = segments.map((segment) => polishChatDisplayText(segment));
-      const revealText = polishedSegments.join('\n\n');
-      let built = '';
+      const polishedSegments = dedupeMessageSegments(
+        segments.map((segment) => polishChatDisplayText(segment)).filter(Boolean),
+      );
+      if (polishedSegments.length === 0) return;
 
-      await new Promise<void>((resolve) => {
-        const pacer = createChatReplyPacer((char) => {
-          built += char;
-          const content = polishChatDisplayText(built);
-          setMessages((prev) => {
-            const existing = prev.find((message) => message.id === streamId);
-            if (existing) {
-              return prev.map((message) =>
-                message.id === streamId ? { ...message, content } : message,
+      const multiBubble = polishedSegments.length > 1;
+      streamState.assistantId = multiBubble ? `${streamId}-0` : streamId;
+
+      setReplyRevealing(true);
+      setIsPacingChars(false);
+      setCompanionActivity('typing');
+      await sleep(computeThinkDelayMs());
+
+      for (let index = 0; index < polishedSegments.length; index += 1) {
+        const segment = polishedSegments[index]!;
+        const messageId = multiBubble ? `${streamId}-${index}` : streamId;
+
+        if (index > 0) {
+          setIsPacingChars(false);
+          setCompanionActivity('typing');
+          await sleep(computeSegmentPauseMs());
+        }
+
+        let built = '';
+        await new Promise<void>((resolve) => {
+          const pacer = createChatReplyPacer(
+            (char) => {
+              built += char;
+              upsertRevealingBubble(
+                messageId,
+                polishChatDisplayText(built),
+                contentType,
+                index === 0,
               );
-            }
+            },
+            {
+              thinkMs: index === 0 ? 0 : 180 + Math.floor(Math.random() * 220),
+              onEmitStart: () => setIsPacingChars(true),
+            },
+          );
 
-            return [
-              ...prev,
-              {
-                id: streamId,
-                role: 'assistant' as const,
-                content,
-                conversation_id: 'temp',
-                user_id: 'temp',
-                created_at: new Date().toISOString(),
-                moderation: {},
-                model: null,
-                token_count: null,
-                content_type: 'text' as const,
-                attachments: [],
-              },
-            ];
+          pacer.push(segment);
+          void pacer.flush().then(() => {
+            setIsPacingChars(false);
+            resolve();
           });
-          scrollToBottom();
         });
+      }
 
-        pacer.push(revealText);
-        void pacer.flush().then(() => resolve());
-      });
-
-      finalizeSegments(polishedSegments, contentType);
+      setReplyRevealing(false);
     };
 
     while (!streamDone) {
@@ -575,7 +539,6 @@ export const VirtualGirlfriendChatClient = ({
           const event = JSON.parse(line) as StreamEvent;
 
           if (event.type === 'token') {
-            appendLiveToken(event.payload.token);
             continue;
           }
 
@@ -584,12 +547,7 @@ export const VirtualGirlfriendChatClient = ({
               event.payload.segments && event.payload.segments.length > 0
                 ? event.payload.segments
                 : [event.payload.content];
-            if (receivedLiveTokens) {
-              const polishedSegments = segments.map((segment) => polishChatDisplayText(segment));
-              finalizeSegments(polishedSegments, event.payload.contentType);
-            } else {
-              await revealAssistantReply(segments, event.payload.contentType);
-            }
+            await revealAssistantSegments(segments, event.payload.contentType);
             photoPending = photoPending || Boolean(event.payload.photoPending);
             if (photoPending) {
               setAwaitingPhoto(true);
@@ -639,6 +597,9 @@ export const VirtualGirlfriendChatClient = ({
             setError(event.payload.error);
             setPending(false);
             setIsStreaming(false);
+            setReplyRevealing(false);
+            setIsPacingChars(false);
+            setCompanionActivity('idle');
             return;
           }
 
@@ -667,6 +628,9 @@ export const VirtualGirlfriendChatClient = ({
       setError('Unable to receive a reply right now.');
       setPending(false);
       setIsStreaming(false);
+      setReplyRevealing(false);
+      setIsPacingChars(false);
+      setCompanionActivity('idle');
       return;
     }
 
