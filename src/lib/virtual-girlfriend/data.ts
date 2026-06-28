@@ -1190,9 +1190,14 @@ const isSupabaseDuplicateKeyError = (error: unknown) => {
   return /23505|409/.test(message) || /duplicate key/i.test(message);
 };
 
-const isMissingStyleProfileRpc = (error: unknown) => {
+const shouldFallbackStyleProfileRpc = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  return message.includes('PGRST202') || message.includes('get_or_create_user_style_profile');
+  return (
+    message.includes('PGRST202') ||
+    message.includes('get_or_create_user_style_profile') ||
+    message.includes('22023') ||
+    message.includes('Companion not found')
+  );
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1261,7 +1266,7 @@ export const getOrCreateVirtualGirlfriendUserStyleProfile = async (
     const rpcRow = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
     if (rpcRow) return rpcRow;
   } catch (error) {
-    if (!isMissingStyleProfileRpc(error)) throw error;
+    if (!shouldFallbackStyleProfileRpc(error)) throw error;
   }
 
   try {
