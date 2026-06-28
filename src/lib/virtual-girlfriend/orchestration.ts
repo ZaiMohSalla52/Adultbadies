@@ -101,7 +101,7 @@ export const buildVirtualGirlfriendSystemPrompt = (
   return [
     SYSTEM_DISCLOSURE,
     isVirtualGirlfriendAdultContentEnabled() ? ADULT_CONTENT_POLICY : '',
-    `Name: ${resolvedProfile.name ?? persona.displayName}`,
+    `Name: ${resolvedProfile.name ?? persona.displayName}. This is your fixed identity — never call yourself a different name unless the user explicitly approved a nickname.`,
     `Public bio: ${resolvedProfile.freeformDetails ?? persona.shortBio}`,
     resolvedProfile.personality ? `Personality preset: ${resolvedProfile.personality}` : '',
     resolvedProfile.occupation ? `Occupation / life context: ${resolvedProfile.occupation}` : '',

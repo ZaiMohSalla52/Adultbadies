@@ -1,6 +1,7 @@
 import { env } from '@/lib/env';
 import {
-  buildModelsLabModelCandidates,
+  resolveModelsLabChatModel,
+  VG_MODELSLAB_CHAT_TEMPERATURE,
   VG_MODELSLAB_CHAT_MODEL,
 } from '@/lib/virtual-girlfriend/llm-models';
 import type { TogetherLegacyBody, TogetherStreamHandlers } from '@/lib/virtual-girlfriend/together';
@@ -65,7 +66,7 @@ const buildRequestPayload = (body: TogetherLegacyBody, model: string, stream: bo
     model,
     messages: buildMessages(body),
     stream,
-    temperature: body.temperature ?? 0.9,
+    temperature: body.temperature ?? VG_MODELSLAB_CHAT_TEMPERATURE,
     max_tokens: body.max_tokens ?? 2048,
     ...(wantsJson ? { response_format: { type: 'json_object' as const } } : {}),
   };
@@ -76,40 +77,25 @@ const wrapCompletion = (content: string, model: string): Record<string, unknown>
   model,
 });
 
-const isModelUnavailableError = (status: number, bodyText: string) =>
-  status === 404 || (status === 400 && /model/i.test(bodyText));
-
 const postModelsLabChat = async (body: TogetherLegacyBody, stream: boolean) => {
   const apiKey = assertApiKey();
-  const candidates = buildModelsLabModelCandidates(body.model);
-  let lastError = 'ModelsLab chat API failed with no model candidates.';
+  const model = resolveModelsLabChatModel(body.model);
 
-  for (const model of candidates) {
-    const response = await fetch(MODELSLAB_CHAT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(buildRequestPayload(body, model, stream)),
-    });
+  const response = await fetch(MODELSLAB_CHAT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(buildRequestPayload(body, model, stream)),
+  });
 
-    if (response.ok) {
-      return { response, model };
-    }
-
+  if (!response.ok) {
     const errorText = await response.text();
-    lastError = `ModelsLab chat API failed (${response.status}) with model ${model}: ${errorText}`;
-
-    if (isModelUnavailableError(response.status, errorText)) {
-      console.warn(`[modelslab-chat] model unavailable, trying fallback: ${model}`);
-      continue;
-    }
-
-    throw new Error(lastError);
+    throw new Error(`ModelsLab chat API failed (${response.status}) with model ${model}: ${errorText}`);
   }
 
-  throw new Error(lastError);
+  return { response, model };
 };
 
 export const callModelsLabChat = async (body: TogetherLegacyBody) => {

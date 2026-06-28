@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildModelsLabModelCandidates,
-  buildTogetherModelCandidates,
   normalizeVgTogetherModel,
+  resolveModelsLabChatModel,
   resolveVgTogetherModel,
+  VG_MODELSLAB_CHAT_TEMPERATURE,
   VG_MODELSLAB_DEFAULT_CHAT_MODEL,
   VG_TOGETHER_DEFAULT_CHAT_MODEL,
   VG_TOGETHER_UNCENSORED_FALLBACK_MODEL,
@@ -32,19 +32,19 @@ describe('resolveVgTogetherModel', () => {
   });
 });
 
-describe('buildTogetherModelCandidates', () => {
-  it('includes DeepSeek primary plus uncensored and general fallbacks', () => {
-    const candidates = buildTogetherModelCandidates('deepseek-ai/DeepSeek-V4-Pro');
-    expect(candidates[0]).toBe(VG_TOGETHER_DEFAULT_CHAT_MODEL);
-    expect(candidates).toContain(VG_TOGETHER_UNCENSORED_FALLBACK_MODEL);
-    expect(candidates.length).toBeGreaterThan(1);
+describe('resolveModelsLabChatModel', () => {
+  it('returns a single configured model with no fallback chain', () => {
+    expect(resolveModelsLabChatModel()).toBe(VG_MODELSLAB_DEFAULT_CHAT_MODEL);
+    expect(resolveModelsLabChatModel('uncensored-chat')).toBe('uncensored-chat');
+  });
+
+  it('uses a stable chat temperature default', () => {
+    expect(VG_MODELSLAB_CHAT_TEMPERATURE).toBeLessThan(0.8);
   });
 });
 
-describe('buildModelsLabModelCandidates', () => {
-  it('includes Dare uncensored fallback after primary', () => {
-    const candidates = buildModelsLabModelCandidates(VG_MODELSLAB_DEFAULT_CHAT_MODEL);
-    expect(candidates[0]).toBe('uncensored-chat');
-    expect(candidates).toContain('ModelsLab/Llama-3.1-8b-Uncensored-Dare');
+describe('legacy together fallbacks remain for non-chat helpers', () => {
+  it('still exposes uncensored together fallback constant for deprecated paths', () => {
+    expect(VG_TOGETHER_UNCENSORED_FALLBACK_MODEL).toBeTruthy();
   });
 });

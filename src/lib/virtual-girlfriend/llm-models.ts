@@ -16,18 +16,16 @@ export const VG_MODELSLAB_FAST_MODEL = getEnvModel(
   VG_MODELSLAB_DEFAULT_CHAT_MODEL,
 );
 
-export const VG_MODELSLAB_FALLBACK_MODELS = ['ModelsLab/Llama-3.1-8b-Uncensored-Dare'] as const;
+/** Chat temperature — lower reduces repetition and JSON drift. */
+export const VG_MODELSLAB_CHAT_TEMPERATURE = 0.72;
 
 export const resolveVgModelsLabModel = (requested?: string) => {
   if (!requested) return VG_MODELSLAB_CHAT_MODEL;
   return requested.trim() || VG_MODELSLAB_CHAT_MODEL;
 };
 
-export const buildModelsLabModelCandidates = (requested?: string) => {
-  const primary = resolveVgModelsLabModel(requested);
-  const ordered = [primary, ...VG_MODELSLAB_FALLBACK_MODELS];
-  return [...new Set(ordered)];
-};
+/** Single model only — no fallback chain (prevents voice/persona drift mid-conversation). */
+export const resolveModelsLabChatModel = (requested?: string) => resolveVgModelsLabModel(requested);
 
 /** Primary Together serverless model — DeepSeek V4 Pro. */
 export const VG_TOGETHER_DEFAULT_CHAT_MODEL = 'deepseek-ai/DeepSeek-V4-Pro';

@@ -32,6 +32,7 @@ import { applyChatImageLock } from '@/lib/virtual-girlfriend/chat-image-lock';
 import { POINTS } from '@/lib/points/constants';
 import { resolveVirtualGirlfriendChatImage } from '@/lib/virtual-girlfriend/chat-images';
 import { streamVirtualGirlfriendChatTurn } from '@/lib/virtual-girlfriend/chat-turn';
+import { splitAssistantReplyIntoSegments } from '@/lib/virtual-girlfriend/message-segments';
 
 import { resolveImageMomentFromIntent } from '@/lib/virtual-girlfriend/intimacy';
 import { sanitizeIntent } from '@/lib/virtual-girlfriend/intimacy-intent';
@@ -58,25 +59,6 @@ export const runtime = 'nodejs';
 export const maxDuration = 300;
 
 const encoder = new TextEncoder();
-
-const splitIntoMessages = (text: string): string[] => {
-  const trimmed = text.trim();
-  if (!trimmed) return [];
-
-  let parts = trimmed.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
-  if (parts.length === 1) {
-    parts = trimmed.split(/\n+/).map((part) => part.trim()).filter(Boolean);
-  }
-  if (parts.length === 1 && parts[0].length > 220) {
-    const sentences = parts[0].match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? parts;
-    if (sentences.length > 1) {
-      const mid = Math.ceil(sentences.length / 2);
-      parts = [sentences.slice(0, mid).join(' '), sentences.slice(mid).join(' ')];
-    }
-  }
-
-  return parts.slice(0, 3);
-};
 
 type ImageTaskResult = {
   outcome: VirtualGirlfriendChatImageOutcome;
@@ -324,7 +306,7 @@ export async function POST(request: NextRequest) {
           return;
         }
 
-        const segments = splitIntoMessages(turn.assistantText);
+        const segments = splitAssistantReplyIntoSegments(turn.assistantText);
         const combinedContent = segments.join('\n\n') || turn.assistantText;
         const photoRequestedThisTurn =
           turn.intent.wantsPhoto || imageMoment.shouldSendImage || imageMoment.teaseOnly || photoRequested;

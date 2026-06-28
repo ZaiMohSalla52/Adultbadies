@@ -17,6 +17,7 @@ import { getOutfitPresetsForSex } from '@/lib/virtual-girlfriend/outfit-presets'
 import { getCompanionLabels } from '@/lib/virtual-girlfriend/companion-labels';
 import { POINTS } from '@/lib/points/constants';
 import { createChatReplyPacer } from '@/lib/virtual-girlfriend/chat-reply-pace';
+import { dedupeMessageSegments } from '@/lib/virtual-girlfriend/message-segments';
 import { polishChatDisplayText } from '@/lib/virtual-girlfriend/reply-sanitizer';
 import { ChatAvatarImage } from './chat-avatar-image';
 import { ChatImageAttachment } from './chat-image-attachment';
@@ -989,7 +990,9 @@ export const VirtualGirlfriendChatClient = ({
               );
             }
 
-            const bubbles = (message.content || '').split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+            const bubbles = dedupeMessageSegments(
+              (message.content || '').split(/\n{2,}/).map((part) => part.trim()).filter(Boolean),
+            );
             const renderBubbles = bubbles.length > 0 ? bubbles : [''];
             return (
               <div key={message.id}>
