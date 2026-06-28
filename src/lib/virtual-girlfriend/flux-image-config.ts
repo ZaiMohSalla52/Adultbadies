@@ -15,3 +15,13 @@ export const assertFluxApiKey = () => {
   }
   return key;
 };
+
+export const isFluxRateLimitError = (error: unknown) => {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes('rate limit') || message.includes('429');
+};
+
+export const isFluxModerationError = (error: unknown) => {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes('moderated') || message.includes('nsfw') || message.includes('safety');
+};

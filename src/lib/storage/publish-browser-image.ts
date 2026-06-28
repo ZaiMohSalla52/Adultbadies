@@ -1,4 +1,3 @@
-import { env } from '@/lib/env';
 import { isCloudinaryConfigured, uploadToCloudinary } from '@/lib/storage/cloudinary';
 import {
   buildR2PublicUrl,
@@ -6,8 +5,6 @@ import {
   isR2UploadConfigured,
   uploadToR2,
 } from '@/lib/storage/r2';
-import { uploadReferenceImageUrl } from '@/lib/virtual-girlfriend/modelslab-client';
-
 export type BrowserImageDelivery = {
   deliveryUrl: string;
   provider: string;
@@ -25,7 +22,8 @@ const extensionFromMimeType = (mimeType: string) => {
 
 /**
  * Upload bytes and return a browser-loadable HTTPS URL.
- * R2 public first (source-of-truth bucket), then Cloudinary, then ModelsLab temp URL.
+ * R2 public first (source-of-truth bucket), then Cloudinary.
+ * Portrait/gallery/setup never use ModelsLab hosting — configure R2 or Cloudinary.
  */
 export const publishBrowserImage = async (input: {
   bytes: Buffer;
@@ -77,22 +75,6 @@ export const publishBrowserImage = async (input: {
     }
   }
 
-  if (env.MODELSLAB_API_KEY?.trim()) {
-    try {
-      const deliveryUrl = await uploadReferenceImageUrl(input.bytes, input.mimeType);
-      return {
-        deliveryUrl,
-        provider: 'modelslab',
-        publicId: input.storageKey,
-      };
-    } catch (error) {
-      console.warn('[publish-browser-image] ModelsLab temp URL fallback failed', {
-        storageKey: input.storageKey,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
   return null;
 };
 
@@ -130,4 +112,4 @@ export const buildPortraitPreviewStorageKey = (input: {
 };
 
 export const isBrowserImageDeliveryConfigured = () =>
-  isCloudinaryConfigured() || isR2PublicDeliveryConfigured() || Boolean(env.MODELSLAB_API_KEY?.trim());
+  isCloudinaryConfigured() || isR2PublicDeliveryConfigured();

@@ -12,14 +12,6 @@ vi.mock('@/lib/storage/r2', () => ({
   uploadToR2: vi.fn(),
 }));
 
-vi.mock('@/lib/virtual-girlfriend/modelslab-client', () => ({
-  uploadReferenceImageUrl: vi.fn(),
-}));
-
-vi.mock('@/lib/env', () => ({
-  env: { MODELSLAB_API_KEY: undefined },
-}));
-
 import { isCloudinaryConfigured, uploadToCloudinary } from '@/lib/storage/cloudinary';
 import { isR2PublicDeliveryConfigured, uploadToR2 } from '@/lib/storage/r2';
 import { publishBrowserImage } from '@/lib/storage/publish-browser-image';
@@ -80,5 +72,15 @@ describe('publishBrowserImage delivery priority', () => {
     expect(result?.provider).toBe('cloudinary');
     expect(uploadToR2).toHaveBeenCalledTimes(1);
     expect(uploadToCloudinary).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns null when only ModelsLab would have been available', async () => {
+    const result = await publishBrowserImage({
+      bytes: Buffer.from('png-bytes'),
+      mimeType: 'image/png',
+      storageKey: 'portrait-previews/u1/s1-1.png',
+    });
+
+    expect(result).toBeNull();
   });
 });

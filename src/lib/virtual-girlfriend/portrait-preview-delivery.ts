@@ -74,7 +74,7 @@ export const deliverPortraitPreviewCandidates = async (
 
   return Promise.all(
     candidates.map(async (candidate, index) => {
-      // ModelsLab already returns browser-loadable HTTPS URLs — skip download/re-upload round trip.
+      // Provider-hosted URLs (e.g. fal temp links) — skip download/re-upload when already HTTPS.
       if (isHostedUrl(candidate.imageDataUrl)) {
         return candidate;
       }

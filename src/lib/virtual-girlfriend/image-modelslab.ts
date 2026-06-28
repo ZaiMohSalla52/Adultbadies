@@ -39,13 +39,10 @@ import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-gir
 export type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
 /*
- * ModelsLab image provider — Phase 1 stack:
+ * ModelsLab image provider — explicit chat only.
  *
- * Portrait preview / fallback canonical text2img → Flux 2 Pro v7 primary, RealVisXL-v30 fallback
- * Setup canonical from selected portrait → direct persist (image-machine, no API)
- * Gallery from canonical → flux-kontext-pro (v7 img2img)
- * Adult explicit chat → Face Gen first; img2img fallback for sexual requested-look / failures
- * Passive adult chat img2img fallback → flux-kontext-dev (v6, safety_checker off)
+ * Portrait / gallery / canonical setup → fal via image-provider.ts (never call this module).
+ * Adult explicit chat → Face Gen + face swap; passive chat → Kontext dev.
  */
 
 const MODELSLAB_KONTEXT_PRO_MODEL =

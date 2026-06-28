@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Seeds 3 test catalog companions (see catalog/test-profiles.ts for current batch).
+ * Seeds test catalog companions (see catalog/test-profiles.ts for current batch).
  *
  * Usage:
  *   npm run catalog:seed-test

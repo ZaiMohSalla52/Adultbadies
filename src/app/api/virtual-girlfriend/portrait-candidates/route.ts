@@ -10,11 +10,11 @@ import {
 } from '@/lib/virtual-girlfriend/data';
 import { collectSiblingDistinctnessCues } from '@/lib/virtual-girlfriend/identity-face-dna';
 import {
-  assertTogetherApiKey,
-  isTogetherNsfwModerationError,
-  isTogetherRateLimitError,
-  resolveTogetherPortraitModel,
-} from '@/lib/virtual-girlfriend/together-image-config';
+  assertFluxApiKey,
+  isFluxModerationError,
+  isFluxRateLimitError,
+  resolveFalFluxPortraitModel,
+} from '@/lib/virtual-girlfriend/flux-image-config';
 import { PORTRAIT_PREVIEW_CANDIDATE_COUNT } from '@/lib/virtual-girlfriend/modelslab-image-config';
 import { runPortraitPreviewPipeline } from '@/lib/virtual-girlfriend/portrait-preview-pipeline';
 import { resolveSetupTraits } from '@/lib/virtual-girlfriend/setup-normalizer';
@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
       freeformDetails: body.freeformDetails,
     });
 
-    assertTogetherApiKey();
+    assertFluxApiKey();
 
-    const provider = 'together';
-    const portraitModel = resolveTogetherPortraitModel();
+    const provider = 'flux';
+    const portraitModel = resolveFalFluxPortraitModel();
 
     console.info('[virtual-girlfriend] portrait candidate generation start', {
       userId: auth.user.id,
@@ -146,15 +146,15 @@ export async function POST(request: NextRequest) {
     console.error('[virtual-girlfriend] portrait candidate generation failed', error);
     const message = error instanceof Error ? error.message : 'Unable to generate portrait candidates right now.';
     const timedOut = /timeout|timed out|FUNCTION_INVOCATION_TIMEOUT/i.test(message);
-    const rateLimited = isTogetherRateLimitError(error);
-    const moderationBlocked = isTogetherNsfwModerationError(error);
-    const missingTogetherKey = /TOGETHER_API_KEY is not configured/i.test(message);
+    const rateLimited = isFluxRateLimitError(error);
+    const moderationBlocked = isFluxModerationError(error);
+    const missingFluxKey = /FLUX_API_KEY is required/i.test(message);
     return NextResponse.json(
       {
-        error: missingTogetherKey
-          ? 'Portrait generation is not configured (TOGETHER_API_KEY missing on server).'
+        error: missingFluxKey
+          ? 'Portrait generation is not configured (FLUX_API_KEY missing on server).'
           : rateLimited
-            ? 'Portrait service is busy (Together rate limit). Wait 30 seconds, then tap Regenerate looks.'
+            ? 'Portrait service is busy (fal rate limit). Wait 30 seconds, then tap Regenerate looks.'
             : moderationBlocked
               ? 'Portrait previews were blocked by the image provider filter. Tap Regenerate looks to try again.'
               : timedOut
