@@ -156,6 +156,65 @@ const preferenceStyleGuide = (input: VirtualGirlfriendSetupPayload): PreferenceS
   };
 };
 
+const coerceStringArray = (value: unknown, max = 20): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => {
+        if (typeof item === 'string') return item.trim() ? [item.trim()] : [];
+        if (item != null && typeof item !== 'object') return [String(item).trim()].filter(Boolean);
+        return [];
+      })
+      .filter(Boolean)
+      .slice(0, max);
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return value
+      .split(/[,;|]/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .slice(0, max);
+  }
+
+  return [];
+};
+
+const coerceString = (value: unknown, fallback: string): string =>
+  typeof value === 'string' && value.trim() ? value.trim() : fallback;
+
+export const sanitizePersonaProfile = (raw: PersonaProfile, fallback: PersonaProfile): PersonaProfile => {
+  const visual = raw.visualPromptDNA ?? fallback.visualPromptDNA;
+  const styleAnchors = coerceStringArray(visual?.styleAnchors, 10);
+  const colorPalette = coerceStringArray(visual?.colorPalette, 5);
+
+  return {
+    displayName: coerceString(raw.displayName, fallback.displayName),
+    shortBio: coerceString(raw.shortBio, fallback.shortBio),
+    hiddenPersonalityTraits: coerceStringArray(raw.hiddenPersonalityTraits, 6).length
+      ? coerceStringArray(raw.hiddenPersonalityTraits, 6)
+      : fallback.hiddenPersonalityTraits,
+    textingStyle: coerceString(raw.textingStyle, fallback.textingStyle),
+    flirtStyle: coerceString(raw.flirtStyle, fallback.flirtStyle),
+    comfortStyle: coerceString(raw.comfortStyle, fallback.comfortStyle),
+    topicTendencies: coerceStringArray(raw.topicTendencies, 6).length
+      ? coerceStringArray(raw.topicTendencies, 6)
+      : fallback.topicTendencies,
+    nicknameTendencies: coerceStringArray(raw.nicknameTendencies, 5).length
+      ? coerceStringArray(raw.nicknameTendencies, 5)
+      : fallback.nicknameTendencies,
+    initialGreetingStyle: coerceString(raw.initialGreetingStyle, fallback.initialGreetingStyle),
+    visualPromptDNA: {
+      coreLook: coerceString(visual?.coreLook, fallback.visualPromptDNA.coreLook),
+      styleAnchors: styleAnchors.length ? styleAnchors : fallback.visualPromptDNA.styleAnchors,
+      colorPalette: colorPalette.length ? colorPalette : fallback.visualPromptDNA.colorPalette,
+      cameraMood: coerceString(visual?.cameraMood, fallback.visualPromptDNA.cameraMood),
+    },
+    vibeTags: coerceStringArray(raw.vibeTags, 7).length
+      ? coerceStringArray(raw.vibeTags, 7)
+      : fallback.vibeTags,
+  };
+};
+
 const fallbackPersona = (input: VirtualGirlfriendSetupPayload): PersonaProfile => {
   const displayName = input.name.trim();
   const guide = preferenceStyleGuide(input);
@@ -256,12 +315,13 @@ Requirements:
 
     const text = extractResponsesText(response);
     const parsed = JSON.parse(text) as PersonaProfile;
+    const fallback = fallbackPersona(input);
 
     if (!parsed.displayName || !parsed.shortBio) {
-      return fallbackPersona(input);
+      return fallback;
     }
 
-    return parsed;
+    return sanitizePersonaProfile(parsed, fallback);
   } catch {
     return fallbackPersona(input);
   }

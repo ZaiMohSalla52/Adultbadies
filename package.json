@@ -29,6 +29,7 @@
     "memory:embed-backfill": "tsx scripts/memory-embed-backfill.ts",
     "catalog:create-system-user": "tsx scripts/create-catalog-system-user.ts",
     "catalog:seed": "tsx scripts/seed-catalog-companions.ts",
+    "catalog:seed-test": "tsx scripts/seed-catalog-test.ts",
     "phase0:fal-flux-bakeoff": "node scripts/phase0-fal-flux-bakeoff.mjs"
   },
   "dependencies": {

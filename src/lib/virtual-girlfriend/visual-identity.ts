@@ -16,6 +16,7 @@ import {
   buildFaceDnaTokens,
   collectSiblingDistinctnessCues,
 } from '@/lib/virtual-girlfriend/identity-face-dna';
+import { sanitizePersonaProfile } from '@/lib/virtual-girlfriend/persona';
 import { PROMPT_VERSION } from '@/lib/virtual-girlfriend/prompt-builder/versions';
 import {
   runRegenerateCanonicalOnlyImageMachine,
@@ -457,6 +458,18 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     )
   ).filter((reference): reference is SiblingCanonicalReference => reference !== null);
 
+  const personaFallback: PersonaProfile = {
+    ...input.companion.persona_profile,
+    visualPromptDNA: {
+      ...input.companion.persona_profile.visualPromptDNA,
+      coreLook: `${semanticSetup.visualAesthetic} companion look`,
+      styleAnchors: [semanticSetup.visualAesthetic, semanticSetup.archetype, semanticSetup.tone].filter(Boolean),
+      colorPalette: ['natural tones'],
+      cameraMood: 'natural candid phone-camera realism',
+    },
+  };
+  const persona = sanitizePersonaProfile(input.companion.persona_profile, personaFallback);
+
   const identityPack = await buildVisualIdentityPack({
     origin: semanticSetup.origin,
     sex: semanticSetup.sex,
@@ -480,7 +493,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     figure: semanticSetup.figure,
     companionName: semanticSetup.name,
     companionId: input.companion.id,
-    persona: input.companion.persona_profile,
+    persona,
     existingCompanionSignatures: siblingCompanionSignatures,
     existingSiblingOverlapCues,
   });
