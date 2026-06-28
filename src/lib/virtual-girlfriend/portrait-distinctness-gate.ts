@@ -10,10 +10,10 @@ export type SiblingCanonicalReference = {
   mimeType: string | null;
 };
 
-/** Keep low — each retry is a full portrait round-trip. */
-export const PORTRAIT_DISTINCTNESS_MAX_RETRIES = 2;
+/** Each retry is a full portrait round-trip — 4 retries catches Flux clone clusters. */
+export const PORTRAIT_DISTINCTNESS_MAX_RETRIES = 4;
 
-export const CANONICAL_DISTINCTNESS_MAX_RETRIES = 2;
+export const CANONICAL_DISTINCTNESS_MAX_RETRIES = 4;
 
 const CANONICAL_RETRY_SCENES = [
   'OUTDOOR rainy campus quad with umbrella — no library interior, no bookshelves.',

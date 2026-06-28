@@ -1,7 +1,8 @@
 import jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
 
-export const PHASE0_FACE_SIMILARITY_THRESHOLD = 0.85;
+/** Lower = stricter sibling rejection (catches Holly/Mei-style near-clones). */
+export const PHASE0_FACE_SIMILARITY_THRESHOLD = 0.8;
 
 export type DecodedImage = {
   width: number;
@@ -112,6 +113,6 @@ export const compareFingerprints = (left: ImageFingerprint, right: ImageFingerpr
   return {
     cosine,
     dHashSimilarity,
-    nearDuplicate: cosine >= PHASE0_FACE_SIMILARITY_THRESHOLD || dHashSimilarity >= 0.9,
+    nearDuplicate: cosine >= PHASE0_FACE_SIMILARITY_THRESHOLD || dHashSimilarity >= 0.88,
   };
 };

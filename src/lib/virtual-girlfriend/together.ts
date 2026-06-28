@@ -1,5 +1,5 @@
 import { env } from '@/lib/env';
-import { buildTogetherModelCandidates } from '@/lib/virtual-girlfriend/llm-models';
+import { buildTogetherModelCandidates, VG_TOGETHER_CHAT_TEMPERATURE } from '@/lib/virtual-girlfriend/llm-models';
 
 const TOGETHER_API_URL = 'https://api.together.xyz/v1/chat/completions';
 
@@ -115,7 +115,7 @@ const buildRequestPayload = (body: TogetherLegacyBody, model: string, stream: bo
     model,
     messages: buildMessages(body),
     stream,
-    temperature: body.temperature ?? (deepSeek ? 1 : 0.85),
+    temperature: body.temperature ?? (deepSeek ? 1 : VG_TOGETHER_CHAT_TEMPERATURE),
     top_p: deepSeek ? 1 : undefined,
     max_tokens: body.max_tokens ?? 2048,
     ...(wantsJson ? { response_format: { type: 'json_object' as const } } : {}),

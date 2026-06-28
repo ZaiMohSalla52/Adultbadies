@@ -1005,6 +1005,18 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
           prompt: resolvedCanonicalPrompt,
         });
       }
+
+      const finalFingerprint = fingerprintPortraitPreviewBytes(
+        canonicalGenerated.bytes,
+        canonicalGenerated.mimeType,
+      );
+      if (isNearDuplicatePortraitFingerprint(finalFingerprint, siblingFingerprints)) {
+        throw new VirtualGirlfriendImageMachineError(
+          'Canonical portrait too similar to an existing catalog companion after distinctness retries.',
+          'provider_error',
+          'provider_request',
+        );
+      }
     }
   }
 

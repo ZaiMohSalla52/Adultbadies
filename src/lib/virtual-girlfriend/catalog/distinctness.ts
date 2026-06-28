@@ -40,9 +40,22 @@ export const mergeCatalogFreeformDetails = (
   const scene = buildCatalogPortraitSceneDirective(blueprint);
   const avoid = buildCatalogAvoidVisualCues(blueprint, siblings);
 
+  const orthogonality = [
+    blueprint.profile.origin?.trim() ? `ethnicity=${blueprint.profile.origin.trim()}` : null,
+    blueprint.profile.hairColor?.trim() ? `hair=${blueprint.profile.hairColor.trim()}` : null,
+    blueprint.profile.hairLength?.trim() ? `hairLength=${blueprint.profile.hairLength.trim()}` : null,
+    blueprint.profile.bodyType?.trim() ? `body=${blueprint.profile.bodyType.trim()}` : null,
+    blueprint.profile.skinTone?.trim() ? `skin=${blueprint.profile.skinTone.trim()}` : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
   const lines = [
     base || null,
     scene ? `CANONICAL PORTRAIT SCENE (mandatory): ${scene}` : null,
+    orthogonality
+      ? `IDENTITY ANCHORS (non-negotiable): ${orthogonality}. Face must differ from every sibling.`
+      : null,
     avoid.length ? `AVOID visual overlap: ${avoid.join('; ')}.` : null,
   ].filter(Boolean);
 
