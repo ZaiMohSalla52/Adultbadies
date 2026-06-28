@@ -5,7 +5,10 @@ import { setVirtualGirlfriendGenerationStatus } from '@/lib/virtual-girlfriend/d
 import type { VirtualGirlfriendCompanionRecord } from '@/lib/virtual-girlfriend/types';
 import { generateAndPersistVirtualGirlfriendImagePack } from '@/lib/virtual-girlfriend/visual-identity';
 import type { VirtualGirlfriendStructuredProfile } from '@/lib/virtual-girlfriend/types';
+import { mergeCatalogFreeformDetails } from '@/lib/virtual-girlfriend/catalog/distinctness';
 import { CATALOG_COMPANION_BLUEPRINTS, type CatalogCompanionBlueprint } from '@/lib/virtual-girlfriend/catalog/profiles';
+
+export type { CatalogCompanionBlueprint };
 import { CATALOG_COMPANION_LIMIT, CATALOG_PROFILE_KEY_TAG } from '@/lib/virtual-girlfriend/catalog/constants';
 
 export type CatalogSeedResult = {
@@ -26,16 +29,33 @@ const resolveCatalogSystemUserId = () => {
   return fromEnv;
 };
 
-const buildStructuredProfile = (blueprint: CatalogCompanionBlueprint): VirtualGirlfriendStructuredProfile => ({
-  schemaVersion: 1,
-  name: blueprint.name,
-  archetype: blueprint.archetype,
-  tone: blueprint.tone,
-  affectionStyle: blueprint.affectionStyle,
-  visualAesthetic: blueprint.visualAesthetic,
-  ...blueprint.profile,
-  preferenceHints: blueprint.profile.freeformDetails ?? null,
-});
+const listExistingCatalogCompanions = async () =>
+  adminSupabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', {
+    searchParams: new URLSearchParams({
+      select: '*',
+      source: 'eq.catalog',
+      order: 'created_at.asc',
+      limit: String(CATALOG_COMPANION_LIMIT + 10),
+    }),
+  });
+
+const buildStructuredProfile = (
+  blueprint: CatalogCompanionBlueprint,
+  siblings: VirtualGirlfriendCompanionRecord[],
+): VirtualGirlfriendStructuredProfile => {
+  const freeformDetails = mergeCatalogFreeformDetails(blueprint, siblings);
+  return {
+    schemaVersion: 1,
+    name: blueprint.name,
+    archetype: blueprint.archetype,
+    tone: blueprint.tone,
+    affectionStyle: blueprint.affectionStyle,
+    visualAesthetic: blueprint.visualAesthetic,
+    ...blueprint.profile,
+    freeformDetails,
+    preferenceHints: freeformDetails,
+  };
+};
 
 const listExistingCatalogKeys = async () => {
   const rows = await adminSupabaseRest<Array<{ profile_tags: string[] | null }>>('ai_companions', {
@@ -166,8 +186,9 @@ const seedSingleCatalogCompanion = async (input: {
   token: string;
   systemUserId: string;
   blueprint: CatalogCompanionBlueprint;
+  existingSiblings: VirtualGirlfriendCompanionRecord[];
 }) => {
-  const structuredProfile = buildStructuredProfile(input.blueprint);
+  const structuredProfile = buildStructuredProfile(input.blueprint, input.existingSiblings);
   const persona = await generateVirtualGirlfriendPersona({
     name: input.blueprint.name,
     sex: structuredProfile.sex ?? undefined,
@@ -234,9 +255,13 @@ export const resumeCatalogCompanions = async (options?: { maxToResume?: number }
   };
 };
 
-export const seedCatalogCompanions = async (options?: { maxToCreate?: number }): Promise<CatalogSeedResult> => {
+export const seedCatalogCompanions = async (options?: {
+  maxToCreate?: number;
+  blueprints?: CatalogCompanionBlueprint[];
+}): Promise<CatalogSeedResult> => {
   const token = requireServiceRoleKey();
   const systemUserId = resolveCatalogSystemUserId();
+  const blueprintList = options?.blueprints ?? CATALOG_COMPANION_BLUEPRINTS;
   const existingCount = await countCatalogCompanions();
   const existingKeys = await listExistingCatalogKeys();
 
@@ -253,7 +278,7 @@ export const seedCatalogCompanions = async (options?: { maxToCreate?: number }):
       ok: true,
       existingCount,
       created,
-      skipped: CATALOG_COMPANION_BLUEPRINTS.map((blueprint) => blueprint.key),
+      skipped: blueprintList.map((blueprint) => blueprint.key),
       resumed,
       failed,
       target: CATALOG_COMPANION_LIMIT,
@@ -261,7 +286,7 @@ export const seedCatalogCompanions = async (options?: { maxToCreate?: number }):
   }
 
   let createdThisRun = 0;
-  for (const blueprint of CATALOG_COMPANION_BLUEPRINTS) {
+  for (const blueprint of blueprintList) {
     if (createdThisRun >= maxToCreate) break;
     if (existingKeys.has(blueprint.key)) {
       skipped.push(blueprint.key);
@@ -269,7 +294,8 @@ export const seedCatalogCompanions = async (options?: { maxToCreate?: number }):
     }
 
     try {
-      await seedSingleCatalogCompanion({ token, systemUserId, blueprint });
+      const existingSiblings = await listExistingCatalogCompanions();
+      await seedSingleCatalogCompanion({ token, systemUserId, blueprint, existingSiblings });
       created.push(blueprint.key);
       existingKeys.add(blueprint.key);
       createdThisRun += 1;

@@ -3,10 +3,12 @@ import { VG_FAST_MODEL } from '@/lib/virtual-girlfriend/llm-models';
 import { callTogetherChat, extractResponsesText } from '@/lib/virtual-girlfriend/llm-provider';
 import {
   createVisualProfile,
+  getCanonicalReferenceImageForCompanion,
   getLatestVisualProfileForCompanion,
   listVirtualGirlfriendCompanions,
   setCanonicalReferenceImageForVisualProfile,
 } from '@/lib/virtual-girlfriend/data';
+import type { SiblingCanonicalReference } from '@/lib/virtual-girlfriend/portrait-distinctness-gate';
 import { wardrobeDirectionForStyle } from '@/lib/virtual-girlfriend/companion-wardrobe';
 import {
   buildFaceDnaIdentityInvariants,
@@ -53,6 +55,7 @@ type BuildIdentityInput = {
   bodyType?: string;
   figure?: string;
   companionName: string;
+  companionId?: string;
   persona: PersonaProfile;
   existingCompanionSignatures?: string[];
   existingSiblingOverlapCues?: string[];
@@ -199,7 +202,7 @@ const fallbackIdentityPack = (input: BuildIdentityInput): VirtualGirlfriendVisua
     ?? 'stylish figure-flattering outfit with confident sensual energy';
   const lightingMood = LIGHTING_BY_PERSONALITY[resolvedPersonality] ?? 'warm cinematic natural lighting with shallow depth of field';
   const faceDnaInput = {
-    userId: input.companionName,
+    userId: input.companionId ?? input.companionName,
     sex: input.sex ?? 'female',
     origin: resolvedOrigin,
     age: input.age && Number.isFinite(input.age) ? input.age : 26,
@@ -440,6 +443,20 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     siblingProfiles.map((profile) => profile?.identity_pack ?? null),
   );
 
+  const siblingCanonicalReferences = (
+    await Promise.all(
+      siblings.map(async (sibling): Promise<SiblingCanonicalReference | null> => {
+        const image = await getCanonicalReferenceImageForCompanion(input.token, input.userId, sibling.id);
+        if (!image?.delivery_url?.trim()) return null;
+        return {
+          companionId: sibling.id,
+          deliveryUrl: image.delivery_url,
+          mimeType: image.origin_mime_type,
+        };
+      }),
+    )
+  ).filter((reference): reference is SiblingCanonicalReference => reference !== null);
+
   const identityPack = await buildVisualIdentityPack({
     origin: semanticSetup.origin,
     sex: semanticSetup.sex,
@@ -462,6 +479,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     bodyType: semanticSetup.bodyType,
     figure: semanticSetup.figure,
     companionName: semanticSetup.name,
+    companionId: input.companion.id,
     persona: input.companion.persona_profile,
     existingCompanionSignatures: siblingCompanionSignatures,
     existingSiblingOverlapCues,
@@ -485,6 +503,7 @@ export const generateAndPersistVirtualGirlfriendImagePack = async (input: {
     userId: input.userId,
     companion: input.companion,
     visualProfile,
+    siblingCanonicalReferences,
   });
 
   const updatedVisualProfile = await setCanonicalReferenceImageForVisualProfile(input.token, {

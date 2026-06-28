@@ -26,6 +26,10 @@ export type CatalogCompanionBlueprint = {
   affectionStyle: string;
   visualAesthetic: string;
   profile: CatalogProfileFields;
+  /** Mandatory canonical scene — keeps Flux from defaulting to library/sweater clones. */
+  portraitScene?: string;
+  /** Extra visual negatives (sibling names are injected automatically at seed time). */
+  avoidVisualCues?: string[];
 };
 
 export const CATALOG_COMPANION_BLUEPRINTS: CatalogCompanionBlueprint[] = [

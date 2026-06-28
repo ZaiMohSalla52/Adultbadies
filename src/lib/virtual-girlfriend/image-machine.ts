@@ -33,6 +33,9 @@ import {
 import { buildRegeneratePrompt } from '@/lib/virtual-girlfriend/prompt-builder/surfaces/regenerate';
 import { buildFaceDnaLine, formatFaceDnaInvariantLine } from '@/lib/virtual-girlfriend/identity-face-dna';
 import {
+  buildCanonicalDistinctnessRetryPrompt,
+  CANONICAL_DISTINCTNESS_MAX_RETRIES,
+  fingerprintPortraitPreviewBytes,
   fingerprintPortraitPreviewDataUrl,
   isNearDuplicatePortraitFingerprint,
   loadSiblingCanonicalFingerprints,
@@ -243,6 +246,7 @@ export type VirtualGirlfriendSetupMachineRequest = {
   userId: string;
   companion: VirtualGirlfriendCompanionRecord;
   visualProfile: VirtualGirlfriendVisualProfileRecord;
+  siblingCanonicalReferences?: SiblingCanonicalReference[];
 };
 
 export type VirtualGirlfriendRegenerateMachineRequest = {
@@ -968,13 +972,42 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
     seedReferenceKind: seedPortrait && 'url' in seedPortrait ? 'url' : seedPortrait ? 'bytes' : 'none',
   });
 
-  const canonicalGenerated = seedPortrait
-    ? await resolveCanonicalFromSelectedPortrait(scope, seedPortrait)
-    : await runProviderGeneration({
-        scope,
-        mode: 'canonical',
-        prompt: canonicalPrompt,
-      });
+  let canonicalGenerated: GeneratedImage;
+  let resolvedCanonicalPrompt = canonicalPrompt;
+
+  if (seedPortrait) {
+    canonicalGenerated = await resolveCanonicalFromSelectedPortrait(scope, seedPortrait);
+  } else {
+    const siblingFingerprints = input.siblingCanonicalReferences?.length
+      ? await loadSiblingCanonicalFingerprints(input.siblingCanonicalReferences)
+      : [];
+
+    canonicalGenerated = await runProviderGeneration({
+      scope,
+      mode: 'canonical',
+      prompt: canonicalPrompt,
+    });
+
+    if (siblingFingerprints.length) {
+      for (let attempt = 0; attempt < CANONICAL_DISTINCTNESS_MAX_RETRIES; attempt += 1) {
+        const fingerprint = fingerprintPortraitPreviewBytes(canonicalGenerated.bytes, canonicalGenerated.mimeType);
+        if (!isNearDuplicatePortraitFingerprint(fingerprint, siblingFingerprints)) break;
+
+        logImageMachine(scope, 'canonical_distinctness_retry', {
+          companionId: input.companion.id,
+          attempt: attempt + 1,
+        });
+
+        resolvedCanonicalPrompt = buildCanonicalDistinctnessRetryPrompt(canonicalPrompt, attempt);
+        canonicalGenerated = await runProviderGeneration({
+          scope,
+          mode: 'canonical',
+          prompt: resolvedCanonicalPrompt,
+        });
+      }
+    }
+  }
+
   logImageMachine(scope, 'provider_call_success', { stage: 'canonical', directPersist: Boolean(seedPortrait) });
 
   const canonicalImage = await buildImageRecord({
@@ -982,11 +1015,11 @@ export const runSetupImageMachine = async (input: VirtualGirlfriendSetupMachineR
     userId: input.userId,
     companionId: input.companion.id,
     visualProfileId: input.visualProfile.id,
-    promptHash: sha(`${input.visualProfile.prompt_hash}:canonical:${canonicalPrompt}`),
+    promptHash: sha(`${input.visualProfile.prompt_hash}:canonical:${resolvedCanonicalPrompt}`),
     capture: canonicalCapture,
     generated: canonicalGenerated,
     identityPack: input.visualProfile.identity_pack,
-    promptText: canonicalPrompt,
+    promptText: resolvedCanonicalPrompt,
     promptVersion: selectedPortraitPrompt ? PROMPT_VERSION.preview : canonicalPromptVersion,
     surfaceType: selectedPortraitPrompt ? 'preview' : 'canonical',
     seedMetadata: portraitSeedMetadata,

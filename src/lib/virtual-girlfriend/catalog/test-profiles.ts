@@ -1,8 +1,13 @@
 import type { CatalogCompanionBlueprint } from '@/lib/virtual-girlfriend/catalog/profiles';
 
 /**
- * 3-companion seed batch — Asian + Caucasian only, ages 18–21, slim or curvy.
- * Keys are new each batch so re-runs do not collide with prior test companions.
+ * Catalog test batch — distinctness rules (learned from Mika/Yuna clone failure):
+ *
+ * 1. Never two "student + library + beige knit" in the same library.
+ * 2. Each blueprint MUST set portraitScene (outdoor or unique indoor — not library).
+ * 3. Vary hair color/length, skin tone, outfit, and setting across every row.
+ * 4. Max one black-hair East Asian per batch unless face DNA + fingerprint gate passes.
+ * 5. avoidVisualCues names siblings to steer prompts + canonical retry.
  */
 export const CATALOG_TEST_SEED_BLUEPRINTS: CatalogCompanionBlueprint[] = [
   {
@@ -12,6 +17,9 @@ export const CATALOG_TEST_SEED_BLUEPRINTS: CatalogCompanionBlueprint[] = [
     tone: 'gentle and observant',
     affectionStyle: 'slow tender warmth',
     visualAesthetic: 'soft overcast campus portrait',
+    portraitScene:
+      'OUTDOOR rainy university quad, holding clear umbrella, navy raincoat over white tee — absolutely NO library interior, NO bookshelves, NO beige sweater.',
+    avoidVisualCues: ['Mika', 'beige cardigan', 'library background', 'coffee cup portrait'],
     profile: {
       sex: 'female',
       age: 18,
@@ -27,7 +35,7 @@ export const CATALOG_TEST_SEED_BLUEPRINTS: CatalogCompanionBlueprint[] = [
       personality: 'intellectual',
       sexuality: 'straight',
       freeformDetails:
-        'Petite East Asian slim build, straight waist-length black hair with blunt bangs, minimal makeup, oversized cream cardigan over fitted tee, rainy campus quad background, cool diffused daylight, distinct narrow face and soft monolid eyes — not round or doll-like.',
+        'Petite East Asian slim build, straight waist-length black hair with blunt bangs, narrow oval face, minimal makeup, navy raincoat — distinct from Mika.',
     },
   },
   {
@@ -37,6 +45,9 @@ export const CATALOG_TEST_SEED_BLUEPRINTS: CatalogCompanionBlueprint[] = [
     tone: 'warm and bubbly',
     affectionStyle: 'affectionate teasing',
     visualAesthetic: 'golden-hour beach boardwalk',
+    portraitScene:
+      'OUTDOOR sunlit beach boardwalk at golden hour, ocean bokeh behind — white linen sundress, wind in hair, NO indoor setting.',
+    avoidVisualCues: ['black hair', 'library', 'sweater portrait', 'East Asian features'],
     profile: {
       sex: 'female',
       age: 21,
@@ -52,7 +63,7 @@ export const CATALOG_TEST_SEED_BLUEPRINTS: CatalogCompanionBlueprint[] = [
       personality: 'bubbly_energetic',
       sexuality: 'bisexual',
       freeformDetails:
-        'Caucasian curvy hourglass figure, long wavy strawberry-blonde hair, light freckles across nose and cheeks, blue eyes, white linen sundress, sun-kissed boardwalk at golden hour, warm peach skin tones, fuller lips and rounder face — clearly not East Asian.',
+        'Caucasian curvy hourglass, long wavy strawberry-blonde hair, freckles, blue eyes, white sundress, warm peach skin — clearly Western face.',
     },
   },
   {
@@ -62,6 +73,9 @@ export const CATALOG_TEST_SEED_BLUEPRINTS: CatalogCompanionBlueprint[] = [
     tone: 'bold and teasing',
     affectionStyle: 'playful heat',
     visualAesthetic: 'warm neon street portrait',
+    portraitScene:
+      'OUTDOOR neon night-market street, red lantern glow — red satin camisole, chestnut hair, NO library, NO beige knit, NO coffee cup.',
+    avoidVisualCues: ['Mika', 'Yuna', 'beige sweater', 'bookshelves', 'long straight black hair'],
     profile: {
       sex: 'female',
       age: 20,
@@ -77,7 +91,7 @@ export const CATALOG_TEST_SEED_BLUEPRINTS: CatalogCompanionBlueprint[] = [
       personality: 'playful_tease',
       sexuality: 'straight',
       freeformDetails:
-        'Curvy East Asian hourglass figure, shoulder-length chestnut-brown wavy hair (not black), warm beige skin, soft glam makeup, red satin camisole and high-waist skirt, neon-lit night-market street, fuller cheeks and wider smile than Yuna — clearly different face and body from slim black-haired Yuna and freckled blonde Holly.',
+        'Curvy East Asian hourglass, shoulder-length chestnut-brown wavy hair (NOT black), warm beige skin, red satin top, neon street — rounder face than Yuna.',
     },
   },
 ];

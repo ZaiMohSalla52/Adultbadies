@@ -10,8 +10,34 @@ export type SiblingCanonicalReference = {
   mimeType: string | null;
 };
 
-/** Keep low — each retry is a full ModelsLab portrait round-trip. */
+/** Keep low — each retry is a full portrait round-trip. */
 export const PORTRAIT_DISTINCTNESS_MAX_RETRIES = 2;
+
+export const CANONICAL_DISTINCTNESS_MAX_RETRIES = 2;
+
+const CANONICAL_RETRY_SCENES = [
+  'OUTDOOR rainy campus quad with umbrella — no library interior, no bookshelves.',
+  'OUTDOOR sunlit rooftop garden — no indoor study, no knit cardigan portrait.',
+  'OUTDOOR night-market neon street — no beige sweater, no library.',
+] as const;
+
+const CANONICAL_CLONE_BAN_CUES = [
+  'beige or cream ribbed sweater or cardigan',
+  'library bookshelves background',
+  'indoor study aesthetic with coffee cup',
+  'long black wavy hair with soft smile',
+] as const;
+
+export const buildCanonicalDistinctnessRetryPrompt = (basePrompt: string, attempt: number) => {
+  const scene = CANONICAL_RETRY_SCENES[attempt % CANONICAL_RETRY_SCENES.length];
+  return [
+    basePrompt,
+    'CRITICAL DISTINCTNESS: This portrait must look like a completely different person from every existing companion.',
+    `Force new scene: ${scene}`,
+    `Do NOT use: ${CANONICAL_CLONE_BAN_CUES.join('; ')}.`,
+    'Change face shape, hairstyle, outfit color, and background dramatically.',
+  ].join(' ');
+};
 
 const parseDataUrlImage = (dataUrl: string): { bytes: Buffer; mimeType: string } | null => {
   const matched = dataUrl.trim().match(/^data:(.+?);base64,(.+)$/);
