@@ -128,8 +128,14 @@ const wrapCompletion = (content: string, model: string): Record<string, unknown>
   model,
 });
 
-const isModelUnavailableError = (status: number, bodyText: string) =>
-  status === 404 && (bodyText.includes('model_not_available') || bodyText.includes('Unable to access model'));
+const isModelUnavailableError = (status: number, bodyText: string) => {
+  const normalized = bodyText.toLowerCase();
+  const unavailable =
+    normalized.includes('model_not_available')
+    || normalized.includes('unable to access model')
+    || normalized.includes('non-serverless model');
+  return (status === 404 || status === 400) && unavailable;
+};
 
 const postTogetherChat = async (body: TogetherLegacyBody, stream: boolean) => {
   const apiKey = assertApiKey();

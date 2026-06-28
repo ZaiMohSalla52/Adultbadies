@@ -10,11 +10,14 @@ import {
 } from '@/lib/virtual-girlfriend/llm-models';
 
 describe('normalizeVgTogetherModel', () => {
-  it('rewrites legacy Dolphin ids to Hermes DPO', () => {
+  it('rewrites legacy Dolphin/Hermes ids to DeepSeek V4 Pro', () => {
     expect(normalizeVgTogetherModel('cognitivecomputations/dolphin-2.9.4-llama-3.1-8b')).toBe(
       VG_TOGETHER_DEFAULT_CHAT_MODEL,
     );
     expect(normalizeVgTogetherModel('uncensored-chat')).toBe(VG_TOGETHER_DEFAULT_CHAT_MODEL);
+    expect(normalizeVgTogetherModel('NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO')).toBe(
+      VG_TOGETHER_DEFAULT_CHAT_MODEL,
+    );
   });
 
   it('keeps DeepSeek V4 Pro id', () => {
@@ -32,8 +35,8 @@ describe('resolveVgTogetherModel', () => {
     expect(resolveVgTogetherModel('gpt-4o-mini')).toBe(VG_TOGETHER_DEFAULT_CHAT_MODEL);
   });
 
-  it('defaults chat and fast models to Hermes DPO', () => {
-    expect(VG_TOGETHER_DEFAULT_CHAT_MODEL).toBe('NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO');
+  it('defaults chat and fast models to DeepSeek V4 Pro serverless', () => {
+    expect(VG_TOGETHER_DEFAULT_CHAT_MODEL).toBe('deepseek-ai/DeepSeek-V4-Pro');
   });
 });
 

@@ -28,13 +28,13 @@ export const resolveVgModelsLabModel = (requested?: string) => {
 export const resolveModelsLabChatModel = (requested?: string) => resolveVgModelsLabModel(requested);
 
 /**
- * Primary Together chat — best uncensored RP model currently on Together serverless
- * (Dolphin series removed from catalog; Hermes-2-Mixtral-DPO is the RP standard).
+ * Primary Together serverless chat — DeepSeek V4 Pro (verified serverless + uncensored RP).
+ * Hermes/Mixtral/Dolphin require dedicated endpoints on most accounts.
  */
-export const VG_TOGETHER_DEFAULT_CHAT_MODEL = 'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO';
+export const VG_TOGETHER_DEFAULT_CHAT_MODEL = 'deepseek-ai/DeepSeek-V4-Pro';
 
-/** Fallback when primary is unavailable on Together. */
-export const VG_TOGETHER_UNCENSORED_FALLBACK_MODEL = 'mistralai/Mixtral-8x7B-Instruct-v0.1';
+/** Serverless fallback when primary is unavailable. */
+export const VG_TOGETHER_UNCENSORED_FALLBACK_MODEL = 'meta-llama/Llama-3.3-70B-Instruct-Turbo';
 
 /** Chat temperature — lower reduces repetition and JSON drift. */
 export const VG_TOGETHER_CHAT_TEMPERATURE = 0.72;
@@ -46,6 +46,8 @@ const DEPRECATED_MODEL_ALIASES: Record<string, string> = {
   'cognitivecomputations/dolphin-3.0-llama-3.1-8b': VG_TOGETHER_DEFAULT_CHAT_MODEL,
   'dolphin-2.5-mixtral-8x7b': VG_TOGETHER_DEFAULT_CHAT_MODEL,
   'uncensored-chat': VG_TOGETHER_DEFAULT_CHAT_MODEL,
+  'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO': VG_TOGETHER_DEFAULT_CHAT_MODEL,
+  'mistralai/Mixtral-8x7B-Instruct-v0.1': VG_TOGETHER_UNCENSORED_FALLBACK_MODEL,
   'DeepSeek-V4-Pro': 'deepseek-ai/DeepSeek-V4-Pro',
   'deepseek-v4-pro': 'deepseek-ai/DeepSeek-V4-Pro',
 };
