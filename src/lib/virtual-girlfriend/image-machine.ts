@@ -11,15 +11,9 @@ import {
 } from '@/lib/virtual-girlfriend/image-provider';
 import type { KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
+import { resolveFalFluxPortraitModel } from '@/lib/virtual-girlfriend/flux-image-config';
 import { isUsablePortraitImageBytes } from '@/lib/virtual-girlfriend/image-luminance';
 import { PORTRAIT_PREVIEW_CANDIDATE_COUNT } from '@/lib/virtual-girlfriend/modelslab-image-config';
-import { buildMinimalTogetherPortraitPrompt } from '@/lib/virtual-girlfriend/preview-moderation';
-import {
-  isTogetherNsfwModerationError,
-  isTogetherPortraitEnabled,
-  isTogetherRateLimitError,
-  resolveTogetherPortraitModel,
-} from '@/lib/virtual-girlfriend/together-image-config';
 import { isModelsLabRateLimitError, modelsLabSleep } from '@/lib/virtual-girlfriend/modelslab-client';
 import {
   buildCanonicalPrompt,
@@ -173,14 +167,17 @@ const withTimeout = async <T>(label: string, timeoutMs: number, run: () => Promi
   }
 };
 
-const isRateLimitError = (error: unknown) =>
-  isTogetherRateLimitError(error) || isModelsLabRateLimitError(error);
+const isRateLimitError = (error: unknown) => {
+  if (isModelsLabRateLimitError(error)) return true;
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes('rate limit') || message.includes('429');
+};
 
 const isTransientError = (error: unknown) => {
-  if (isTogetherNsfwModerationError(error)) return false;
-  if (isRateLimitError(error)) return true;
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-  return message.includes('timeout') || message.includes('429') || message.includes('503') || message.includes('502') || message.includes('network');
+  if (message.includes('has_nsfw_concepts') || message.includes('moderated')) return false;
+  if (isRateLimitError(error)) return true;
+  return message.includes('timeout') || message.includes('503') || message.includes('502') || message.includes('network');
 };
 
 const retryBackoffMs = (error: unknown, attempt: number) =>
@@ -503,7 +500,7 @@ const resolveCanonicalFromSelectedPortrait = async (
   scope: string,
   reference: PortraitReferenceImage,
 ): Promise<GeneratedImage> => {
-  const portraitModel = resolveTogetherPortraitModel();
+  const portraitModel = resolveFalFluxPortraitModel();
   let bytes: Buffer;
   let mimeType: string;
 
@@ -538,7 +535,7 @@ const resolveCanonicalFromSelectedPortrait = async (
     width: null,
     height: null,
     revisedPrompt: null,
-    provider: isTogetherPortraitEnabled() ? 'together' : resolveVgImageProvider(),
+    provider: 'flux',
     model: portraitModel,
     endpoint: '/canonical/direct_persist',
     requestId: null,
@@ -1584,7 +1581,6 @@ const generatePortraitPreviewCandidate = async (
     negativeOverlapCues: input.negativeOverlapCues,
   };
   const prompt = buildPreviewPrompt(promptInput, index);
-  const minimalPrompt = buildMinimalTogetherPortraitPrompt(promptInput, index);
   const seed = (derivePortraitPreviewSeed(input, index) + attemptOffset) % 2_147_483_647;
   const generated = await withRetries({
     attempts: MACHINE_RETRY_ATTEMPTS.portraitPreview,
@@ -1593,7 +1589,7 @@ const generatePortraitPreviewCandidate = async (
     reason: 'provider_error',
     run: () =>
       withTimeout('provider_generation', MACHINE_TIMEOUT_MS.portraitPreviewRequest, () =>
-        generatePortraitPreviewImage(prompt, seed, minimalPrompt)),
+        generatePortraitPreviewImage(prompt, seed)),
   });
   const imageDataUrl = portraitPreviewDeliveryUrl(generated);
   if (!imageDataUrl.trim()) {
@@ -1668,8 +1664,8 @@ const fallbackParallelGeneration = async (
     siblingReferences: input.siblingCanonicalReferences?.length ?? 0,
     siblingFingerprints: siblingFingerprints.length,
     concurrency: PORTRAIT_PREVIEW_CONCURRENCY,
-    provider: isTogetherPortraitEnabled() ? 'together' : resolveVgImageProvider(),
-    portraitModel: resolveTogetherPortraitModel(),
+    provider: 'flux',
+    portraitModel: resolveFalFluxPortraitModel(),
   });
 
   const candidates: VirtualGirlfriendPortraitPreviewCandidate[] = [];

@@ -2,8 +2,7 @@ import { env } from '@/lib/env';
 import { isAureliumPortraitModel } from '@/lib/virtual-girlfriend/modelslab-aurelium-template';
 
 /**
- * ModelsLab portrait fallback when Together FLUX.2-max fails.
- * Primary portrait: Together FLUX.2-max (see together-image-config).
+ * ModelsLab portrait stack (chat explicit surfaces only — identity portraits use fal flux/dev).
  *
  * Override via MODELSLAB_PORTRAIT_MODEL / MODELSLAB_PORTRAIT_FALLBACK_MODEL.
  * Explicit/nude chat never uses this stack — see image-generation-router (Face Gen / swap).

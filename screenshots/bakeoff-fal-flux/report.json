@@ -1,0 +1,192 @@
+{
+  "ranAt": "2026-06-28T08:18:34.879Z",
+  "purpose": "fal_flux_portrait_gallery_bakeoff",
+  "falBaseUrl": "https://fal.run",
+  "portraitModels": [
+    {
+      "key": "flux-pro-v1.1",
+      "endpoint": "fal-ai/flux-pro/v1.1"
+    },
+    {
+      "key": "flux-dev",
+      "endpoint": "fal-ai/flux/dev"
+    }
+  ],
+  "galleryModels": [
+    {
+      "key": "flux-pro-kontext",
+      "endpoint": "fal-ai/flux-pro/kontext"
+    },
+    {
+      "key": "flux-kontext-dev",
+      "endpoint": "fal-ai/flux-kontext/dev"
+    }
+  ],
+  "results": [
+    {
+      "ok": true,
+      "phase": "portrait",
+      "modelKey": "flux-pro-v1.1",
+      "endpoint": "fal-ai/flux-pro/v1.1",
+      "profileId": "caucasian",
+      "seed": 22202,
+      "black": false,
+      "moderated": false,
+      "bytes": 199151,
+      "inferenceMs": null,
+      "requestId": null,
+      "file": "screenshots/bakeoff-fal-flux/flux-pro-v1.1_portrait_caucasian_seed22202.jpg"
+    },
+    {
+      "ok": true,
+      "phase": "portrait",
+      "modelKey": "flux-pro-v1.1",
+      "endpoint": "fal-ai/flux-pro/v1.1",
+      "profileId": "latina_seductive",
+      "seed": 30303,
+      "black": false,
+      "moderated": false,
+      "bytes": 156923,
+      "inferenceMs": null,
+      "requestId": null,
+      "file": "screenshots/bakeoff-fal-flux/flux-pro-v1.1_portrait_latina_seductive_seed30303.jpg"
+    },
+    {
+      "ok": true,
+      "phase": "portrait",
+      "modelKey": "flux-dev",
+      "endpoint": "fal-ai/flux/dev",
+      "profileId": "caucasian",
+      "seed": 22202,
+      "black": false,
+      "moderated": false,
+      "bytes": 186629,
+      "inferenceMs": 1223,
+      "requestId": null,
+      "file": "screenshots/bakeoff-fal-flux/flux-dev_portrait_caucasian_seed22202.jpg"
+    },
+    {
+      "ok": true,
+      "phase": "portrait",
+      "modelKey": "flux-dev",
+      "endpoint": "fal-ai/flux/dev",
+      "profileId": "latina_seductive",
+      "seed": 30303,
+      "black": false,
+      "moderated": false,
+      "bytes": 115818,
+      "inferenceMs": 1212,
+      "requestId": null,
+      "file": "screenshots/bakeoff-fal-flux/flux-dev_portrait_latina_seductive_seed30303.jpg"
+    },
+    {
+      "ok": true,
+      "phase": "gallery",
+      "modelKey": "flux-pro-kontext",
+      "endpoint": "fal-ai/flux-pro/kontext",
+      "lookId": "casual_street",
+      "referenceKey": "flux-pro-v1.1:caucasian",
+      "seed": 60101,
+      "black": false,
+      "moderated": false,
+      "bytes": 286678,
+      "inferenceMs": null,
+      "requestId": null,
+      "file": "screenshots/bakeoff-fal-flux/flux-pro-kontext_gallery_casual_street_seed60101.jpg"
+    },
+    {
+      "ok": false,
+      "phase": "gallery",
+      "modelKey": "flux-pro-kontext",
+      "endpoint": "fal-ai/flux-pro/kontext",
+      "lookId": "lingerie_boudoir",
+      "referenceKey": "flux-pro-v1.1:caucasian",
+      "seed": 60202,
+      "error": "flux-pro-kontext/gallery/lingerie_boudoir: moderated (has_nsfw_concepts=true)"
+    },
+    {
+      "ok": true,
+      "phase": "gallery",
+      "modelKey": "flux-kontext-dev",
+      "endpoint": "fal-ai/flux-kontext/dev",
+      "lookId": "casual_street",
+      "referenceKey": "flux-pro-v1.1:caucasian",
+      "seed": 60101,
+      "black": false,
+      "moderated": false,
+      "bytes": 226841,
+      "inferenceMs": 6320,
+      "requestId": null,
+      "file": "screenshots/bakeoff-fal-flux/flux-kontext-dev_gallery_casual_street_seed60101.jpg"
+    },
+    {
+      "ok": true,
+      "phase": "gallery",
+      "modelKey": "flux-kontext-dev",
+      "endpoint": "fal-ai/flux-kontext/dev",
+      "lookId": "lingerie_boudoir",
+      "referenceKey": "flux-pro-v1.1:caucasian",
+      "seed": 60202,
+      "black": false,
+      "moderated": false,
+      "bytes": 232577,
+      "inferenceMs": 6983,
+      "requestId": null,
+      "file": "screenshots/bakeoff-fal-flux/flux-kontext-dev_gallery_lingerie_boudoir_seed60202.jpg"
+    }
+  ],
+  "summary": {
+    "referenceKey": "flux-pro-v1.1:caucasian",
+    "portrait": [
+      {
+        "modelKey": "flux-pro-v1.1",
+        "total": 2,
+        "ok": 2,
+        "blackCards": 0,
+        "failures": 0,
+        "avgInferenceMs": 0,
+        "usable": 2
+      },
+      {
+        "modelKey": "flux-dev",
+        "total": 2,
+        "ok": 2,
+        "blackCards": 0,
+        "failures": 0,
+        "avgInferenceMs": 1218,
+        "usable": 2
+      }
+    ],
+    "gallery": [
+      {
+        "modelKey": "flux-pro-kontext",
+        "total": 2,
+        "ok": 1,
+        "blackCards": 0,
+        "failures": 1,
+        "avgInferenceMs": 0,
+        "usable": 1
+      },
+      {
+        "modelKey": "flux-kontext-dev",
+        "total": 2,
+        "ok": 2,
+        "blackCards": 0,
+        "failures": 0,
+        "avgInferenceMs": 6652,
+        "usable": 2
+      }
+    ]
+  },
+  "recommendation": {
+    "portrait": "flux-pro-v1.1",
+    "gallery": "flux-kontext-dev",
+    "env": {
+      "FLUX_COMPANION_MODEL": "fal-ai/flux-pro/v1.1",
+      "FLUX_COMPANION_SAFETY_TOLERANCE": "6",
+      "FLUX_KONTEXT_MODEL": "fal-ai/flux-kontext/dev",
+      "VG_PORTRAIT_PROVIDER": "flux",
+      "VG_GALLERY_PROVIDER": "flux"
+    }
+  }
+}

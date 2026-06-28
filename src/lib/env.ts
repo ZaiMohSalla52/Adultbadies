@@ -14,13 +14,9 @@ export const env = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   ADMIN_REVIEWER_EMAILS: process.env.ADMIN_REVIEWER_EMAILS,
   TOGETHER_API_KEY: process.env.TOGETHER_API_KEY,
-  /** Together portrait text2img — defaults to FLUX.2-max. */
   TOGETHER_PORTRAIT_MODEL: process.env.TOGETHER_PORTRAIT_MODEL,
-  /** Together gallery img2img — defaults to FLUX.1-kontext-max. */
   TOGETHER_GALLERY_MODEL: process.env.TOGETHER_GALLERY_MODEL,
-  /** Portrait provider override: together | modelslab */
   VG_PORTRAIT_PROVIDER: process.env.VG_PORTRAIT_PROVIDER,
-  /** Gallery provider override: together | modelslab */
   VG_GALLERY_PROVIDER: process.env.VG_GALLERY_PROVIDER,
   MODELSLAB_API_KEY: process.env.MODELSLAB_API_KEY,
   VG_LLM_PROVIDER: process.env.VG_LLM_PROVIDER,
@@ -34,13 +30,11 @@ export const env = {
   MODELSLAB_FACE_SWAP_MODEL: process.env.MODELSLAB_FACE_SWAP_MODEL,
   MODELSLAB_EXPLICIT_BODY_MODEL: process.env.MODELSLAB_EXPLICIT_BODY_MODEL,
   MODELSLAB_SDXL_MODEL: process.env.MODELSLAB_SDXL_MODEL,
-  // Image generation: Flux via fal.ai (fallback when MODELSLAB_API_KEY unset).
+  /** fal.ai — required for portrait (flux/dev) and gallery (flux-kontext/dev). */
   FLUX_API_KEY: process.env.FLUX_API_KEY,
   FLUX_BASE_URL: process.env.FLUX_BASE_URL,
   FLUX_MODEL: process.env.FLUX_MODEL,
-  /** Companion portrait/canonical text2img — defaults to Flux Pro for diversity. */
   FLUX_COMPANION_MODEL: process.env.FLUX_COMPANION_MODEL,
-  /** Flux Pro safety_tolerance 1–6; higher is more permissive (default 5 for adult portraits). */
   FLUX_COMPANION_SAFETY_TOLERANCE: process.env.FLUX_COMPANION_SAFETY_TOLERANCE,
   FLUX_KONTEXT_MODEL: process.env.FLUX_KONTEXT_MODEL,
   // Kontext model for adult chat images. Defaults to the open-weights

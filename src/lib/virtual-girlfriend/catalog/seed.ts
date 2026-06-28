@@ -13,6 +13,7 @@ export type CatalogSeedResult = {
   existingCount: number;
   created: string[];
   skipped: string[];
+  resumed: string[];
   failed: Array<{ key: string; error: string }>;
   target: number;
 };
@@ -63,6 +64,66 @@ const countCatalogCompanions = async () => {
   });
   return rows.length;
 };
+
+const resolveCatalogKeyFromTags = (profileTags: string[] | null | undefined) => {
+  const tag = profileTags?.find((entry) => entry.startsWith(`${CATALOG_PROFILE_KEY_TAG}:`));
+  return tag?.split(':')[1] ?? null;
+};
+
+const buildImagePackSetup = (input: {
+  companion: VirtualGirlfriendCompanionRecord;
+  structuredProfile: VirtualGirlfriendStructuredProfile;
+}) => ({
+  origin: input.structuredProfile.origin ?? undefined,
+  sex: input.structuredProfile.sex ?? undefined,
+  age: input.structuredProfile.age ?? undefined,
+  hairColor: input.structuredProfile.hairColor ?? undefined,
+  hairLength: input.structuredProfile.hairLength ?? undefined,
+  eyeColor: input.structuredProfile.eyeColor ?? undefined,
+  skinTone: input.structuredProfile.skinTone ?? undefined,
+  styleVibe: input.structuredProfile.styleVibe ?? undefined,
+  bodyType: input.structuredProfile.bodyType ?? undefined,
+  breastSize: input.structuredProfile.breastSize ?? undefined,
+  archetype: input.structuredProfile.archetype,
+  tone: input.structuredProfile.tone,
+  affectionStyle: input.structuredProfile.affectionStyle,
+  visualAesthetic: input.structuredProfile.visualAesthetic,
+  occupation: input.structuredProfile.occupation ?? undefined,
+  personality: input.structuredProfile.personality ?? undefined,
+  preferenceHints: input.structuredProfile.preferenceHints ?? undefined,
+  freeformDetails: input.structuredProfile.freeformDetails ?? undefined,
+});
+
+const finishCatalogCompanionImages = async (input: {
+  token: string;
+  systemUserId: string;
+  companion: VirtualGirlfriendCompanionRecord;
+}) => {
+  const structuredProfile = input.companion.structured_profile;
+  if (!structuredProfile) {
+    throw new Error('Companion is missing structured_profile.');
+  }
+
+  await generateAndPersistVirtualGirlfriendImagePack({
+    token: input.token,
+    userId: input.systemUserId,
+    companion: input.companion,
+    setup: buildImagePackSetup({ companion: input.companion, structuredProfile }),
+  });
+
+  await setVirtualGirlfriendGenerationStatus(input.token, input.systemUserId, input.companion.id, 'ready');
+};
+
+const listIncompleteCatalogCompanions = async () =>
+  adminSupabaseRest<VirtualGirlfriendCompanionRecord[]>('ai_companions', {
+    searchParams: new URLSearchParams({
+      select: '*',
+      source: 'eq.catalog',
+      generation_status: 'eq.generating',
+      order: 'created_at.asc',
+      limit: String(CATALOG_COMPANION_LIMIT + 10),
+    }),
+  });
 
 const insertCatalogCompanion = async (input: {
   systemUserId: string;
@@ -132,33 +193,45 @@ const seedSingleCatalogCompanion = async (input: {
     structuredProfile,
   });
 
-  await generateAndPersistVirtualGirlfriendImagePack({
+  await finishCatalogCompanionImages({
     token: input.token,
-    userId: input.systemUserId,
+    systemUserId: input.systemUserId,
     companion,
-    setup: {
-      origin: structuredProfile.origin ?? undefined,
-      sex: structuredProfile.sex ?? undefined,
-      age: structuredProfile.age ?? undefined,
-      hairColor: structuredProfile.hairColor ?? undefined,
-      hairLength: structuredProfile.hairLength ?? undefined,
-      eyeColor: structuredProfile.eyeColor ?? undefined,
-      skinTone: structuredProfile.skinTone ?? undefined,
-      styleVibe: structuredProfile.styleVibe ?? undefined,
-      bodyType: structuredProfile.bodyType ?? undefined,
-      breastSize: structuredProfile.breastSize ?? undefined,
-      archetype: structuredProfile.archetype,
-      tone: structuredProfile.tone,
-      affectionStyle: structuredProfile.affectionStyle,
-      visualAesthetic: structuredProfile.visualAesthetic,
-      occupation: structuredProfile.occupation ?? undefined,
-      personality: structuredProfile.personality ?? undefined,
-      preferenceHints: structuredProfile.preferenceHints ?? undefined,
-      freeformDetails: structuredProfile.freeformDetails ?? undefined,
-    },
   });
+};
 
-  await setVirtualGirlfriendGenerationStatus(input.token, input.systemUserId, companion.id, 'ready');
+export const resumeCatalogCompanions = async (options?: { maxToResume?: number }): Promise<CatalogSeedResult> => {
+  const token = requireServiceRoleKey();
+  const systemUserId = resolveCatalogSystemUserId();
+  const incomplete = await listIncompleteCatalogCompanions();
+  const maxToResume = options?.maxToResume ?? incomplete.length;
+
+  const resumed: string[] = [];
+  const failed: Array<{ key: string; error: string }> = [];
+
+  for (const companion of incomplete.slice(0, maxToResume)) {
+    const key = resolveCatalogKeyFromTags(companion.profile_tags) ?? companion.name;
+    try {
+      await finishCatalogCompanionImages({ token, systemUserId, companion });
+      resumed.push(key);
+      console.info(`[catalog-seed] resumed ${key}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failed.push({ key, error: message });
+      console.error(`[catalog-seed] resume failed ${key}: ${message}`);
+    }
+  }
+
+  const existingCount = await countCatalogCompanions();
+  return {
+    ok: failed.length === 0,
+    existingCount,
+    created: [],
+    skipped: [],
+    resumed,
+    failed,
+    target: CATALOG_COMPANION_LIMIT,
+  };
 };
 
 export const seedCatalogCompanions = async (options?: { maxToCreate?: number }): Promise<CatalogSeedResult> => {
@@ -172,6 +245,7 @@ export const seedCatalogCompanions = async (options?: { maxToCreate?: number }):
 
   const created: string[] = [];
   const skipped: string[] = [];
+  const resumed: string[] = [];
   const failed: Array<{ key: string; error: string }> = [];
 
   if (maxToCreate <= 0) {
@@ -180,6 +254,7 @@ export const seedCatalogCompanions = async (options?: { maxToCreate?: number }):
       existingCount,
       created,
       skipped: CATALOG_COMPANION_BLUEPRINTS.map((blueprint) => blueprint.key),
+      resumed,
       failed,
       target: CATALOG_COMPANION_LIMIT,
     };
@@ -211,6 +286,7 @@ export const seedCatalogCompanions = async (options?: { maxToCreate?: number }):
     existingCount: existingCount + created.length,
     created,
     skipped,
+    resumed,
     failed,
     target: CATALOG_COMPANION_LIMIT,
   };

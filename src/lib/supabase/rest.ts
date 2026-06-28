@@ -1,8 +1,14 @@
 import { env } from '@/lib/env';
 
+const resolveSupabaseUrl = () =>
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || env.NEXT_PUBLIC_SUPABASE_URL;
+
+const resolveSupabaseAnonKey = () =>
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
 const buildUrl = (path: string, searchParams?: URLSearchParams) => {
   const query = searchParams?.toString();
-  return `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${path}${query ? `?${query}` : ''}`;
+  return `${resolveSupabaseUrl()}/rest/v1/${path}${query ? `?${query}` : ''}`;
 };
 
 export const supabaseRest = async <T>(
@@ -19,7 +25,7 @@ export const supabaseRest = async <T>(
   const response = await fetch(buildUrl(path, options?.searchParams), {
     method: requestMethod,
     headers: {
-      apikey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      apikey: resolveSupabaseAnonKey(),
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       ...(options?.prefer ? { Prefer: options.prefer } : {}),

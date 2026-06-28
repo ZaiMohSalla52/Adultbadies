@@ -26,7 +26,7 @@ export const CompanionGrid = ({ cards }: { cards: CompanionGridCard[] }) => (
                 src={imageUrl}
                 alt={companion.name}
                 fill
-                sizes="(max-width: 480px) 50vw, 160px"
+                sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 22vw"
                 className="ai-gf-card-photo"
               />
             ) : (

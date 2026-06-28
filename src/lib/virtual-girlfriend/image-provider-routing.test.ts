@@ -1,29 +1,29 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/virtual-girlfriend/image-together', () => ({
-  generatePortraitPreviewImageWithTogether: vi.fn(async () => ({
+vi.mock('@/lib/virtual-girlfriend/image-flux', () => ({
+  generatePortraitPreviewImageWithFlux: vi.fn(async () => ({
     bytes: Buffer.alloc(0),
     mimeType: 'image/jpeg',
     width: null,
     height: null,
     revisedPrompt: null,
-    provider: 'together',
-    model: 'black-forest-labs/FLUX.2-max',
-    endpoint: '/v1/images/generations',
+    provider: 'flux',
+    model: 'fal-ai/flux/dev',
+    endpoint: '/fal-ai/flux/dev',
     requestId: null,
     jobId: null,
     temporaryUrl: 'https://example.com/portrait.jpg',
   })),
-  generateCanonicalImageWithTogether: vi.fn(),
-  generateGalleryImageFromReferenceWithTogether: vi.fn(async () => ({
+  generateCanonicalImageWithFlux: vi.fn(),
+  generateGalleryImageFromReferenceWithFlux: vi.fn(async () => ({
     bytes: Buffer.from('gallery'),
     mimeType: 'image/jpeg',
     width: null,
     height: null,
     revisedPrompt: null,
-    provider: 'together',
-    model: 'black-forest-labs/FLUX.1-kontext-max',
-    endpoint: '/v1/images/generations',
+    provider: 'flux',
+    model: 'fal-ai/flux-kontext/dev',
+    endpoint: '/fal-ai/flux-kontext/dev',
     requestId: null,
     jobId: null,
     temporaryUrl: null,
@@ -31,9 +31,6 @@ vi.mock('@/lib/virtual-girlfriend/image-together', () => ({
 }));
 
 vi.mock('@/lib/virtual-girlfriend/image-modelslab', () => ({
-  generatePortraitPreviewImageWithModelsLab: vi.fn(),
-  generateCanonicalImageWithModelsLab: vi.fn(),
-  generateGalleryImageFromReferenceWithModelsLab: vi.fn(),
   generateChatImageFromReferenceWithModelsLab: vi.fn(),
   generateChatImageWithModelsLabFaceGen: vi.fn(),
 }));
@@ -43,37 +40,33 @@ import {
   generatePortraitPreviewImage,
 } from '@/lib/virtual-girlfriend/image-provider';
 import {
-  generateGalleryImageFromReferenceWithTogether,
-  generatePortraitPreviewImageWithTogether,
-} from '@/lib/virtual-girlfriend/image-together';
-import { generateGalleryImageFromReferenceWithModelsLab } from '@/lib/virtual-girlfriend/image-modelslab';
+  generateGalleryImageFromReferenceWithFlux,
+  generatePortraitPreviewImageWithFlux,
+} from '@/lib/virtual-girlfriend/image-flux';
 
-describe('image-provider Together-only routing', () => {
-  const priorKey = process.env.TOGETHER_API_KEY;
-  const priorPortraitOverride = process.env.VG_PORTRAIT_PROVIDER;
-  const priorGalleryOverride = process.env.VG_GALLERY_PROVIDER;
+describe('image-provider fal-only routing', () => {
+  const priorFluxKey = process.env.FLUX_API_KEY;
+  const priorTogetherKey = process.env.TOGETHER_API_KEY;
 
   afterEach(() => {
-    if (priorKey === undefined) delete process.env.TOGETHER_API_KEY;
-    else process.env.TOGETHER_API_KEY = priorKey;
-    if (priorPortraitOverride === undefined) delete process.env.VG_PORTRAIT_PROVIDER;
-    else process.env.VG_PORTRAIT_PROVIDER = priorPortraitOverride;
-    if (priorGalleryOverride === undefined) delete process.env.VG_GALLERY_PROVIDER;
-    else process.env.VG_GALLERY_PROVIDER = priorGalleryOverride;
+    if (priorFluxKey === undefined) delete process.env.FLUX_API_KEY;
+    else process.env.FLUX_API_KEY = priorFluxKey;
+    if (priorTogetherKey === undefined) delete process.env.TOGETHER_API_KEY;
+    else process.env.TOGETHER_API_KEY = priorTogetherKey;
     vi.clearAllMocks();
   });
 
-  it('uses Together for portrait previews when TOGETHER_API_KEY is set', async () => {
-    process.env.TOGETHER_API_KEY = 'test-key';
-    delete process.env.VG_PORTRAIT_PROVIDER;
+  it('uses fal flux/dev for portrait previews', async () => {
+    process.env.FLUX_API_KEY = 'test-key';
+    process.env.TOGETHER_API_KEY = 'together-key';
 
     await generatePortraitPreviewImage('test prompt', 10101);
-    expect(generatePortraitPreviewImageWithTogether).toHaveBeenCalledWith('test prompt', 10101, undefined);
+    expect(generatePortraitPreviewImageWithFlux).toHaveBeenCalledWith('test prompt', 10101);
   });
 
-  it('uses Together for gallery when TOGETHER_API_KEY is set', async () => {
-    process.env.TOGETHER_API_KEY = 'test-key';
-    delete process.env.VG_GALLERY_PROVIDER;
+  it('uses fal flux-kontext/dev for gallery', async () => {
+    process.env.FLUX_API_KEY = 'test-key';
+    process.env.TOGETHER_API_KEY = 'together-key';
 
     await generateGalleryImageFromReference({
       prompt: 'gallery prompt',
@@ -82,24 +75,22 @@ describe('image-provider Together-only routing', () => {
       referenceImageUrl: 'https://cdn.example.com/canonical.jpg',
     });
 
-    expect(generateGalleryImageFromReferenceWithTogether).toHaveBeenCalledWith({
+    expect(generateGalleryImageFromReferenceWithFlux).toHaveBeenCalledWith({
       prompt: 'gallery prompt',
       referenceImageBytes: Buffer.from('ref'),
       referenceMimeType: 'image/jpeg',
       referenceImageUrl: 'https://cdn.example.com/canonical.jpg',
     });
-    expect(generateGalleryImageFromReferenceWithModelsLab).not.toHaveBeenCalled();
   });
 
-  it('does not fall back to ModelsLab when Together portrait fails', async () => {
-    process.env.TOGETHER_API_KEY = 'test-key';
-    delete process.env.VG_PORTRAIT_PROVIDER;
+  it('does not fall back when fal portrait fails', async () => {
+    process.env.FLUX_API_KEY = 'test-key';
 
-    vi.mocked(generatePortraitPreviewImageWithTogether).mockRejectedValueOnce(
-      new Error('Together portrait generation failed: Rate limit exceeded'),
+    vi.mocked(generatePortraitPreviewImageWithFlux).mockRejectedValueOnce(
+      new Error('Flux portrait preview generation failed: Rate limit exceeded'),
     );
 
     await expect(generatePortraitPreviewImage('test prompt')).rejects.toThrow(/Rate limit exceeded/);
-    expect(generatePortraitPreviewImageWithTogether).toHaveBeenCalledTimes(1);
+    expect(generatePortraitPreviewImageWithFlux).toHaveBeenCalledTimes(1);
   });
 });

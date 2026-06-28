@@ -1,5 +1,5 @@
 import type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
-import { resolveVgImageProvider } from '@/lib/virtual-girlfriend/image-provider-config';
+import { assertFluxApiKey } from '@/lib/virtual-girlfriend/flux-image-config';
 import {
   generateCanonicalImageWithFlux,
   generatePortraitPreviewImageWithFlux,
@@ -9,26 +9,16 @@ import {
   generateChatImageFromReferenceWithModelsLab,
   generateChatImageWithModelsLabFaceGen,
 } from '@/lib/virtual-girlfriend/image-modelslab';
-import {
-  generateCanonicalImageWithTogether,
-  generateGalleryImageFromReferenceWithTogether,
-  generatePortraitPreviewImageWithTogether,
-} from '@/lib/virtual-girlfriend/image-together';
-import {
-  assertTogetherApiKey,
-  isTogetherGalleryEnabled,
-  isTogetherPortraitEnabled,
-} from '@/lib/virtual-girlfriend/together-image-config';
 import { generateExplicitChatImageWithModelsLabFaceSwap } from '@/lib/virtual-girlfriend/image-faceswap';
 import { generateExplicitChatImageWithModelsLabSdxl } from '@/lib/virtual-girlfriend/image-sdxl';
 
 export type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-girlfriend/image-types';
 
 /*
- * Hybrid image provider facade.
+ * Identity image provider facade.
  *
- * Portrait → Together FLUX.2-max only (no ModelsLab fallback)
- * Gallery  → Together FLUX.1-kontext-max only (no ModelsLab fallback)
+ * Portrait → fal-ai/flux/dev only
+ * Gallery  → fal-ai/flux-kontext/dev only
  * Explicit chat → ModelsLab Face Gen / face swap (unchanged)
  * Passive chat  → ModelsLab Kontext
  */
@@ -36,29 +26,17 @@ export type { GeneratedImage, KontextGenerationOptions } from '@/lib/virtual-gir
 const hasModelsLabKey = () => Boolean(process.env.MODELSLAB_API_KEY?.trim());
 
 export const generateCanonicalImage = async (prompt: string): Promise<GeneratedImage> => {
-  if (isTogetherPortraitEnabled()) {
-    assertTogetherApiKey();
-    return generateCanonicalImageWithTogether(prompt);
-  }
-  if (resolveVgImageProvider() === 'flux') {
-    return generateCanonicalImageWithFlux(prompt);
-  }
-  throw new Error('Portrait generation requires TOGETHER_API_KEY (Together FLUX.2-max).');
+  assertFluxApiKey();
+  return generateCanonicalImageWithFlux(prompt);
 };
 
 export const generatePortraitPreviewImage = async (
   prompt: string,
   seed?: number,
-  minimalPrompt?: string,
+  _minimalPrompt?: string,
 ): Promise<GeneratedImage> => {
-  if (isTogetherPortraitEnabled()) {
-    assertTogetherApiKey();
-    return generatePortraitPreviewImageWithTogether(prompt, seed, minimalPrompt);
-  }
-  if (resolveVgImageProvider() === 'flux') {
-    return generatePortraitPreviewImageWithFlux(prompt, seed);
-  }
-  throw new Error('Portrait generation requires TOGETHER_API_KEY (Together FLUX.2-max).');
+  assertFluxApiKey();
+  return generatePortraitPreviewImageWithFlux(prompt, seed);
 };
 
 export type PortraitReferenceImage =
@@ -71,14 +49,8 @@ export const generateGalleryImageFromReference = async (input: {
   referenceMimeType: string;
   referenceImageUrl?: string;
 }): Promise<GeneratedImage> => {
-  if (isTogetherGalleryEnabled()) {
-    assertTogetherApiKey();
-    return generateGalleryImageFromReferenceWithTogether(input);
-  }
-  if (resolveVgImageProvider() === 'flux') {
-    return generateGalleryImageFromReferenceWithFlux(input);
-  }
-  throw new Error('Gallery generation requires TOGETHER_API_KEY (Together FLUX.1-kontext-max).');
+  assertFluxApiKey();
+  return generateGalleryImageFromReferenceWithFlux(input);
 };
 
 export const generateChatImageFromReference = (input: {

@@ -1,9 +1,9 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { ExploreCharacterCard } from '@/components/discovery/explore-character-card';
 import type { ExploreTab } from '@/lib/discovery/types';
 import type { CompanionGridCard } from '@/components/virtual-girlfriend/companion-grid';
 import { CompanionCardDeleteButton } from '@/components/virtual-girlfriend/companion-card-delete-button';
@@ -31,6 +31,13 @@ const TAB_QUERY: Record<ExploreTab, string | null> = {
   boyfriends: 'boyfriends',
   anime: 'anime',
   my: 'my',
+};
+
+const TAB_CATEGORY_LABEL: Record<ExploreTab, string | null> = {
+  girlfriends: 'Woman',
+  boyfriends: 'Man',
+  anime: 'Anime',
+  my: null,
 };
 
 const toExploreCardFromDiscovery = (candidate: DiscoveryCandidate): ExploreCard => ({
@@ -167,20 +174,14 @@ export const ExploreLibrary = ({
           cards.map((card) => {
             const myCard = tab === 'my' ? (card as ExploreCard & { deletable?: boolean }) : null;
             const cardInner = (
-              <Link href={card.href} className={styles.card}>
-                <div className={styles.cardImage}>
-                  {card.photoUrl ? (
-                    <Image src={card.photoUrl} alt={card.name} fill sizes="(max-width: 520px) 50vw, 220px" className={styles.cardPhoto} />
-                  ) : (
-                    <div className={styles.cardFallback}>{card.name.charAt(0)}</div>
-                  )}
-                </div>
-                <div className={styles.cardBody}>
-                  <span className={styles.cardName}>{card.name}</span>
-                  <p className={styles.cardBio}>{card.bio}</p>
-                  {card.tag ? <span className={styles.cardTag}>{card.tag}</span> : null}
-                </div>
-              </Link>
+              <ExploreCharacterCard
+                name={card.name}
+                bio={card.bio}
+                photoUrl={card.photoUrl}
+                href={card.href}
+                categoryLabel={TAB_CATEGORY_LABEL[tab]}
+                metaTag={tab === 'my' ? card.tag : null}
+              />
             );
 
             if (myCard?.deletable) {
@@ -192,16 +193,18 @@ export const ExploreLibrary = ({
               );
             }
 
-            return <div key={card.id}>{cardInner}</div>;
+            return <div key={card.id} className={styles.gridItem}>{cardInner}</div>;
           })
         )}
 
         {tab === 'my' ? (
-          <Link href="/virtual-girlfriend/setup?new=1" className={styles.createCard}>
-            <span className={styles.createIcon}>✨</span>
-            <span className={styles.createLabel}>Create New</span>
-            <span className={styles.createSub}>AI Companion</span>
-          </Link>
+          <div className={styles.gridItem}>
+            <Link href="/virtual-girlfriend/setup?new=1" className={styles.createCard}>
+              <span className={styles.createIcon}>✨</span>
+              <span className={styles.createLabel}>Create New</span>
+              <span className={styles.createSub}>AI Companion</span>
+            </Link>
+          </div>
         ) : null}
       </div>
     </div>

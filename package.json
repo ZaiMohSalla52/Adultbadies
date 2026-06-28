@@ -27,7 +27,9 @@
     "phase0:kontextmax-wardrobe-bakeoff": "node scripts/phase0-together-kontextmax-wardrobe-bakeoff.mjs",
     "phase0:trace-summary": "tsx scripts/phase0-summarize-turn-traces.ts",
     "memory:embed-backfill": "tsx scripts/memory-embed-backfill.ts",
-    "catalog:seed": "tsx scripts/seed-catalog-companions.ts"
+    "catalog:create-system-user": "tsx scripts/create-catalog-system-user.ts",
+    "catalog:seed": "tsx scripts/seed-catalog-companions.ts",
+    "phase0:fal-flux-bakeoff": "node scripts/phase0-fal-flux-bakeoff.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
