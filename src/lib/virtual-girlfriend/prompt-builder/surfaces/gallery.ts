@@ -37,16 +37,17 @@ export const buildGalleryPrompt = (input: GalleryPromptInput, variantIndex: numb
   const coreLook = input.coreLook?.filter(Boolean).join(', ');
   const negConstraints = input.negativeConstraints?.filter(Boolean).join(', ');
 
+  const sceneDirective = input.sceneHint?.trim()
+    ? `Restyle this exact person for a brand-new gallery photo: ${input.sceneHint}. Change wardrobe, pose, camera angle, and setting to match — even if the reference portrait shows different clothing or location. Gallery variant ${variantIndex + 1} must look visibly different from the profile portrait. Keep the same face and identity lock.`
+    : `Gallery variant ${variantIndex + 1}. Vary scene, angle, and outfit while preserving identity.`;
+
   const base = [
     `Portrait photograph of ${resolveSubject(input.sex)}.`,
     `${resolvePhysicalTraitLine(input)}.`,
     input.occupation ? `Occupation: ${input.occupation}.` : null,
     identityAnchors ? `Identity anchors: ${identityAnchors}.` : null,
     coreLook ? `Core appearance: ${coreLook}.` : null,
-    input.wardrobeDirection ? `Wardrobe: ${input.wardrobeDirection}.` : null,
-    input.lightingMood ? `Lighting: ${input.lightingMood}.` : null,
-    input.sceneHint ? `Scene: ${input.sceneHint}.` : null,
-    `Gallery variant ${variantIndex + 1}. Vary scene, angle, and outfit while preserving identity.`,
+    sceneDirective,
     getCompositionAnchor('gallery'),
     PHOTO_REALISM_TAIL,
     EXPOSURE_LIGHTING_TAIL,

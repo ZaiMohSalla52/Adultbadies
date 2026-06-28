@@ -48,6 +48,7 @@ export const generateGalleryImageFromReference = async (input: {
   referenceImageBytes: Buffer;
   referenceMimeType: string;
   referenceImageUrl?: string;
+  kontextOptions?: KontextGenerationOptions;
 }): Promise<GeneratedImage> => {
   assertFluxApiKey();
   return generateGalleryImageFromReferenceWithFlux(input);

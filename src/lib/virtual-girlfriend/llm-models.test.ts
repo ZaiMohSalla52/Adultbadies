@@ -42,9 +42,9 @@ describe('buildTogetherModelCandidates', () => {
 });
 
 describe('buildModelsLabModelCandidates', () => {
-  it('includes uncensored-chat fallback after primary', () => {
+  it('includes Dare uncensored fallback after primary', () => {
     const candidates = buildModelsLabModelCandidates(VG_MODELSLAB_DEFAULT_CHAT_MODEL);
-    expect(candidates[0]).toBe(VG_MODELSLAB_DEFAULT_CHAT_MODEL);
-    expect(candidates).toContain('uncensored-chat');
+    expect(candidates[0]).toBe('uncensored-chat');
+    expect(candidates).toContain('ModelsLab/Llama-3.1-8b-Uncensored-Dare');
   });
 });

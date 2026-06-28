@@ -193,12 +193,14 @@ export const generateGalleryImageFromReferenceWithFlux = async (input: {
   prompt: string;
   referenceImageBytes: Buffer;
   referenceMimeType: string;
+  kontextOptions?: KontextGenerationOptions;
 }): Promise<GeneratedImage> =>
   generateKontextFromReference({
     prompt: input.prompt,
     referenceImageBytes: input.referenceImageBytes,
     referenceMimeType: input.referenceMimeType,
     surface: 'gallery',
+    kontextOptions: input.kontextOptions,
     errorLabel: `Flux gallery generation failed (${FAL_FLUX_GALLERY_MODEL})`,
   });
 

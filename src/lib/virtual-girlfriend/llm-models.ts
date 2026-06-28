@@ -3,8 +3,8 @@ const getEnvModel = (key: string, fallback: string) => {
   return value || fallback;
 };
 
-/** ModelsLab uncensored chat — OpenAI-compatible endpoint. */
-export const VG_MODELSLAB_DEFAULT_CHAT_MODEL = 'ModelsLab/Llama-3.1-8b-Uncensored-Dare';
+/** ModelsLab dedicated uncensored chat — flagship on /api/uncensored-chat. */
+export const VG_MODELSLAB_DEFAULT_CHAT_MODEL = 'uncensored-chat';
 
 export const VG_MODELSLAB_CHAT_MODEL = getEnvModel(
   'VG_MODELSLAB_CHAT_MODEL',
@@ -16,7 +16,7 @@ export const VG_MODELSLAB_FAST_MODEL = getEnvModel(
   VG_MODELSLAB_DEFAULT_CHAT_MODEL,
 );
 
-export const VG_MODELSLAB_FALLBACK_MODELS = ['uncensored-chat'] as const;
+export const VG_MODELSLAB_FALLBACK_MODELS = ['ModelsLab/Llama-3.1-8b-Uncensored-Dare'] as const;
 
 export const resolveVgModelsLabModel = (requested?: string) => {
   if (!requested) return VG_MODELSLAB_CHAT_MODEL;
@@ -97,20 +97,8 @@ export const buildTogetherModelCandidates = (requested?: string) => {
   return [...new Set(ordered)];
 };
 
-const resolveActiveLlmFamily = () => {
-  const configured = process.env.VG_LLM_PROVIDER?.trim().toLowerCase();
-  if (configured === 'together') return 'together';
-  if (configured === 'modelslab') return 'modelslab';
-  if (process.env.MODELSLAB_API_KEY?.trim()) return 'modelslab';
-  return 'together';
-};
+/** Active chat model — ModelsLab uncensored endpoint only. */
+export const VG_CHAT_MODEL = VG_MODELSLAB_CHAT_MODEL;
 
-const activeLlmFamily = resolveActiveLlmFamily();
-
-/** Active chat model for merged turns — follows VG_LLM_PROVIDER. */
-export const VG_CHAT_MODEL =
-  activeLlmFamily === 'modelslab' ? VG_MODELSLAB_CHAT_MODEL : VG_TOGETHER_CHAT_MODEL;
-
-/** Active fast/structured model — follows VG_LLM_PROVIDER. */
-export const VG_FAST_MODEL =
-  activeLlmFamily === 'modelslab' ? VG_MODELSLAB_FAST_MODEL : VG_TOGETHER_FAST_MODEL;
+/** Active fast/structured model (persona, visual identity JSON). */
+export const VG_FAST_MODEL = VG_MODELSLAB_FAST_MODEL;

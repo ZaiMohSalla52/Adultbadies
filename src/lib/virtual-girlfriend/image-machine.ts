@@ -323,6 +323,19 @@ export type VirtualGirlfriendPortraitPreviewResult = {
 const SETUP_GALLERY_BATCH = VIRTUAL_GIRLFRIEND_GALLERY_TARGET;
 const GALLERY_TOPUP_BATCH = VIRTUAL_GIRLFRIEND_GALLERY_TARGET;
 
+/** Higher guidance pushes Kontext away from cloning the canonical portrait. */
+const GALLERY_KONTEXT_OPTIONS: KontextGenerationOptions = {
+  guidanceScale: 6,
+  numInferenceSteps: 32,
+  enableSafetyChecker: false,
+};
+
+const GALLERY_KONTEXT_RETRY_OPTIONS: KontextGenerationOptions = {
+  guidanceScale: 7.5,
+  numInferenceSteps: 36,
+  enableSafetyChecker: false,
+};
+
 type GalleryScenePreset = {
   framing: string;
   environment: string;
@@ -636,6 +649,9 @@ const runProviderGeneration = async (input: {
       referenceImageBytes,
       referenceMimeType,
       ...(referenceImageUrl ? { referenceImageUrl } : {}),
+      ...(input.mode === 'gallery_from_reference' && input.kontextOptions
+        ? { kontextOptions: input.kontextOptions }
+        : {}),
       ...(input.mode === 'chat_from_reference'
         ? {
             ...(input.kontextOptions ? { kontextOptions: input.kontextOptions } : {}),
@@ -857,16 +873,26 @@ const generateGalleryFromCanonical = async (input: {
     try {
       const galleryPromptInput = toGalleryPromptInput(input.companion, input.visualProfile.identity_pack, capture);
       const prompt = buildGalleryPrompt(galleryPromptInput, capture.variantIndex);
-      const generated = await runProviderGeneration({
-        scope: input.scope,
-        mode: 'gallery_from_reference',
-        prompt,
-        reference: {
-          bytes: canonicalRef.bytes,
-          mimeType: canonicalRef.mimeType,
-          deliveryUrl: input.canonicalImage.delivery_url,
-        },
-      });
+
+      const generateGalleryVariant = async (variantPrompt: string, kontextOptions: KontextGenerationOptions) =>
+        runProviderGeneration({
+          scope: input.scope,
+          mode: 'gallery_from_reference',
+          prompt: variantPrompt,
+          kontextOptions,
+          reference: {
+            bytes: canonicalRef.bytes,
+            mimeType: canonicalRef.mimeType,
+            deliveryUrl: input.canonicalImage.delivery_url,
+          },
+        });
+
+      let generated = await generateGalleryVariant(prompt, GALLERY_KONTEXT_OPTIONS);
+      if (isNearCloneOfReference(canonicalRef.bytes, generated.bytes)) {
+        logImageMachine(input.scope, 'gallery_clone_retry', { variantIndex: capture.variantIndex });
+        const retryPrompt = `${prompt} CRITICAL: Do not reuse the reference outfit, pose, or background. Produce a clearly different photograph.`;
+        generated = await generateGalleryVariant(retryPrompt, GALLERY_KONTEXT_RETRY_OPTIONS);
+      }
 
       const galleryImage = await buildImageRecord({
         token: input.token,
